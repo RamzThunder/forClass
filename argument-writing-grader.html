@@ -1,0 +1,3274 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>글쓰기 채점표 템플릿</title>
+  <style>
+    :root{
+      --bg:#fff8e7;
+      --card:#ffffff;
+      --ink:#2a2114;
+      --muted:#7c6b55;
+      --line:#ead7aa;
+      --soft:#fffaf0;
+      --blue:#d97706;
+      --blue2:#fff3c4;
+      --green:#16a34a;
+      --green2:#dcfce7;
+      --yellow:#f59e0b;
+      --yellow2:#fef3c7;
+      --red:#dc2626;
+      --red2:#fee2e2;
+      --purple:#7c3aed;
+      --orange:#f97316;
+      --orange2:#ffedd5;
+      --shadow:0 10px 25px rgba(146,90,12,.10);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+      letter-spacing:-.025em;
+    }
+    header{
+      position:sticky;
+      top:0;
+      z-index:10;
+      background:rgba(255,248,231,.93);
+      backdrop-filter:blur(9px);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{max-width:1520px;margin:0 auto;padding:10px 20px}
+    h1{margin:0;font-size:24px;line-height:1.2}
+    .sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.45}
+    .headerMain{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:14px;
+    }
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:0;justify-content:flex-end}
+    .btn{
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      border-radius:11px;
+      padding:9px 12px;
+      cursor:pointer;
+      font-weight:800;
+      font-size:13px;
+      transition:.15s ease;
+      white-space:nowrap;
+    }
+    .btn:hover{transform:translateY(-1px);box-shadow:0 5px 12px rgba(146,90,12,.10)}
+    .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+    .btn.danger{color:var(--red)}
+    .btn.ghost{background:transparent}
+    .btn.small{padding:6px 8px;border-radius:9px;font-size:12px}
+    main{max-width:1520px;margin:0 auto;padding:14px 20px 20px}
+    .viewTabs,.classTabs{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:14px;
+    }
+    .toolbar .viewTabs{margin-bottom:0}
+    .tab{
+      border:1px solid var(--line);
+      background:#fff;
+      padding:10px 14px;
+      border-radius:999px;
+      cursor:pointer;
+      font-weight:900;
+      color:#334155;
+    }
+    .tab.active{
+      background:var(--blue);
+      border-color:var(--blue);
+      color:#fff;
+      box-shadow:0 8px 18px rgba(217,119,6,.24);
+    }
+    .panel{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .rules{
+      padding:13px 16px;
+      background:#fffaf0;
+      border-bottom:1px solid var(--line);
+      font-size:13px;
+      color:#374151;
+      line-height:1.6;
+    }
+    .rules b{color:#111827}
+    .table-wrap{overflow:auto;max-height:72vh}
+    table{
+      border-collapse:separate;
+      border-spacing:0;
+      width:100%;
+      min-width:1380px;
+    }
+    th,td{
+      border-right:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+      padding:7px;
+      vertical-align:top;
+    }
+    th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#fff7df;
+      font-size:13px;
+      text-align:center;
+      white-space:nowrap;
+    }
+    td{background:#fff}
+    tr:hover td{background:#fffaf0}
+    .num{width:48px;text-align:center;font-weight:900}
+    td.num,td.name,td.totalCol{vertical-align:middle}
+    td.name{text-align:center;font-weight:900;font-size:25px}
+    .flagCol{width:58px;text-align:center}
+    .flagCell{text-align:center;vertical-align:middle;padding:6px 4px !important}
+    .flagStack{display:flex;flex-direction:column;align-items:center;gap:4px}
+    .starBtn,.absentBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      color:#d6b86a;
+      width:32px;
+      height:32px;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:18px;
+      font-weight:1000;
+      line-height:1;
+      transition:.15s ease;
+    }
+    .starBtn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(15,23,42,.1);color:#f59e0b}
+    .starBtn.active{background:var(--orange2);border-color:#fdba74;color:var(--orange)}
+    .checkBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      color:#a3a3a3;
+      width:32px;
+      height:32px;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:16px;
+      font-weight:1000;
+      line-height:1;
+      transition:.15s ease;
+    }
+    .checkBtn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(15,23,42,.1);color:#16a34a}
+    .checkBtn.active{background:var(--green2);border-color:#86efac;color:#166534}
+    .absentBtn{color:#cbd5e1;font-size:16px}
+    .absentBtn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(15,23,42,.1);color:#dc2626}
+    .absentBtn.active{background:var(--red2);border-color:#fca5a5;color:#991b1b}
+    tr.jumpHighlight td{animation:jumpFlash 1.8s ease 1}
+    @keyframes jumpFlash{
+      0%,100%{background:#fff}
+      20%,70%{background:#fff7ed}
+    }
+    .name{width:125px}
+    .criterion{min-width:175px}
+    .sourceBox{min-width:285px}
+    .totalCol{width:70px;text-align:center}
+    input,select,textarea{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 8px;
+      font:inherit;
+      background:#fff;
+      outline:none;
+    }
+    input:focus,select:focus,textarea:focus{border-color:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.25)}
+    textarea{resize:vertical;min-height:150px;line-height:1.45}
+    .criterionMemo{min-height:52px;height:auto;overflow:hidden;font-size:11px;padding:5px 7px;margin-top:6px;color:#374151;line-height:1.4}
+    .memoPhraseBar{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+    .memoPhraseBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:4px 7px;
+      font-size:11px;
+      font-weight:850;
+      color:#4b5563;
+      cursor:pointer;
+      max-width:100%;
+    }
+    .memoPhraseBtn:hover{border-color:#fcd34d;background:#fffbeb;color:#78350f}
+    .hint{font-size:12px;color:var(--muted);line-height:1.35;margin-top:5px}
+    .fieldMemoLine{display:flex;gap:6px;margin-top:6px;align-items:center}
+    .criterionScoreLine{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:center;
+      margin-bottom:6px;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:900;
+    }
+    .criterionScoreLine b{font-size:18px;color:var(--blue)}
+    .criterionChecks{display:grid;gap:5px}
+    .topicGuide{display:grid;gap:6px;margin-bottom:8px}
+    .topicGuideBtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+    .topicGuideBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:10px;
+      min-height:40px;
+      padding:6px 6px;
+      cursor:pointer;
+      font-size:10px;
+      font-weight:900;
+      color:#374151;
+      line-height:1.15;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      word-break:keep-all;
+      white-space:nowrap;
+    }
+    .topicGuideBtn.selected{background:#fff1f2;border-color:#fda4af;color:#9f1239}
+    .topicGuideText{
+      border:1px solid #fecdd3;
+      background:#fff1f2;
+      border-radius:10px;
+      padding:8px;
+      font-size:12px;
+      line-height:1.45;
+      color:#9f1239;
+      font-weight:850;
+    }
+    .validityOptBlock{display:grid;gap:5px}
+    .validitySplit{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) minmax(0,1fr) auto;
+      gap:5px;
+      align-items:center;
+    }
+    .validityLabel{font-size:12px;font-weight:1000;color:#374151;white-space:nowrap}
+    .validityPart{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:10px;
+      padding:7px 8px;
+      font-size:12px;
+      font-weight:900;
+      cursor:pointer;
+      color:#374151;
+    }
+    .validityPart.selected{background:var(--blue2);border-color:#fcd34d;color:#78350f}
+    .validityBadge{
+      white-space:nowrap;
+      margin:0;
+      border:0;
+      cursor:pointer;
+      font:inherit;
+    }
+    .validityBadge:hover{transform:translateY(-1px);box-shadow:0 5px 12px rgba(146,90,12,.10)}
+    .validityReasonMemo{
+      width:100%;
+      min-height:42px;
+      height:auto;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px;
+      resize:vertical;
+      font:inherit;
+      font-size:12px;
+      line-height:1.35;
+      background:#fff;
+      overflow:hidden;
+    }
+    .structureViz{display:flex;align-items:center;gap:4px;margin:2px 0}
+    .secGroupBox{
+      flex:1;display:flex;align-items:center;
+      border:2px solid var(--line);border-radius:8px;padding:4px 2px;
+      transition:.15s ease;cursor:pointer;user-select:none;
+    }
+    .secGroupBox:hover:not(.active){border-color:#d1d5db;background:#f9fafb}
+    .secGroupBox.active{background:var(--blue2);border-color:var(--blue)}
+    .secGroupBox span{flex:1;text-align:center;font-size:11px;font-weight:900;color:#94a3b8;transition:.15s ease}
+    .secGroupBox.active span{color:#374151}
+    .sepBtn{
+      flex-shrink:0;width:16px;padding:0;border:0;background:transparent;
+      cursor:pointer;font-size:14px;color:#d1d5db;transition:.15s ease;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .sepBtn:hover{color:var(--blue)}
+    .structureViz>.sepBtn.active{color:var(--blue);font-size:18px;font-weight:1000}
+    .structureAllBtn{
+      width:100%;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:10px;
+      padding:6px 8px;
+      margin:5px 0;
+      cursor:pointer;
+      color:#4b5563;
+      font-size:12px;
+      font-weight:900;
+    }
+    .structureAllBtn.selected{background:var(--blue2);border-color:var(--blue);color:#78350f}
+    .critOpt{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:6px;
+      align-items:center;
+      width:100%;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:10px;
+      padding:6px 8px;
+      cursor:pointer;
+      text-align:left;
+      color:#4b5563;
+      font-size:12px;
+      font-weight:850;
+    }
+    .critOpt b{font-size:12px;color:var(--muted)}
+    .critOpt.selected{
+      background:var(--blue2);
+      border-color:#fcd34d;
+      color:#78350f;
+    }
+    .critOpt.selected b{color:#92400e}
+    .critOpt.deduct.selected{
+      background:var(--red2);
+      border-color:#fca5a5;
+      color:#991b1b;
+    }
+    .critOpt.deduct.selected b{color:#991b1b}
+    .memoBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:9px;
+      padding:5px 6px;
+      font-size:11px;
+      cursor:pointer;
+      color:#374151;
+      font-weight:800;
+      white-space:nowrap;
+    }
+    .memoBtn.hasMemo{
+      background:var(--blue2);
+      border-color:#fcd34d;
+      color:#92400e;
+    }
+    .memoBtn.hasMemo::after{content:' 있음'}
+    .srcMemo.hasMemo::after{content:''}
+    .sourceTools{
+      display:flex;
+      gap:4px;
+      flex-wrap:wrap;
+      margin-bottom:6px;
+    }
+    .sourceItem{
+      display:grid;
+      grid-template-columns:39px 1fr 50px;
+      align-items:center;
+      gap:4px;
+      margin-bottom:4px;
+    }
+    .sourceLabel{font-size:11px;font-weight:900;color:#475569}
+    .choices{display:flex;gap:3px}
+    .choice{
+      min-width:30px;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:4px 6px;
+      font-weight:900;
+      cursor:pointer;
+      font-size:12px;
+    }
+    .choice:hover{background:#f8fafc}
+    .choice.o.selected{background:var(--green2);border-color:#86efac;color:#166534}
+    .choice.t.selected{background:var(--yellow2);border-color:#fcd34d;color:#92400e}
+    .choice.x.selected{background:var(--red2);border-color:#fca5a5;color:#991b1b}
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:3px;
+      border-radius:999px;
+      padding:3px 8px;
+      font-size:12px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .ok{background:var(--green2);color:#166534}
+    .mid{background:var(--yellow2);color:#92400e}
+    .low{background:var(--red2);color:#991b1b}
+    .blank{background:#e5e7eb;color:#374151}
+    .score{
+      font-weight:1000;
+      text-align:center;
+      font-size:20px;
+      border-radius:13px;
+      padding:8px 3px;
+    }
+    .footerNote{color:var(--muted);font-size:12px;margin-top:10px;line-height:1.45}
+    .studentNav{
+      position:sticky;
+      top:106px;
+      z-index:8;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(255,250,240,.96);
+      box-shadow:0 8px 18px rgba(146,90,12,.08);
+      padding:8px 10px;
+      margin:0 0 12px;
+      backdrop-filter:blur(8px);
+    }
+    .studentNavInfo{
+      min-width:0;
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:900;
+      text-align:center;
+    }
+    .studentNavName{color:var(--ink);font-size:15px}
+    .navBtn{
+      min-width:96px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      border-radius:11px;
+      padding:8px 10px;
+      cursor:pointer;
+      font-weight:1000;
+      transition:.15s ease;
+    }
+    .navBtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 12px rgba(146,90,12,.10)}
+    .navBtn:disabled{opacity:.45;cursor:not-allowed}
+    .hidden{display:none !important}
+    body.singleStudentEdit .viewTabs,
+    body.singleStudentEdit .classTabs,
+    body.singleStudentEdit .discussionPanel,
+    body.singleStudentEdit .studentNav,
+    body.singleStudentEdit .rules,
+    body.singleStudentEdit .footerNote,
+    body.singleStudentEdit #studentView,
+    body.singleStudentEdit .teacherRoster,
+    body.singleStudentEdit .toolbar .btn:not(.primary){
+      display:none !important;
+    }
+    body.singleStudentEdit .teacherWorkspace{grid-template-columns:1fr}
+    body.singleStudentEdit main{max-width:1520px}
+    body.singleStudentEdit .wrap{max-width:1520px}
+    body.singleStudentEdit .panel{border-radius:16px}
+    body.singleStudentEdit .table-wrap{max-height:none;overflow:visible}
+    body.singleStudentEdit table{min-width:0;width:100%;table-layout:fixed}
+    body.singleStudentEdit th,
+    body.singleStudentEdit td{padding:8px}
+    body.singleStudentEdit .num{width:52px}
+    body.singleStudentEdit .flagCol{width:58px}
+    body.singleStudentEdit .name{width:130px}
+    body.singleStudentEdit .criterion{min-width:0}
+    body.singleStudentEdit .sourceBox{min-width:0;width:270px}
+    body.singleStudentEdit .totalCol{width:76px}
+    body.singleStudentEdit select{font-size:13px}
+    .singleEditNotice{
+      border:1px solid #fcd34d;
+      background:#fffbeb;
+      color:#78350f;
+      border-radius:16px;
+      padding:13px 15px;
+      margin-bottom:14px;
+      font-size:14px;
+      line-height:1.55;
+      font-weight:800;
+    }
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:22px;
+      transform:translate(-50%,18px);
+      background:#111827;
+      color:#fff;
+      border-radius:999px;
+      padding:11px 16px;
+      font-size:14px;
+      font-weight:900;
+      box-shadow:0 14px 28px rgba(15,23,42,.24);
+      opacity:0;
+      pointer-events:none;
+      transition:.18s ease;
+      z-index:80;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translate(-50%,0);
+    }
+
+
+    .discussionPanel{
+      display:flex;
+      flex-wrap:wrap;
+      gap:5px;
+      align-items:center;
+      margin:-2px 0 7px;
+      padding:7px 9px;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:12px;
+      box-shadow:0 6px 14px rgba(146,90,12,.06);
+    }
+    .discussionPanelTitle{
+      font-size:13px;
+      font-weight:1000;
+      color:#374151;
+      margin-right:3px;
+    }
+    .discussionEmpty{
+      color:var(--muted);
+      font-size:13px;
+    }
+    .discussionChip{
+      border:1px solid #fdba74;
+      background:#fff7ed;
+      color:#9a3412;
+      border-radius:999px;
+      padding:4px 8px;
+      font-size:11px;
+      font-weight:1000;
+      cursor:pointer;
+      display:inline-flex;
+      gap:5px;
+      align-items:center;
+    }
+    .discussionChip:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(249,115,22,.16)}
+
+    .teacherWorkspace{
+      display:grid;
+      grid-template-columns:220px minmax(0,1fr);
+      gap:14px;
+      align-items:start;
+    }
+    .teacherRoster{
+      position:sticky;
+      top:12px;
+      height:var(--teacher-roster-height, calc(100dvh - 340px));
+      max-height:var(--teacher-roster-height, calc(100dvh - 340px));
+      min-height:220px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .teacherRosterHead{
+      padding:13px 14px;
+      border-bottom:1px solid var(--line);
+      background:#fffaf0;
+    }
+    .teacherRosterHead b{font-size:16px}
+    .teacherRosterList{
+      padding:10px;
+      overflow:auto;
+      display:grid;
+      gap:6px;
+      min-height:0;
+      overscroll-behavior:contain;
+    }
+    .teacherStudentBtn{
+      width:100%;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:11px;
+      padding:8px 9px;
+      display:grid;
+      grid-template-columns:34px minmax(0,1fr) auto;
+      gap:7px;
+      align-items:center;
+      text-align:left;
+      cursor:pointer;
+    }
+    .teacherStudentBtn.active{
+      border-color:#fcd34d;
+      background:#fff3c4;
+      box-shadow:0 0 0 2px rgba(251,191,36,.20);
+    }
+    .teacherStudentBtn .rno{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:1000;
+    }
+    .teacherStudentBtn .rname{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-weight:900;
+    }
+    .rstatus{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+    .rcomplete{
+      font-size:11px;
+      font-weight:1000;
+      color:#92400e;
+      background:var(--blue2);
+      border:1px solid #fcd34d;
+      border-radius:999px;
+      padding:2px 7px;
+      white-space:nowrap;
+    }
+    .rabsent{
+      font-size:11px;
+      font-weight:1000;
+      color:#991b1b;
+      background:var(--red2);
+      border:1px solid #fca5a5;
+      border-radius:999px;
+      padding:2px 7px;
+      white-space:nowrap;
+    }
+    .teacherWorkspace table{min-width:0;width:100%;table-layout:fixed}
+    .teacherWorkspace th,
+    .teacherWorkspace td{padding:8px}
+    .teacherWorkspace .num{width:52px}
+    .teacherWorkspace .flagCol{width:58px}
+    .teacherWorkspace .name{width:130px}
+    .teacherWorkspace .criterion{min-width:0}
+    .teacherWorkspace .validityCol{min-width:0;width:255px}
+    .teacherWorkspace .structureCol{min-width:0;width:210px}
+    .teacherWorkspace .sourceBox{min-width:0;width:235px}
+    .teacherWorkspace .totalCol{width:76px}
+
+    .studentPanel{
+      display:grid;
+      grid-template-columns:340px 1fr;
+      gap:16px;
+    }
+    .studentControls,.resultCard{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .cardHead{
+      padding:15px 17px;
+      border-bottom:1px solid var(--line);
+      background:#fffaf0;
+    }
+    .cardHead b{font-size:18px}
+    .cardBody{padding:16px 17px}
+    .numberGrid{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:7px;
+      margin-top:10px;
+    }
+    .numBtn{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:12px;
+      padding:10px 0;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .numBtn:hover{background:var(--blue2);border-color:#fcd34d;color:#92400e}
+    .numBtn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .resultTitle{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:14px;
+    }
+    .resultTitle h2{margin:0;font-size:24px}
+    .bigTotal{
+      font-size:36px;
+      font-weight:1000;
+      color:var(--blue);
+      line-height:1;
+    }
+    .resultRows{display:grid;gap:9px}
+    .resultRow{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
+      background:#fff;
+    }
+    .resultRowHead{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      font-weight:1000;
+      margin-bottom:6px;
+    }
+    .reason{
+      color:#374151;
+      font-size:13px;
+      line-height:1.48;
+      white-space:pre-wrap;
+    }
+    .memoText, .studentMemo{
+      margin-top:8px;
+      background:#fffaf0;
+      border:1px dashed #e2c783;
+      border-radius:10px;
+      padding:9px 10px;
+      color:#334155;
+      font-size:13px;
+      white-space:pre-wrap;
+    }
+    .studentMemo{
+      border-style:solid;
+      background:#fffaf0;
+    }
+    .studentMemoLabel{
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      font-size:12px;
+      font-weight:1000;
+      color:#92400e;
+      margin-bottom:5px;
+    }
+    .studentMemoLabel::before{content:'✎'}
+    .studentMemoText{
+      white-space:pre-wrap;
+      line-height:1.5;
+    }
+
+    .studentLinkInline{
+      color:#92400e;
+      font-weight:900;
+      text-decoration:underline;
+      text-underline-offset:2px;
+      word-break:break-all;
+    }
+    .studentLinks{
+      display:grid;
+      gap:8px;
+      margin-top:9px;
+    }
+    .linkCard{
+      border:1px solid #fde68a;
+      background:#fffbeb;
+      border-radius:12px;
+      padding:9px;
+    }
+    .linkCardTop{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      align-items:center;
+    }
+    .linkOpen{
+      display:inline-flex;
+      align-items:center;
+      max-width:100%;
+      color:#92400e;
+      font-weight:1000;
+      text-decoration:none;
+      word-break:break-all;
+    }
+    .linkOpen:hover{text-decoration:underline}
+    .linkEmbed{
+      margin-top:9px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .linkEmbed iframe{
+      display:block;
+      width:100%;
+      height:360px;
+      border:0;
+      background:#fff;
+    }
+    .linkEmbed img{
+      display:block;
+      max-width:100%;
+      height:auto;
+      margin:0 auto;
+      background:#fff;
+    }
+    .youtubePreviewCard{
+      display:grid;
+      grid-template-columns:minmax(180px,320px) 1fr;
+      gap:12px;
+      align-items:center;
+      padding:12px;
+      background:#fff;
+    }
+    .youtubeThumbWrap{
+      position:relative;
+      display:block;
+      overflow:hidden;
+      border-radius:10px;
+      background:#111827;
+      aspect-ratio:16/9;
+    }
+    .youtubeThumbWrap img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      opacity:.92;
+    }
+    .youtubePlayBadge{
+      position:absolute;
+      inset:auto auto 10px 10px;
+      background:rgba(15,23,42,.86);
+      color:#fff;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:1000;
+    }
+    .youtubePreviewBody{
+      min-width:0;
+      display:grid;
+      gap:7px;
+    }
+    .youtubePreviewTitle{
+      font-weight:1000;
+      color:#111827;
+    }
+    .youtubePreviewText{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+    @media(max-width:760px){.youtubePreviewCard{grid-template-columns:1fr}}
+    .embedHint{
+      padding:8px 10px;
+      border-top:1px solid var(--line);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+      background:#fffaf0;
+    }
+    .sourceMarks{display:flex;gap:6px;flex-wrap:wrap;margin:7px 0}
+    .markPill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:64px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      padding:4px 8px;
+      font-size:12px;
+      font-weight:1000;
+      background:#fff;
+    }
+    .markPill.o{background:var(--green2);border-color:#86efac;color:#166534}
+    .markPill.t{background:var(--yellow2);border-color:#fcd34d;color:#92400e}
+    .markPill.x{background:var(--red2);border-color:#fca5a5;color:#991b1b}
+    .markPill.empty{background:#f1f5f9;color:#475569}
+    .emptyState{
+      color:var(--muted);
+      font-size:15px;
+      text-align:center;
+      padding:40px 20px;
+      border:1px dashed #e2c783;
+      border-radius:16px;
+      background:#fffaf0;
+    }
+
+    .modalBackdrop{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,.42);
+      z-index:30;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+    .modalBackdrop.show{display:flex}
+    .modal{
+      width:min(620px,100%);
+      background:#fff;
+      border-radius:20px;
+      border:1px solid var(--line);
+      box-shadow:0 24px 70px rgba(15,23,42,.25);
+      overflow:hidden;
+    }
+    .modalHeader{
+      padding:16px 18px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:flex-start;
+    }
+    .modalTitle{font-weight:1000;font-size:18px}
+    .modalSub{color:var(--muted);font-size:13px;margin-top:3px;line-height:1.35}
+    .modalBody{padding:16px 18px}
+    .settingsModalBox{
+      max-height:min(88vh,900px);
+      display:flex;
+      flex-direction:column;
+    }
+    .settingsModalBody{
+      overflow:auto;
+      padding-bottom:0;
+    }
+    .modalFooter{
+      padding:14px 18px;
+      border-top:1px solid var(--line);
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      background:#fffaf0;
+    }
+    .closeX{border:0;background:transparent;font-size:24px;cursor:pointer;color:#6b7280;line-height:1}
+    .modalInputLine{
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:8px;
+      align-items:center;
+      margin-bottom:12px;
+    }
+    .modalInputLine label{font-size:13px;font-weight:900;color:#374151}
+    .settingTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+    .settingTab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;color:#374151}
+    .settingTab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .settingPanel{display:none}
+    .settingPanel.active{display:block}
+    .settingPanel .modalFooter{
+      position:sticky;
+      bottom:0;
+      z-index:2;
+      margin:14px -18px 0 !important;
+      box-shadow:0 -8px 18px rgba(255,250,240,.92);
+    }
+    .settingHint{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 12px}
+    .settingRow{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+    .settingRow label{font-size:13px;font-weight:900;color:#374151}
+    .settingRow input,.settingPanel textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+    .settingPanel textarea{min-height:220px;resize:vertical}
+    .rosterTabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+    .rosterTab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 10px;font-weight:900;cursor:pointer}
+    .rosterTab.active{background:#111827;color:#fff;border-color:#111827}
+    .rubricEdit{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
+    .rubricTop{display:grid;grid-template-columns:1fr 92px;gap:8px;margin-bottom:8px}
+    .rubricTop input,.rubricOpt input{border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+    .rubricOpt{display:grid;grid-template-columns:1fr 80px;gap:8px;margin-top:6px}
+    .phraseSettings{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;background:#fff}
+    .phraseSettings textarea{min-height:96px}
+    .folderBox{border:1px solid var(--line);border-radius:12px;background:#fffaf0;padding:14px;line-height:1.6}
+
+    @media(max-width:900px){
+      .headerMain{align-items:flex-start;flex-direction:column}
+      .toolbar{justify-content:flex-start}
+      .studentNav{top:128px}
+      main{padding:14px}
+      .teacherWorkspace{grid-template-columns:1fr}
+      .teacherRoster{position:relative;top:auto;height:min(280px, calc(100dvh - 190px));max-height:min(280px, calc(100dvh - 190px))}
+      .studentPanel{grid-template-columns:1fr}
+      .numberGrid{grid-template-columns:repeat(6,1fr)}
+    }
+    @media print{
+      header,.viewTabs,.classTabs,.toolbar,.rules,.studentControls,.memoBtn,.sourceTools,.modalBackdrop,.studentNav{display:none !important}
+      .wrap,main{padding:0}
+      .panel,.resultCard{box-shadow:none;border:none}
+      .table-wrap{max-height:none;overflow:visible}
+      body{background:#fff}
+      th{position:static}
+      .hidden{display:none !important}
+      .studentPanel{display:block}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="headerMain">
+      <div>
+        <h1>글쓰기 채점표 템플릿</h1>
+        <div class="sub">
+          브라우저에만 저장되는 글쓰기 채점용 페이지
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="viewTabs">
+          <button class="tab active" id="teacherTab" onclick="setView('teacher')">교사용 채점</button>
+          <button class="tab" id="studentTab" onclick="setView('student')">학생 확인용</button>
+        </div>
+        <button class="btn primary" onclick="saveData()">저장</button>
+        <button class="btn" onclick="openSettings()">설정</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="teacherView">
+    <div class="classTabs" id="classTabs"></div>
+    <div class="discussionPanel" id="discussionPanel"></div>
+    <div class="discussionPanel" id="absentPanel"></div>
+    <div class="singleEditNotice hidden" id="singleEditNotice"></div>
+    <div class="studentNav" id="studentNav"></div>
+
+    <div class="teacherWorkspace">
+      <aside class="teacherRoster panel">
+        <div class="teacherRosterHead">
+          <b>학생 명단</b>
+        </div>
+        <div class="teacherRosterList" id="teacherRoster"></div>
+      </aside>
+
+      <div>
+        <section class="panel">
+          <div class="rules">
+            <b>채점 기준</b> · 각 영역 20점 만점 / 총 100점
+          </div>
+          <div class="table-wrap">
+            <table id="scoreTable">
+              <thead>
+                <tr>
+                  <th class="num">번호</th>
+                  <th class="flagCol">상태</th>
+                  <th class="name">이름</th>
+                  <th class="criterion" id="head-clarity">주장의 명확성<span style="font-weight:400">(20)</span></th>
+                  <th class="criterion validityCol" id="head-validity">근거의 타당성<span style="font-weight:400">(20)</span></th>
+                  <th class="sourceBox" title="3개 O = 20점 / 2개 O = 15점 / 0~1개 O = 10점 / 전체 X·미입력 = 5점. △는 점수 미반영이나 미제출·미입력과 구분됨.">논거의 출처<span style="font-weight:400">(20)</span></th>
+                  <th class="criterion structureCol" id="head-structure">글의 짜임새<span style="font-weight:400">(20)</span></th>
+                  <th class="criterion" id="head-completion">분량 도달<span style="font-weight:400">(20)</span></th>
+                  <th class="totalCol">총점</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section id="studentView" class="hidden">
+    <div class="studentPanel">
+      <aside class="studentControls">
+        <div class="cardHead">
+          <b>학생 확인용</b>
+        </div>
+        <div class="cardBody">
+          <label style="font-size:13px;font-weight:900;color:#374151">반 선택</label>
+          <select id="studentClassSelect" onchange="changeStudentClass(this.value)"></select>
+          <div class="numberGrid" id="studentNumbers"></div>
+        </div>
+      </aside>
+
+      <section class="resultCard">
+        <div class="cardHead">
+          <b>개별 점수 확인</b>
+        </div>
+        <div class="cardBody" id="studentResult">
+          <div class="emptyState">반·번호 선택</div>
+        </div>
+      </section>
+    </div>
+  </section>
+</main>
+
+<div class="modalBackdrop" id="memoModal" onclick="backdropClose(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modalHeader">
+      <div>
+        <div class="modalTitle" id="modalTitle">메모</div>
+        <div class="modalSub" id="modalSub">점수 사유 / 증거 메모</div>
+      </div>
+      <button class="closeX" onclick="closeMemoModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="modalBody">
+      <div class="modalInputLine" id="sourceMarkLine">
+        <label>출처 표기</label>
+        <select id="modalSourceMark">
+          <option value="">미입력</option>
+          <option value="O">O · 출처 정확</option>
+          <option value="△">△ · 출처 미비</option>
+          <option value="X">X · 미제출</option>
+        </select>
+      </div>
+      <label style="display:block;font-size:13px;font-weight:900;color:#374151;margin-bottom:6px">메모</label>
+      <textarea id="modalMemoText" placeholder="예: 자료 정보 부족, URL 확인 필요, 보충 확인 필요"></textarea>
+      <div class="memoPhraseBar" id="modalMemoPhraseBar"></div>
+    </div>
+    <div class="modalFooter">
+      <button class="btn" onclick="closeMemoModal()">취소</button>
+      <button class="btn primary" onclick="saveMemoModal()">적용</button>
+    </div>
+  </div>
+</div>
+<div class="modalBackdrop" id="settingsModal" onclick="settingsBackdropClose(event)">
+  <div class="modal settingsModalBox" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modalHeader">
+      <div>
+        <div class="modalTitle" id="settingsTitle">설정</div>
+        <div class="modalSub">기본 정보, 명단, 루브릭, 저장 폴더를 한 곳에서 관리합니다.</div>
+      </div>
+      <button class="closeX" onclick="closeSettings()" aria-label="닫기">×</button>
+    </div>
+    <div class="modalBody settingsModalBody">
+      <div class="settingTabs">
+        <button class="settingTab active" data-setting-tab="basic">기본</button>
+        <button class="settingTab" data-setting-tab="roster">명단</button>
+        <button class="settingTab" data-setting-tab="rubric">루브릭</button>
+        <button class="settingTab" data-setting-tab="folder">저장 폴더</button>
+        <button class="settingTab" data-setting-tab="data">자료 관리</button>
+      </div>
+
+      <section class="settingPanel active" id="setting-basic">
+        <p class="settingHint">화면 제목과 백업/CSV 파일 이름에 함께 쓰입니다.</p>
+        <div class="settingRow">
+          <label>수행평가 제목</label>
+          <input id="appTitleInput" placeholder="글쓰기 채점표">
+        </div>
+        <div class="settingRow">
+          <label>반 목록</label>
+          <textarea id="classListInput" placeholder="1&#10;2&#10;3"></textarea>
+        </div>
+        <p class="settingHint">한 줄에 한 반씩 입력합니다. 반 목록을 바꾸면 같은 이름의 반 자료는 유지되고, 새 반은 빈 명단으로 시작합니다.</p>
+        <div class="modalFooter" style="margin:14px -18px -16px">
+          <button class="btn primary" onclick="saveBasicSettings()">기본 저장</button>
+        </div>
+      </section>
+
+      <section class="settingPanel" id="setting-roster">
+        <p class="settingHint">반을 고른 뒤 명단을 붙여넣으세요. 번호가 있으면 번호 순서에 맞춰 들어가고, 이름만 있으면 1번부터 채웁니다.</p>
+        <div class="rosterTabs" id="settingsRosterTabs"></div>
+        <textarea id="settingsRosterText" placeholder="1 김민수&#10;2 이서연&#10;3 박지후"></textarea>
+        <div class="modalFooter" style="margin:14px -18px -16px">
+          <button class="btn primary" onclick="saveRosterSettings()">명단 저장</button>
+        </div>
+      </section>
+
+      <section class="settingPanel" id="setting-rubric">
+        <p class="settingHint">기본점과 체크 항목의 점수를 수정합니다. 논거의 출처 영역은 O/△/X 판정 방식 그대로 유지됩니다.</p>
+        <div id="settingsRubricList"></div>
+        <div class="modalFooter" style="margin:14px -18px -16px">
+          <button class="btn primary" onclick="saveRubricSettings()">루브릭 저장</button>
+        </div>
+      </section>
+
+      <section class="settingPanel" id="setting-folder">
+        <div class="folderBox">
+          <b>백업·CSV 저장 폴더</b>
+          <p class="settingHint" style="margin:8px 0 10px">Chrome 계열 브라우저에서는 지정한 폴더에 JSON 백업과 CSV가 바로 저장됩니다. 지원하지 않으면 기존처럼 다운로드됩니다.</p>
+          <button class="btn primary" id="btnSetFolder" onclick="setBaseFolder()">저장 폴더 설정</button>
+        </div>
+      </section>
+
+      <section class="settingPanel" id="setting-data">
+        <p class="settingHint">저장자료, CSV, JSON 백업, 인쇄/PDF, 전체 초기화를 관리합니다.</p>
+        <div class="toolbar" style="padding:0;justify-content:flex-start">
+          <button class="btn" onclick="loadData()">저장자료 불러오기</button>
+          <button class="btn" onclick="document.getElementById('csvFileInput').click()">CSV 불러오기</button>
+          <input id="csvFileInput" type="file" accept=".csv,text/csv" class="hidden" onchange="importCSVFile(event)">
+          <button class="btn" onclick="exportCSV()">CSV 내보내기</button>
+          <button class="btn" onclick="downloadBackup()">백업(JSON)</button>
+          <button class="btn" onclick="document.getElementById('jsonFileInput').click()">백업 불러오기</button>
+          <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden" onchange="importBackupFile(event)">
+          <button class="btn" onclick="window.print()">현재 화면 인쇄/PDF</button>
+          <button class="btn danger" onclick="clearAll()">전체 초기화</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT_CLASSES = ['1','2','3','4','5','6'];
+let CLASSES = [...DEFAULT_CLASSES];
+const STUDENTS_PER_CLASS = 31;
+const LS_KEY = 'public_argument_writing_grader_v1';
+const LS_MIRROR = 'public_argument_writing_grader_v1_mirror';
+const LAST_BACKUP_KEY = 'public_argument_writing_grader_lastbackup';
+const DEFAULT_APP_TITLE = '글쓰기 채점표 템플릿';
+const OLD_KEY = 'public_argument_writing_grader_legacy_unused';
+let appTitle = DEFAULT_APP_TITLE;
+let baseDirHandle = null;
+let lastSavedAt = null;
+let memoPhrases = {
+  clarity:['주제가 요구와 다름', '주장이 분명하지 않음'],
+  validity:['근거가 주장과 직접 연결되지 않음', '자료가 근거를 뒷받침하지 못함'],
+  source:['출처 정보가 부족함', '자료 신뢰도 확인 필요'],
+  structure:['문단 구분이 불명확함', '글의 흐름이 자연스럽지 않음'],
+  completion:['분량 미달', '제목 또는 본문 작성이 부족함']
+};
+
+let writingRubric = {
+  clarity: {
+    base:10,
+    opts:[
+      {desc:'제목 명확', pt:5},
+      {desc:'주장 명확', pt:5}
+    ]
+  },
+  validity: {
+    base:5,
+    opts:[
+      {desc:'근거1 타당성&적절한 자료', pt:5},
+      {desc:'근거2 타당성&적절한 자료', pt:5},
+      {desc:'근거3 타당성&적절한 자료', pt:5}
+    ]
+  },
+  structure: {
+    base:5,
+    opts:[
+      {desc:'글을 작성함', pt:5},
+      {desc:'서론-본론 구분선', pt:5},
+      {desc:'본론-결론 구분선', pt:5},
+      {desc:'부자연스러운 글의 흐름', pt:-5}
+    ]
+  },
+  completion: {
+    base:5,
+    opts:[
+      {desc:'제목 작성', pt:5},
+      {desc:'글 작성', pt:5},
+      {desc:'분량 도달', pt:5}
+    ]
+  }
+};
+
+let criterionLabels = {
+  clarity:'주장의 명확성',
+  validity:'근거의 타당성',
+  structure:'글의 짜임새',
+  completion:'분량 도달'
+};
+
+const CLARITY_TOPICS = {
+  topic1:{label:'주제1', text:'설정에서 주제 확인 문구를 수정하세요.'},
+  topic2:{label:'주제2', text:'설정에서 주제 확인 문구를 수정하세요.'},
+  topic3:{label:'주제3', text:'설정에서 주제 확인 문구를 수정하세요.'}
+};
+
+let state = emptyState();
+let activeClass = CLASSES[0];
+let selectedTeacherIndex = 0;
+let view = 'teacher';
+let studentClass = CLASSES[0];
+let selectedStudentIndex = null;
+let activeMemoTarget = null;
+let autoSaveTimer = null;
+let singleStudentEditTarget = readLinkedStudentTarget();
+
+function readLinkedStudentTarget(){
+  const params = new URLSearchParams(location.search);
+  const cls = normalizeClassName(params.get('cls') || params.get('class') || '');
+  const no = Number(params.get('no') || params.get('num') || params.get('number') || 0);
+  if(!CLASSES.includes(cls) || !no || no < 1 || no > STUDENTS_PER_CLASS) return null;
+  return {cls, index:no - 1};
+}
+
+function isSingleStudentEditMode(){
+  return !!singleStudentEditTarget;
+}
+
+function normalizeClassLabel(value){
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/반$/, '')
+    .trim();
+}
+
+function normalizeClassList(value){
+  const source = Array.isArray(value)
+    ? value
+    : String(value || '').split(/[\n,]+/);
+  const seen = new Set();
+  const list = [];
+  source.forEach(item => {
+    const label = normalizeClassLabel(item);
+    if(!label || seen.has(label)) return;
+    seen.add(label);
+    list.push(label);
+  });
+  return list.length ? list : [...DEFAULT_CLASSES];
+}
+
+function applyClassList(nextList){
+  const normalized = normalizeClassList(nextList);
+  const previous = state && state.classes ? state.classes : {};
+  const nextClasses = {};
+  normalized.forEach(cls => {
+    const existing = Array.isArray(previous[cls]) ? previous[cls] : [];
+    nextClasses[cls] = Array.from({length:STUDENTS_PER_CLASS}, (_,i) => {
+      return existing[i] ? normalizeStudent(existing[i], i+1) : null;
+    });
+  });
+  CLASSES = normalized;
+  state.classes = nextClasses;
+  if(!CLASSES.includes(activeClass)) activeClass = CLASSES[0];
+  if(!CLASSES.includes(studentClass)) studentClass = CLASSES[0];
+  if(singleStudentEditTarget && !CLASSES.includes(singleStudentEditTarget.cls)) singleStudentEditTarget = null;
+}
+
+function emptyState(){
+  const classes = {};
+  CLASSES.forEach(cls => {
+    classes[cls] = Array.from({length:STUDENTS_PER_CLASS}, (_,i)=>defaultStudent(i+1));
+  });
+  return {version:4, classes};
+}
+
+function defaultStudent(num){
+  return {
+    num,
+    name:'',
+    discuss:false,
+    complete:false,
+    absent:false,
+    clarity:{score:'', checks:[], memo:'', topic:''},
+    validity:{score:'', checks:[], parts:[[false,false],[false,false],[false,false]], memo:'', reasonMemos:['','','']},
+    sources:[
+      {mark:'', memo:''},
+      {mark:'', memo:''},
+      {mark:'', memo:''}
+    ],
+    structure:{score:'', checks:[], memo:''},
+    completion:{score:'', checks:[], memo:''}
+  };
+}
+
+function presentStudents(cls){
+  return (state.classes[cls] || []).map((st,i) => ({st, i})).filter(item => item.st);
+}
+
+function firstPresentStudentIndex(cls){
+  const found = presentStudents(cls)[0];
+  return found ? found.i : -1;
+}
+
+function migrateCriterionChecks(key, score){
+  const s = Number(score || 0);
+  if(!s) return [];
+  if(key === 'clarity'){
+    if(s >= 20) return [0,1];
+    if(s >= 15) return [0];
+    return [];
+  }
+  if(key === 'validity'){
+    if(s >= 20) return [0,1,2];
+    if(s >= 15) return [0,1];
+    if(s >= 10) return [0];
+    return [];
+  }
+  if(key === 'structure'){
+    if(s >= 20) return [0,1,2];
+    if(s >= 15) return [0,1];
+    if(s >= 10) return [0];
+    return [];
+  }
+  if(key === 'completion'){
+    if(s >= 20) return [0,1,2];
+    if(s >= 15) return [0,1];
+    return [];
+  }
+  return [];
+}
+
+function normalizeValidityParts(data={}){
+  if(Array.isArray(data.parts)){
+    return [0,1,2].map(i => {
+      const row = Array.isArray(data.parts[i]) ? data.parts[i] : [];
+      return [Boolean(row[0]), Boolean(row[1])];
+    });
+  }
+  const checks = Array.isArray(data.checks)
+    ? data.checks.map(Number).filter(Number.isFinite)
+    : migrateCriterionChecks('validity', data.score);
+  return [0,1,2].map(i => checks.includes(i) ? [true,true] : [false,false]);
+}
+
+function validityCompletedChecks(st){
+  const parts = st && st.validity ? normalizeValidityParts(st.validity) : [[false,false],[false,false],[false,false]];
+  return parts.map((row,i) => row[0] && row[1] ? i : null).filter(i => i !== null);
+}
+
+function normalizeStudent(st={}, num){
+  const base = defaultStudent(num);
+  ['name'].forEach(k => { if(st[k] !== undefined) base[k] = st[k]; });
+  base.discuss = Boolean(st.discuss || st.needsDiscussion || st['논의 필요']);
+  base.complete = Boolean(st.complete || st['채점 완료']);
+  base.absent = Boolean(st.absent || st['미응시']);
+  ['clarity','validity','structure','completion'].forEach(k => {
+    if(typeof st[k] === 'object' && st[k] !== null){
+      base[k].score = st[k].score ?? '';
+      base[k].checks = Array.isArray(st[k].checks) ? st[k].checks.map(Number).filter(Number.isFinite) : migrateCriterionChecks(k, st[k].score);
+      base[k].memo = st[k].memo ?? '';
+      if(k === 'clarity') base[k].topic = CLARITY_TOPICS[st[k].topic] ? st[k].topic : '';
+      if(k === 'validity'){
+        const arr = Array.isArray(st[k].reasonMemos) ? st[k].reasonMemos : [];
+        base[k].reasonMemos = [0,1,2].map(i => arr[i] ?? '');
+        base[k].parts = normalizeValidityParts(st[k]);
+        base[k].checks = validityCompletedChecks(base);
+      }
+    } else if(st[k] !== undefined) {
+      base[k].score = st[k] ?? '';
+      base[k].checks = migrateCriterionChecks(k, st[k]);
+    }
+    if(k === 'validity'){
+      base[k].parts = normalizeValidityParts(base[k]);
+      base[k].checks = validityCompletedChecks(base);
+    }
+    base[k].score = criterionScore(base, k);
+  });
+  if(Array.isArray(st.sources)){
+    for(let i=0;i<3;i++){
+      base.sources[i].mark = st.sources[i]?.mark ?? '';
+      base.sources[i].memo = st.sources[i]?.memo ?? '';
+    }
+  } else if(Array.isArray(st.src)){
+    for(let i=0;i<3;i++){
+      base.sources[i].mark = normalizeMark(st.src[i] ?? '');
+      base.sources[i].memo = (st.srcMemos || st.memos || [])[i] ?? '';
+    }
+  }
+  return base;
+}
+
+function normalizeState(raw){
+  if(raw && raw.shared && raw.shared.classList){
+    CLASSES = normalizeClassList(raw.shared.classList);
+  }
+  const next = emptyState();
+  if(raw && raw.classes){
+    const shared = raw.shared || {};
+    appTitle = shared.appTitle || raw.appTitle || appTitle || DEFAULT_APP_TITLE;
+    if(shared.rubric) writingRubric = normalizeRubric(shared.rubric);
+    if(shared.criterionLabels) criterionLabels = {...criterionLabels, ...shared.criterionLabels};
+    if(shared.memoPhrases) memoPhrases = normalizeMemoPhrases(shared.memoPhrases);
+    if(raw.savedAt) lastSavedAt = raw.savedAt;
+    CLASSES.forEach(cls => {
+      const arr = Array.isArray(raw.classes[cls]) ? raw.classes[cls] : [];
+      next.classes[cls] = Array.from({length:STUDENTS_PER_CLASS}, (_,i) => {
+        if(i >= arr.length) return null;
+        return arr[i] ? normalizeStudent(arr[i], i+1) : null;
+      });
+    });
+  }
+  return next;
+}
+
+function normalizeRubric(raw){
+  const base = JSON.parse(JSON.stringify(writingRubric));
+  ['clarity','validity','structure','completion'].forEach(key => {
+    const src = raw && raw[key];
+    if(!src) return;
+    base[key] = {
+      base:Number(src.base) || 0,
+      opts:Array.isArray(src.opts) && src.opts.length
+        ? src.opts.map(o => ({desc:String(o.desc || ''), pt:Number(o.pt) || 0}))
+        : base[key].opts
+    };
+  });
+  return base;
+}
+
+function normalizeMemoPhrases(raw){
+  const keys = ['clarity','validity','source','structure','completion'];
+  const base = JSON.parse(JSON.stringify(memoPhrases));
+  if(Array.isArray(raw)){
+    const arr = raw.map(String).filter(Boolean);
+    keys.forEach(key => base[key] = [...arr]);
+    return base;
+  }
+  if(raw && typeof raw === 'object'){
+    keys.forEach(key => {
+      if(Array.isArray(raw[key])) base[key] = raw[key].map(String).filter(Boolean);
+    });
+  }
+  return base;
+}
+
+function phrasesFor(key){
+  return Array.isArray(memoPhrases[key]) ? memoPhrases[key] : [];
+}
+
+function migrateOldRows(oldRows){
+  const next = emptyState();
+  if(Array.isArray(oldRows)){
+    oldRows.slice(0,STUDENTS_PER_CLASS).forEach((row,i) => {
+      next.classes[CLASSES[0]][i] = normalizeStudent(row, i+1);
+    });
+  }
+  return next;
+}
+
+function init(){
+  let main = null, mirror = null;
+  try{ main = JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){}
+  try{ mirror = JSON.parse(localStorage.getItem(LS_MIRROR)); }catch(e){}
+  let saved = main;
+  let fromMirror = false;
+  if(main && mirror && (mirror.savedAt || 0) > (main.savedAt || 0)){
+    saved = mirror;
+    fromMirror = true;
+  } else if(!main && mirror){
+    saved = mirror;
+    fromMirror = true;
+  }
+  if(saved){
+    try{
+      state = normalizeState(saved);
+      showToast(fromMirror ? '백업에서 복구되었습니다' : '저장 자료를 불러왔습니다');
+      if(fromMirror) localStorage.setItem(LS_KEY, JSON.stringify(saved));
+    }catch(e){
+      console.warn(e);
+      state = emptyState();
+    }
+  } else {
+    const old = localStorage.getItem(OLD_KEY);
+    if(old){
+      try{
+        state = migrateOldRows(JSON.parse(old));
+        showToast('이전 자료를 불러왔습니다');
+      }catch(e){ state = emptyState(); }
+    }
+  }
+  renderAll();
+}
+
+function renderAll(){
+  applyAppTitle();
+  applySingleStudentEditMode();
+  renderViewTabs();
+  renderClassTabs();
+  renderDiscussionPanel();
+  renderAbsentPanel();
+  renderTeacherRoster();
+  renderStudentNav();
+  renderStudentClassSelect();
+  renderTeacherTable();
+  renderStudentNumbers();
+  renderStudentResult();
+  updateSummary();
+  scheduleTeacherRosterHeightUpdate();
+}
+
+function applyAppTitle(){
+  const title = appTitle || DEFAULT_APP_TITLE;
+  document.title = title;
+  const h1 = document.querySelector('header h1');
+  if(h1) h1.textContent = title;
+  ['clarity','validity','structure','completion'].forEach(key => {
+    const th = document.getElementById(`head-${key}`);
+    if(th) th.innerHTML = `${esc(criterionLabels[key])}<span style="font-weight:400">(${criterionMax(key)})</span>`;
+  });
+}
+
+function setView(nextView){
+  if(isSingleStudentEditMode()) nextView = 'teacher';
+  view = nextView;
+  document.getElementById('teacherView').classList.toggle('hidden', view !== 'teacher');
+  document.getElementById('studentView').classList.toggle('hidden', view !== 'student');
+  renderViewTabs();
+  renderStudentNav();
+  updateSummary();
+}
+
+function renderViewTabs(){
+  document.getElementById('teacherTab').classList.toggle('active', view === 'teacher');
+  document.getElementById('studentTab').classList.toggle('active', view === 'student');
+}
+
+function renderClassTabs(){
+  const box = document.getElementById('classTabs');
+  box.innerHTML = CLASSES.map(cls => `<button class="tab ${cls===activeClass?'active':''}" onclick="changeClass('${cls}')">${cls}</button>`).join('');
+}
+
+function changeClass(cls){
+  if(isSingleStudentEditMode()) cls = singleStudentEditTarget.cls;
+  activeClass = cls;
+  selectedTeacherIndex = 0;
+  renderClassTabs();
+  renderDiscussionPanel();
+  renderAbsentPanel();
+  renderTeacherRoster();
+  renderStudentNav();
+  renderTeacherTable();
+  updateSummary();
+}
+
+function applySingleStudentEditMode(){
+  if(!isSingleStudentEditMode()){
+    document.body.classList.remove('singleStudentEdit');
+    return;
+  }
+  document.body.classList.add('singleStudentEdit');
+  view = 'teacher';
+  activeClass = singleStudentEditTarget.cls;
+  selectedTeacherIndex = singleStudentEditTarget.index;
+  const st = state.classes[activeClass] && state.classes[activeClass][singleStudentEditTarget.index];
+  const displayName = st && st.name && st.name.trim() ? st.name.trim() : '이름 없음';
+  const label = `[수행1] ${activeClass} ${singleStudentEditTarget.index+1}번 ${displayName}`;
+  document.title = label;
+  const title = document.querySelector('h1');
+  if(title) title.textContent = label;
+  const box = document.getElementById('singleEditNotice');
+  if(box){
+    box.classList.remove('hidden');
+    box.innerHTML = `${esc(label)} · 글쓰기 점수 수정 전용 화면. 저장 후 통합 파일 자동 반영.`;
+  }
+}
+
+function renderDiscussionPanel(){
+  const box = document.getElementById('discussionPanel');
+  if(!box) return;
+  const items = [];
+  CLASSES.forEach(cls => {
+    state.classes[cls].forEach((st,i) => {
+      if(st && st.discuss){
+        items.push({cls, index:i, st, total:totalScore(st)});
+      }
+    });
+  });
+
+  if(!items.length){
+    box.innerHTML = '<span class="discussionPanelTitle">★ 논의 필요</span><span class="discussionEmpty">없음</span>';
+    scheduleTeacherRosterHeightUpdate();
+    return;
+  }
+
+  box.innerHTML = '<span class="discussionPanelTitle">★ 논의 필요</span>' + items.map(item => {
+    const label = item.st.name.trim() ? ` · ${esc(item.st.name.trim())}` : '';
+    return `<button type="button" class="discussionChip" onclick="goToStudentRow('${item.cls}', ${item.index})">★ ${item.cls} ${item.index+1}번${label} · ${item.total}점</button>`;
+  }).join('');
+  scheduleTeacherRosterHeightUpdate();
+}
+
+function renderAbsentPanel(){
+  const box = document.getElementById('absentPanel');
+  if(!box) return;
+  const items = [];
+  CLASSES.forEach(cls => {
+    state.classes[cls].forEach((st,i) => {
+      if(st && st.absent){
+        items.push({cls, index:i, st, total:totalScore(st)});
+      }
+    });
+  });
+
+  if(!items.length){
+    box.innerHTML = '<span class="discussionPanelTitle">X 미응시</span><span class="discussionEmpty">없음</span>';
+    scheduleTeacherRosterHeightUpdate();
+    return;
+  }
+
+  box.innerHTML = '<span class="discussionPanelTitle">X 미응시</span>' + items.map(item => {
+    const label = item.st.name.trim() ? ` · ${esc(item.st.name.trim())}` : '';
+    return `<button type="button" class="discussionChip" onclick="goToStudentRow('${item.cls}', ${item.index})">X ${item.cls} ${item.index+1}번${label} · ${item.total}점</button>`;
+  }).join('');
+  scheduleTeacherRosterHeightUpdate();
+}
+
+function scheduleTeacherRosterHeightUpdate(){
+  requestAnimationFrame(updateTeacherRosterHeight);
+}
+
+function updateTeacherRosterHeight(){
+  const roster = document.querySelector('.teacherRoster');
+  if(!roster || view !== 'teacher' || isSingleStudentEditMode()) return;
+  const rect = roster.getBoundingClientRect();
+  const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const bottomGap = 14;
+  const height = Math.max(220, Math.floor(viewportHeight - rect.top - bottomGap));
+  roster.style.setProperty('--teacher-roster-height', `${height}px`);
+}
+
+function renderTeacherRoster(){
+  const box = document.getElementById('teacherRoster');
+  if(!box) return;
+  const students = state.classes[activeClass] || [];
+  if(!students[selectedTeacherIndex]) selectedTeacherIndex = firstPresentStudentIndex(activeClass);
+  const rows = presentStudents(activeClass);
+  if(!rows.length){
+    box.innerHTML = '<div class="emptyState">명단 없음</div>';
+    scheduleTeacherRosterHeightUpdate();
+    return;
+  }
+  box.innerHTML = rows.map(({st,i}) => {
+    const name = st.name.trim() || '이름 없음';
+    return `<button type="button" class="teacherStudentBtn ${i===selectedTeacherIndex?'active':''}" onclick="selectTeacherStudent(${i})">
+      <span class="rno">${i+1}번</span>
+      <span class="rname">${esc(name)}</span>
+      <span class="rstatus">
+        ${st.absent ? '<span class="rabsent">미응시</span>' : ''}
+        ${st.complete ? '<span class="rcomplete">채점 완료</span>' : ''}
+      </span>
+    </button>`;
+  }).join('');
+  scheduleTeacherRosterHeightUpdate();
+}
+
+function selectTeacherStudent(index){
+  if(!state.classes[activeClass][index]) return;
+  selectedTeacherIndex = index;
+  renderTeacherRoster();
+  renderStudentNav();
+  renderTeacherTable();
+}
+
+function teacherStudentPosition(){
+  const rows = presentStudents(activeClass);
+  const pos = rows.findIndex(item => item.i === selectedTeacherIndex);
+  return {rows, pos};
+}
+
+function renderStudentNav(){
+  const box = document.getElementById('studentNav');
+  if(!box) return;
+  if(view !== 'teacher' || isSingleStudentEditMode()){
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  const {rows, pos} = teacherStudentPosition();
+  if(pos < 0 || !rows.length){
+    box.innerHTML = `
+      <button type="button" class="navBtn" disabled>이전 학생</button>
+      <div class="studentNavInfo"><span class="studentNavName">선택할 학생 없음</span></div>
+      <button type="button" class="navBtn" disabled>다음 학생</button>
+    `;
+    return;
+  }
+  const current = rows[pos];
+  const st = current.st;
+  const name = st.name && st.name.trim() ? st.name.trim() : '이름 없음';
+  box.innerHTML = `
+    <button type="button" class="navBtn" onclick="moveTeacherStudent(-1)" ${pos<=0?'disabled':''}>이전 학생</button>
+    <div class="studentNavInfo">
+      <span>${esc(activeClass)}반</span>
+      <span class="studentNavName">${current.i+1}번 ${esc(name)}</span>
+      <span>${pos+1}/${rows.length}</span>
+    </div>
+    <button type="button" class="navBtn" onclick="moveTeacherStudent(1)" ${pos>=rows.length-1?'disabled':''}>다음 학생</button>
+  `;
+}
+
+function moveTeacherStudent(delta){
+  const {rows, pos} = teacherStudentPosition();
+  const next = rows[pos + delta];
+  if(!next) return;
+  selectTeacherStudent(next.i);
+}
+
+function toggleDiscussion(studentIndex){
+  const st = state.classes[activeClass][studentIndex];
+  if(!st) return;
+  st.discuss = !st.discuss;
+  markDirty();
+  renderTeacherRoster();
+  renderStudentNav();
+  renderTeacherTable();
+  renderDiscussionPanel();
+  renderAbsentPanel();
+  updateSummary();
+}
+
+function toggleComplete(studentIndex){
+  const st = state.classes[activeClass][studentIndex];
+  if(!st) return;
+  st.complete = !st.complete;
+  markDirty();
+  renderTeacherRoster();
+  renderStudentNav();
+  renderTeacherTable();
+}
+
+function toggleAbsent(studentIndex){
+  const st = state.classes[activeClass][studentIndex];
+  if(!st) return;
+  st.absent = !st.absent;
+  markDirty();
+  renderTeacherRoster();
+  renderStudentNav();
+  renderTeacherTable();
+  renderDiscussionPanel();
+  renderAbsentPanel();
+  renderStudentResultIfCurrent(activeClass, studentIndex);
+  updateSummary();
+}
+
+function goToStudentRow(cls, index){
+  setView('teacher');
+  activeClass = cls;
+  selectedTeacherIndex = index;
+  renderClassTabs();
+  renderDiscussionPanel();
+  renderAbsentPanel();
+  renderTeacherRoster();
+  renderStudentNav();
+  renderTeacherTable();
+  updateSummary();
+  requestAnimationFrame(() => {
+    const row = document.getElementById(`row-${cssSafe(cls)}-${index+1}`);
+    if(row){
+      row.scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'});
+      row.classList.add('jumpHighlight');
+      setTimeout(()=>row.classList.remove('jumpHighlight'), 1900);
+    }
+  });
+}
+
+function openLinkedStudentFromUrl(){
+  if(!isSingleStudentEditMode()) return;
+  applySingleStudentEditMode();
+  goToStudentRow(singleStudentEditTarget.cls, singleStudentEditTarget.index);
+}
+
+
+function renderStudentClassSelect(){
+  const sel = document.getElementById('studentClassSelect');
+  sel.innerHTML = CLASSES.map(cls => `<option value="${cls}" ${cls===studentClass?'selected':''}>${cls}반</option>`).join('');
+}
+
+function changeStudentClass(cls){
+  studentClass = cls;
+  selectedStudentIndex = null;
+  renderStudentNumbers();
+  renderStudentResult();
+}
+
+function renderStudentNumbers(){
+  const box = document.getElementById('studentNumbers');
+  const rows = presentStudents(studentClass);
+  if(selectedStudentIndex !== null && !(state.classes[studentClass] || [])[selectedStudentIndex]){
+    selectedStudentIndex = null;
+  }
+  box.innerHTML = rows.map(({i}) => {
+    return `<button class="numBtn ${selectedStudentIndex===i?'active':''}" onclick="selectStudent(${i})">${i+1}</button>`;
+  }).join('');
+}
+
+function selectStudent(index){
+  if(!state.classes[studentClass][index]) return;
+  selectedStudentIndex = index;
+  renderStudentNumbers();
+  renderStudentResult();
+}
+
+function optionHTML(key, selected){
+  return '';
+}
+
+function renderTeacherTable(){
+  const tbody = document.querySelector('#scoreTable tbody');
+  const students = state.classes[activeClass];
+  const index = isSingleStudentEditMode() && singleStudentEditTarget.cls === activeClass
+    ? singleStudentEditTarget.index
+    : selectedTeacherIndex;
+  const rows = [{st:students[index], i:index}].filter(x=>x.st);
+  tbody.innerHTML = rows.length ? rows.map(({st,i}) => studentRowHTML(st,i)).join('') : '<tr><td colspan="9"><div class="emptyState">선택할 학생 없음</div></td></tr>';
+  autoGrowMemos(tbody);
+}
+
+function studentRowHTML(st,i){
+  return `
+    <tr data-index="${i}" id="row-${cssSafe(activeClass)}-${i+1}">
+      <td class="num">${i+1}</td>
+      <td class="flagCell">
+        <div class="flagStack">
+          <button type="button" class="starBtn ${st.discuss?'active':''}" title="논의 필요 표시" onclick="toggleDiscussion(${i})">★</button>
+          <button type="button" class="checkBtn ${st.complete?'active':''}" title="채점 완료 표시" onclick="toggleComplete(${i})">✓</button>
+          <button type="button" class="absentBtn ${st.absent?'active':''}" title="미응시 · 최저점 40점 적용" onclick="toggleAbsent(${i})">X</button>
+        </div>
+      </td>
+      <td class="name"><span class="studentName">${esc(st.name)||'(이름 없음)'}</span></td>
+      <td>${criterionCellHTML(st,i,'clarity')}</td>
+      <td>${criterionCellHTML(st,i,'validity')}</td>
+      <td>${sourceCellHTML(st,i)}</td>
+      <td>${criterionCellHTML(st,i,'structure')}</td>
+      <td>${criterionCellHTML(st,i,'completion')}</td>
+      <td class="totalCol"><div class="score ${totalClass(totalScore(st))}">${totalScore(st)}</div></td>
+    </tr>
+  `;
+}
+
+function criterionCellHTML(st,i,key){
+  const data = st[key] || {score:'',checks:[],memo:''};
+  const rubric = writingRubric[key];
+  const checks = Array.isArray(data.checks) ? data.checks : [];
+  const score = criterionScore(st,key);
+  const optBtn = (opt,oi) => {
+    const selected = checks.includes(oi);
+    const pt = Number(opt.pt)||0;
+    return `<button type="button" class="critOpt ${selected?'selected':''} ${pt<0?'deduct':''}" onclick="toggleCriterionCheck(${i}, '${key}', ${oi})"><span>${esc(opt.desc)}</span><b>${pt>0?'+':''}${pt}</b></button>`;
+  };
+  let checksHTML;
+  if(key === 'structure'){
+    const activated = checks.includes(0);
+    const d1 = checks.includes(1), d2 = checks.includes(2);
+    const s = (label) => `<span>${label}</span>`;
+    const iSep = (oi) => `<button type="button" class="sepBtn" onclick="event.stopPropagation();toggleCriterionCheck(${i},'structure',${oi})">│</button>`;
+    const aSep = (oi) => `<button type="button" class="sepBtn active" onclick="toggleCriterionCheck(${i},'structure',${oi})">│</button>`;
+    const grp = (c) => `<div class="secGroupBox${activated?' active':''}" onclick="toggleCriterionCheck(${i},'structure',0)">${c}</div>`;
+    const parts = [];
+    let cur = s('서론');
+    if(d1){ parts.push(grp(cur)); parts.push(aSep(1)); cur = s('본론'); }
+    else { cur += iSep(1) + s('본론'); }
+    if(d2){ parts.push(grp(cur)); parts.push(aSep(2)); cur = s('결론'); }
+    else { cur += iSep(2) + s('결론'); }
+    parts.push(grp(cur));
+    checksHTML = `<div class="structureViz">${parts.join('')}</div><button type="button" class="structureAllBtn ${activated&&d1&&d2?'selected':''}" onclick="setStructureAll(${i})">서본결 구분 명확</button>${optBtn(rubric.opts[3],3)}`;
+  } else if(key === 'validity'){
+    const parts = normalizeValidityParts(data);
+    const memos = Array.isArray(data.reasonMemos) ? data.reasonMemos : [];
+    checksHTML = rubric.opts.map((opt,oi)=>`
+      <div class="validityOptBlock">
+        <div class="validitySplit">
+          <span class="validityLabel">근거 ${oi+1}</span>
+          <button type="button" class="validityPart ${parts[oi][0]?'selected':''}" onclick="toggleValidityPart(${i}, ${oi}, 0)">타당성</button>
+          <button type="button" class="validityPart ${parts[oi][1]?'selected':''}" onclick="toggleValidityPart(${i}, ${oi}, 1)">적절한 자료</button>
+          <button type="button" class="badge ${parts[oi][0]&&parts[oi][1]?'ok':'blank'} validityBadge" onclick="setValidityAll(${i}, ${oi})">${parts[oi][0]&&parts[oi][1]?'+5점':'+5'}</button>
+        </div>
+        <textarea class="validityReasonMemo" data-index="${i}" data-oi="${oi}" placeholder="근거 ${oi+1} 메모">${esc(memos[oi]||'')}</textarea>
+        ${memoPhraseBarHTML('validity', i, oi, 'validity')}
+      </div>
+    `).join('');
+  } else {
+    checksHTML = rubric.opts.map((opt,oi)=>optBtn(opt,oi)).join('');
+  }
+  const topicGuideHTML = key === 'clarity' ? clarityTopicGuideHTML(st, i) : '';
+  const baseNote = `기본 ${rubric.base}점`;
+  const memoHTML = key === 'validity'
+    ? ''
+    : `<textarea class="criterionMemo" data-index="${i}" data-key="${key}" placeholder="메모">${esc(data.memo||'')}</textarea>${memoPhraseBarHTML('criterion', i, key, key)}`;
+  return `
+    <div class="criterionScoreLine"><b>${score}점</b><span>${baseNote}</span></div>
+    ${topicGuideHTML}
+    <div class="criterionChecks">${checksHTML}</div>
+    ${memoHTML}
+  `;
+}
+
+function memoPhraseBarHTML(type, studentIndex, target, phraseKey){
+  const phrases = phrasesFor(phraseKey);
+  if(!phrases.length) return '';
+  return `<div class="memoPhraseBar">
+    ${phrases.map((p,idx)=>`<button type="button" class="memoPhraseBtn" onclick="insertMemoPhrase('${type}', ${studentIndex}, '${escAttr(target)}', ${idx}, '${phraseKey}')">${esc(p)}</button>`).join('')}
+  </div>`;
+}
+
+function clarityTopicGuideHTML(st, studentIndex){
+  const selected = st.clarity && st.clarity.topic ? st.clarity.topic : '';
+  const topic = CLARITY_TOPICS[selected];
+  return `
+    <div class="topicGuide">
+      <div class="topicGuideBtns">
+        ${Object.entries(CLARITY_TOPICS).map(([key,item])=>`
+          <button type="button" class="topicGuideBtn ${selected===key?'selected':''}" onclick="toggleClarityTopic(${studentIndex}, '${key}')">${esc(item.label)}</button>
+        `).join('')}
+      </div>
+      ${topic?`<div class="topicGuideText">${esc(topic.text)}</div>`:''}
+    </div>
+  `;
+}
+
+function clarityTopicLabel(st){
+  const key = st && st.clarity ? st.clarity.topic : '';
+  return CLARITY_TOPICS[key] ? CLARITY_TOPICS[key].label : '';
+}
+
+function sourceCellHTML(st,i){
+  const sScore = sourceScore(st);
+  const oCount = st.sources.filter(s => s.mark === 'O').length;
+  const memoCount = st.sources.filter(s => (s.memo||'').trim()).length;
+  const allX = st.sources.every(s => s.mark === 'X');
+  const blank = st.sources.every(s => !s.mark);
+  return `
+    <div class="criterionScoreLine"><b>${sScore}점</b><span>기본 5점</span></div>
+    <div class="sourceTools">
+      <button class="btn small danger" type="button" onclick="setAllSourcesX(${i})">전체 X</button>
+      <button class="btn small" type="button" onclick="clearSources(${i})">출처 비우기</button>
+    </div>
+    ${st.sources.map((src,idx)=>sourceItemHTML(src,i,idx)).join('')}
+    <div class="hint">
+      ${allX?'<span class="badge low">미제출</span>':''}
+      ${blank?'<span class="badge blank">미입력</span>':''}
+      ${(!allX&&!blank)?`<span class="badge ok">O ${oCount}개</span>`:''}
+      ${memoCount?`<span class="badge mid">메모 ${memoCount}개</span>`:''}
+    </div>
+  `;
+}
+
+function sourceItemHTML(src, studentIndex, sourceIndex){
+  const marks = ['O','△','X'];
+  const markClass = {'O':'o','△':'t','X':'x'};
+  return `
+    <div class="sourceItem">
+      <div class="sourceLabel">출처${sourceIndex+1}</div>
+      <div class="choices">
+        ${marks.map(m => `
+          <button type="button"
+            class="choice ${markClass[m]} ${src.mark===m?'selected':''}"
+            onclick="setSourceMark(${studentIndex}, ${sourceIndex}, '${m}')">${m}</button>
+        `).join('')}
+      </div>
+      <button type="button" class="memoBtn srcMemo ${src.memo?.trim()?'hasMemo':''}" onclick="openSourceMemo(${studentIndex}, ${sourceIndex})">메모</button>
+    </div>
+  `;
+}
+
+function toggleCriterionCheck(i, key, oi){
+  const data = state.classes[activeClass][i][key];
+  if(key === 'validity') return;
+  if(!Array.isArray(data.checks)) data.checks = migrateCriterionChecks(key, data.score);
+  const pos = data.checks.indexOf(oi);
+  if(key === 'structure' && oi === 0 && pos >= 0){
+    // 박스 비활성화: 구분선도 함께 제거 (부자연스러운 흐름 -5는 유지)
+    data.checks = data.checks.filter(x => x === 3);
+  } else if(key === 'structure' && (oi === 1 || oi === 2) && !data.checks.includes(0)){
+    // 구분선 클릭 시 박스가 비활성이면 자동 활성화
+    data.checks.push(0);
+    data.checks.push(oi);
+  } else if(key === 'completion' && oi === 2 && pos < 0){
+    [0,1,2].forEach(idx => {
+      if(!data.checks.includes(idx)) data.checks.push(idx);
+    });
+  } else {
+    if(pos >= 0) data.checks.splice(pos, 1);
+    else data.checks.push(oi);
+  }
+  data.score = criterionScore(state.classes[activeClass][i], key);
+  markDirty();
+  renderTeacherRoster();
+  renderTeacherTable();
+  updateSummary();
+  renderStudentResultIfCurrent(activeClass, i);
+}
+
+function setStructureAll(i){
+  const st = state.classes[activeClass][i];
+  if(!st) return;
+  const data = st.structure;
+  if(!Array.isArray(data.checks)) data.checks = migrateCriterionChecks('structure', data.score);
+  [0,1,2].forEach(idx => {
+    if(!data.checks.includes(idx)) data.checks.push(idx);
+  });
+  data.score = criterionScore(st, 'structure');
+  markDirty();
+  renderTeacherRoster();
+  renderTeacherTable();
+  updateSummary();
+  renderStudentResultIfCurrent(activeClass, i);
+}
+
+function setValidityAll(i, oi){
+  const st = state.classes[activeClass][i];
+  if(!st) return;
+  const data = st.validity;
+  data.parts = normalizeValidityParts(data);
+  data.parts[oi] = [true, true];
+  data.checks = validityCompletedChecks(st);
+  data.score = criterionScore(st, 'validity');
+  markDirty();
+  renderTeacherRoster();
+  renderTeacherTable();
+  updateSummary();
+  renderStudentResultIfCurrent(activeClass, i);
+}
+
+function toggleClarityTopic(i, topicKey){
+  const st = state.classes[activeClass][i];
+  if(!st || !st.clarity || !CLARITY_TOPICS[topicKey]) return;
+  st.clarity.topic = st.clarity.topic === topicKey ? '' : topicKey;
+  markDirty();
+  renderTeacherTable();
+  renderStudentResultIfCurrent(activeClass, i);
+}
+
+function toggleValidityPart(i, oi, partIndex){
+  const st = state.classes[activeClass][i];
+  const data = st.validity;
+  data.parts = normalizeValidityParts(data);
+  data.parts[oi][partIndex] = !data.parts[oi][partIndex];
+  data.checks = validityCompletedChecks(st);
+  data.score = criterionScore(st, 'validity');
+  markDirty();
+  renderTeacherRoster();
+  renderTeacherTable();
+  updateSummary();
+  renderStudentResultIfCurrent(activeClass, i);
+}
+
+document.addEventListener('input', (e)=>{
+  if(e.target.classList.contains('criterionMemo')){
+    autoGrowTextarea(e.target);
+    const i = Number(e.target.dataset.index);
+    const key = e.target.dataset.key;
+    state.classes[activeClass][i][key].memo = e.target.value;
+    markDirty();
+    renderStudentResultIfCurrent(activeClass, i);
+  }
+  if(e.target.classList.contains('validityReasonMemo')){
+    autoGrowTextarea(e.target);
+    const i = Number(e.target.dataset.index);
+    const oi = Number(e.target.dataset.oi);
+    const data = state.classes[activeClass][i].validity;
+    if(!Array.isArray(data.reasonMemos)) data.reasonMemos = ['','',''];
+    data.reasonMemos[oi] = e.target.value;
+    markDirty();
+    renderStudentResultIfCurrent(activeClass, i);
+  }
+});
+
+function autoGrowTextarea(el){
+  if(!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight + 2}px`;
+}
+
+function autoGrowMemos(root=document){
+  root.querySelectorAll('textarea.criterionMemo, textarea.validityReasonMemo').forEach(autoGrowTextarea);
+}
+
+function setSourceMark(studentIndex, sourceIndex, mark){
+  const st = state.classes[activeClass][studentIndex];
+  st.sources[sourceIndex].mark = (st.sources[sourceIndex].mark === mark) ? '' : mark;
+
+  markDirty();
+  renderTeacherRoster();
+  renderTeacherTable();
+  renderDiscussionPanel();
+  updateSummary();
+  renderStudentResultIfCurrent(activeClass, studentIndex);
+}
+
+function setAllSourcesX(studentIndex){
+  const st = state.classes[activeClass][studentIndex];
+  st.sources.forEach(s => s.mark = 'X');
+  markDirty();
+  renderTeacherRoster();
+  renderTeacherTable();
+  renderDiscussionPanel();
+  updateSummary();
+  renderStudentResultIfCurrent(activeClass, studentIndex);
+}
+
+function clearSources(studentIndex){
+  const st = state.classes[activeClass][studentIndex];
+  st.sources.forEach(s => s.mark = '');
+  markDirty();
+  renderTeacherRoster();
+  renderTeacherTable();
+  renderDiscussionPanel();
+  updateSummary();
+  renderStudentResultIfCurrent(activeClass, studentIndex);
+}
+
+function normalizeMark(v){
+  const s = String(v||'').trim().toUpperCase();
+  if(s === 'O') return 'O';
+  if(s === '△' || s === '▲' || s === 'TRIANGLE') return '△';
+  if(s === 'X') return 'X';
+  return '';
+}
+
+function checksOfCriterion(st,key){
+  const data = st && st[key];
+  if(!data) return [];
+  if(key === 'validity') return validityCompletedChecks(st);
+  if(Array.isArray(data.checks)) return data.checks;
+  return migrateCriterionChecks(key, data.score);
+}
+
+function validityReasonMemos(st){
+  const arr = st && st.validity && Array.isArray(st.validity.reasonMemos) ? st.validity.reasonMemos : [];
+  return [0,1,2].map(i => arr[i] || '');
+}
+
+function validityCsvCells(st){
+  const parts = normalizeValidityParts(st.validity);
+  const memos = validityReasonMemos(st);
+  return [0,1,2].flatMap(i => [parts[i][0] ? 'Y' : '', parts[i][1] ? 'Y' : '', memos[i]]);
+}
+
+function scoreReason(key, value, st){
+  const rubric = writingRubric[key];
+  if(!rubric) return '미입력';
+  if(key === 'validity'){
+    const parts = normalizeValidityParts(st && st.validity ? st.validity : {});
+    const rows = parts.map((row,i) => {
+      if(row[0] && row[1]) return `근거${i+1} 타당성·자료 +5점`;
+      if(row[0]) return `근거${i+1} 타당성만 체크`;
+      if(row[1]) return `근거${i+1} 자료만 체크`;
+      return '';
+    }).filter(Boolean);
+    return rows.length ? [`기본 ${rubric.base}점`, ...rows].join(' · ') : `기본 ${rubric.base}점만 반영.`;
+  }
+  const checks = st ? checksOfCriterion(st,key) : [];
+  const selected = checks.map(i => rubric.opts[i]).filter(Boolean);
+  if(!selected.length) return `기본 ${rubric.base}점만 반영.`;
+  return [`기본 ${rubric.base}점`, ...selected.map(o => `${o.desc} ${Number(o.pt)>0?'+':''}${o.pt}점`)].join(' · ');
+}
+
+function criterionScore(st,key){
+  const rubric = writingRubric[key];
+  if(!rubric) return Number(st[key]?.score || 0);
+  const checks = checksOfCriterion(st,key);
+  return checks.reduce((sum,oi)=>sum+(Number(rubric.opts[oi]?.pt)||0), Number(rubric.base)||0);
+}
+
+function criterionMax(key){
+  const rubric = writingRubric[key];
+  if(!rubric) return 20;
+  return (Number(rubric.base)||0) + (rubric.opts||[]).reduce((sum,o)=>sum+Math.max(0, Number(o.pt)||0), 0);
+}
+
+function sourceScore(st){
+  const marks = st.sources.map(s => s.mark);
+  const allBlank = marks.every(m => !m);
+  const allX = marks.every(m => m === 'X');
+  if(allBlank || allX) return 5;
+
+  const oCount = marks.filter(m => m === 'O').length;
+  const hasTriangle = marks.some(m => m === '△');
+
+  if(oCount === 3) return 20;
+  if(oCount === 2) return 15;
+  if(oCount >= 1 || hasTriangle) return 10;
+
+  return 5;
+}
+
+function sourceReason(st){
+  const marks = st.sources.map(s => s.mark);
+  const oCount = marks.filter(m => m === 'O').length;
+  const triCount = marks.filter(m => m === '△').length;
+  if(marks.every(m => m === 'X')) return '자료 미제출 · 5점';
+  if(marks.every(m => !m)) return '출처 미입력 · 5점';
+  if(oCount === 3) return 'O 3개 정확 표기 · 20점';
+  if(oCount === 2) return `O 2개 · 15점${triCount ? ` (△ ${triCount}개 점수 미반영)` : ''}`;
+  if(oCount >= 1) return `O ${oCount}개 · 10점${triCount ? ` (△ ${triCount}개 점수 미반영)` : ''}`;
+  if(triCount >= 1) return `△ ${triCount}개 출처 미비 기록 · 10점`;
+  return 'O·△ 없음 · 5점';
+}
+
+function totalScore(st){
+  if(st && st.absent) return 40;
+  return criterionScore(st,'clarity') + criterionScore(st,'validity') + sourceScore(st) + criterionScore(st,'structure') + criterionScore(st,'completion');
+}
+
+function totalClass(score){
+  if(score >= 90) return 'ok';
+  if(score >= 70) return 'mid';
+  return 'low';
+}
+
+function updateSummary(){
+  return;
+}
+
+
+function avg(arr){
+  return arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : '0';
+}
+
+function renderStudentResultIfCurrent(cls, index){
+  if(view === 'student' && studentClass === cls && selectedStudentIndex === index){
+    renderStudentResult();
+  }
+}
+
+function renderStudentResult(){
+  const box = document.getElementById('studentResult');
+  if(selectedStudentIndex === null){
+    box.innerHTML = '<div class="emptyState">반·번호 선택</div>';
+    return;
+  }
+  const st = state.classes[studentClass][selectedStudentIndex];
+  if(!st){
+    selectedStudentIndex = null;
+    renderStudentNumbers();
+    box.innerHTML = '<div class="emptyState">반·번호 선택</div>';
+    return;
+  }
+  const total = totalScore(st);
+  const name = st.name.trim() ? ` · ${esc(st.name.trim())}` : '';
+  box.innerHTML = `
+    <div class="resultTitle">
+      <h2>${studentClass}반 ${selectedStudentIndex+1}번${name}</h2>
+      <div>
+        <div class="hint" style="text-align:right">총점</div>
+        <div class="bigTotal">${total}</div>
+        ${st.absent ? '<div class="hint" style="text-align:right;color:#991b1b;font-weight:900">미응시 최저점 적용</div>' : ''}
+      </div>
+    </div>
+    <div class="resultRows">
+      ${studentCriterionHTML(st,'clarity')}
+      ${studentCriterionHTML(st,'validity')}
+      ${studentSourceHTML(st)}
+      ${studentCriterionHTML(st,'structure')}
+      ${studentCriterionHTML(st,'completion')}
+    </div>
+  `;
+}
+
+function studentMemoBlock(title, memo){
+  const text = String(memo || '').trim();
+  if(!text) return '';
+  const urls = extractUrls(text);
+  return `
+    <div class="studentMemo">
+      <div class="studentMemoLabel">${esc(title)}</div>
+      <div class="studentMemoText">${linkifyMemoText(text)}</div>
+      ${urls.length ? `<div class="studentLinks">${urls.map((url,i)=>studentLinkCard(url,i)).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+function studentLinkCard(url, index){
+  const safe = normalizeUrl(url);
+  if(!safe) return '';
+  const short = shortenUrl(safe);
+  return `
+    <div class="linkCard">
+      <div class="linkCardTop">
+        <a class="linkOpen" href="${escAttr(safe)}" target="_blank" rel="noopener noreferrer">링크 ${index+1} 열기 · ${esc(short)}</a>
+        <button type="button" class="btn small" data-url="${escAttr(safe)}" onclick="toggleLinkEmbed(this)">미리보기</button>
+      </div>
+      <div class="linkEmbed hidden"></div>
+    </div>
+  `;
+}
+
+function extractUrls(text){
+  const re = /https?:\/\/[^\s<>"']+/gi;
+  const found = String(text || '').match(re) || [];
+  const cleaned = found.map(cleanUrlTail).map(normalizeUrl).filter(Boolean);
+  return [...new Set(cleaned)];
+}
+
+function cleanUrlTail(url){
+  let s = String(url || '');
+  while(/[.,!?;:。、，)\]}>]$/.test(s)) s = s.slice(0,-1);
+  return s;
+}
+
+function normalizeUrl(url){
+  const s = String(url || '').trim();
+  if(!/^https?:\/\//i.test(s)) return '';
+  return s;
+}
+
+function linkifyMemoText(text){
+  const re = /https?:\/\/[^\s<>"']+/gi;
+  let result = '';
+  let last = 0;
+  String(text || '').replace(re, (match, offset) => {
+    const clean = cleanUrlTail(match);
+    const trailing = match.slice(clean.length);
+    result += esc(String(text).slice(last, offset));
+    const safe = normalizeUrl(clean);
+    if(safe){
+      result += `<a class="studentLinkInline" href="${escAttr(safe)}" target="_blank" rel="noopener noreferrer">${esc(clean)}</a>${esc(trailing)}`;
+    } else {
+      result += esc(match);
+    }
+    last = offset + match.length;
+    return match;
+  });
+  result += esc(String(text || '').slice(last));
+  return result;
+}
+
+function shortenUrl(url){
+  try{
+    const u = new URL(url);
+    const path = (u.pathname || '').replace(/\/$/, '');
+    const compact = `${u.hostname}${path ? path : ''}`;
+    return compact.length > 62 ? compact.slice(0,59) + '…' : compact;
+  }catch(e){
+    return url.length > 62 ? url.slice(0,59) + '…' : url;
+  }
+}
+
+function youtubeVideoId(url){
+  try{
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./,'');
+    let id = '';
+    if(host === 'youtu.be') id = u.pathname.split('/').filter(Boolean)[0] || '';
+    if(host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')){
+      if(u.pathname.startsWith('/watch')) id = u.searchParams.get('v') || '';
+      if(u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] || '';
+      if(u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+      if(u.pathname.startsWith('/live/')) id = u.pathname.split('/')[2] || '';
+    }
+    id = String(id || '').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,32);
+    return id;
+  }catch(e){ return ''; }
+}
+
+function youtubeEmbedUrl(url){
+  const id = youtubeVideoId(url);
+  return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0&modestbranding=1` : '';
+}
+
+function youtubeWatchUrl(url){
+  const id = youtubeVideoId(url);
+  return id ? `https://www.youtube.com/watch?v=${encodeURIComponent(id)}` : normalizeUrl(url);
+}
+
+function youtubeThumbnailUrl(url){
+  const id = youtubeVideoId(url);
+  return id ? `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg` : '';
+}
+
+function isImageUrl(url){
+  return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url);
+}
+
+function toggleLinkEmbed(btn){
+  const url = normalizeUrl(btn.dataset.url || '');
+  const card = btn.closest('.linkCard');
+  const box = card ? card.querySelector('.linkEmbed') : null;
+  if(!url || !box) return;
+
+  if(!box.classList.contains('hidden')){
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    btn.textContent = '미리보기';
+    return;
+  }
+
+  const yUrl = youtubeEmbedUrl(url);
+  if(isImageUrl(url)){
+    box.innerHTML = `<img src="${escAttr(url)}" alt="링크 이미지 미리보기"><div class="embedHint">이미지 미리보기. 로드 실패 시 링크 직접 열기.</div>`;
+  } else if(yUrl){
+    const watchUrl = youtubeWatchUrl(url);
+    const thumb = youtubeThumbnailUrl(url);
+    box.innerHTML = `
+      <div class="youtubePreviewCard">
+        <a class="youtubeThumbWrap" href="${escAttr(watchUrl)}" target="_blank" rel="noopener noreferrer">
+          <img src="${escAttr(thumb)}" alt="유튜브 썸네일" loading="lazy">
+          <span class="youtubePlayBadge">YouTube 열기</span>
+        </a>
+        <div class="youtubePreviewBody">
+          <div class="youtubePreviewTitle">유튜브 링크 미리보기</div>
+          <div class="youtubePreviewText">재생 오류 시 썸네일 또는 링크 직접 열기.</div>
+        </div>
+      </div>
+      <iframe src="${escAttr(yUrl)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      `;
+  } else {
+    box.innerHTML = `<iframe src="${escAttr(url)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe><div class="embedHint">보안 설정으로 미리보기 차단 시 링크 직접 열기.</div>`;
+  }
+  box.classList.remove('hidden');
+  btn.textContent = '미리보기 닫기';
+}
+
+function studentCriterionHTML(st,key){
+  const data = st[key] || {score:'', checks:[], memo:''};
+  const score = criterionScore(st,key);
+  const scoreText = `${score}점`;
+  const reason = scoreReason(key, score, st);
+  const validityMemos = key === 'validity' ? validityReasonMemoHTML(data) : '';
+  const clarityTopic = key === 'clarity' && CLARITY_TOPICS[data.topic] ? `<div class="reason">${esc(CLARITY_TOPICS[data.topic].text)}</div>` : '';
+  const teacherMemo = key === 'validity' ? '' : studentMemoBlock('선생님 메모', data.memo);
+  return `
+    <div class="resultRow">
+      <div class="resultRowHead">
+        <span>${criterionLabels[key]}</span>
+        <span class="badge ${totalClass(score)}">${scoreText}</span>
+      </div>
+      <div class="reason">${esc(reason)}</div>
+      ${clarityTopic}
+      ${validityMemos}
+      ${teacherMemo}
+    </div>
+  `;
+}
+
+function validityReasonMemoHTML(data){
+  const memos = validityReasonMemos({validity:data});
+  return memos.map((memo,i) => studentMemoBlock(`근거 ${i+1} 메모`, memo)).join('');
+}
+
+function studentSourceHTML(st){
+  return `
+    <div class="resultRow">
+      <div class="resultRowHead">
+        <span>논거의 출처</span>
+        <span class="badge ${totalClass(sourceScore(st))}">${sourceScore(st)}점</span>
+      </div>
+      <div class="reason">${esc(sourceReason(st))}</div>
+      <div class="sourceMarks">
+        ${st.sources.map((s,i)=>sourceMarkPill(s,i)).join('')}
+      </div>
+      ${st.sources.map((s,i)=>studentMemoBlock(`출처 ${i+1} 메모`, s.memo)).join('')}
+    </div>
+  `;
+}
+
+function sourceMarkPill(src,i){
+  const cls = src.mark === 'O' ? 'o' : src.mark === '△' ? 't' : src.mark === 'X' ? 'x' : 'empty';
+  const text = src.mark || '미입력';
+  return `<span class="markPill ${cls}">출처${i+1} ${text}</span>`;
+}
+
+function openCriterionMemo(studentIndex, key){
+  const st = state.classes[activeClass][studentIndex];
+  activeMemoTarget = {type:'criterion', cls:activeClass, studentIndex, key};
+  document.getElementById('modalTitle').textContent = `${activeClass}반 ${studentIndex+1}번 · ${criterionLabels[key]} 메모`;
+  document.getElementById('modalSub').textContent = '점수 사유 / 보충 기록';
+  document.getElementById('sourceMarkLine').style.display = 'none';
+  document.getElementById('modalMemoText').value = st[key].memo || '';
+  renderModalMemoPhrases();
+  document.getElementById('memoModal').classList.add('show');
+  setTimeout(()=>document.getElementById('modalMemoText').focus(),0);
+}
+
+function openSourceMemo(studentIndex, sourceIndex){
+  const st = state.classes[activeClass][studentIndex];
+  const src = st.sources[sourceIndex];
+  activeMemoTarget = {type:'source', cls:activeClass, studentIndex, sourceIndex};
+  document.getElementById('modalTitle').textContent = `${activeClass}반 ${studentIndex+1}번 · 출처 ${sourceIndex+1} 메모`;
+  document.getElementById('modalSub').textContent = '출처 표기 미비 기록 / 증거 메모';
+  document.getElementById('sourceMarkLine').style.display = 'grid';
+  document.getElementById('modalSourceMark').value = src.mark || '';
+  document.getElementById('modalMemoText').value = src.memo || '';
+  renderModalMemoPhrases();
+  document.getElementById('memoModal').classList.add('show');
+  setTimeout(()=>document.getElementById('modalMemoText').focus(),0);
+}
+
+function saveMemoModal(){
+  if(!activeMemoTarget) return;
+  const target = activeMemoTarget;
+  const st = state.classes[target.cls][target.studentIndex];
+  const memo = document.getElementById('modalMemoText').value;
+
+  if(target.type === 'criterion'){
+    st[target.key].memo = memo;
+  } else if(target.type === 'source'){
+    const mark = document.getElementById('modalSourceMark').value;
+    st.sources[target.sourceIndex].mark = mark;
+    st.sources[target.sourceIndex].memo = memo;
+  }
+
+  markDirty();
+  closeMemoModal();
+  renderTeacherRoster();
+  renderTeacherTable();
+  renderDiscussionPanel();
+  updateSummary();
+  renderStudentResultIfCurrent(target.cls, target.studentIndex);
+}
+
+function closeMemoModal(){
+  document.getElementById('memoModal').classList.remove('show');
+  const bar = document.getElementById('modalMemoPhraseBar');
+  if(bar) bar.innerHTML = '';
+  activeMemoTarget = null;
+}
+
+function renderModalMemoPhrases(){
+  const bar = document.getElementById('modalMemoPhraseBar');
+  if(!bar) return;
+  const phrases = phrasesFor('source');
+  bar.innerHTML = phrases.map((p,idx)=>`<button type="button" class="memoPhraseBtn" onclick="insertMemoPhrase('modal', 0, '', ${idx}, 'source')">${esc(p)}</button>`).join('');
+}
+
+function appendMemoText(current, phrase){
+  const base = String(current || '').trimEnd();
+  return base ? `${base}\n${phrase}` : phrase;
+}
+
+function insertMemoPhrase(type, studentIndex, target, phraseIndex, phraseKey){
+  const phrase = phrasesFor(phraseKey)[phraseIndex];
+  if(!phrase) return;
+  if(type === 'modal'){
+    const el = document.getElementById('modalMemoText');
+    el.value = appendMemoText(el.value, phrase);
+    autoGrowTextarea(el);
+    el.focus();
+    return;
+  }
+  const st = state.classes[activeClass][studentIndex];
+  if(type === 'criterion'){
+    st[target].memo = appendMemoText(st[target].memo, phrase);
+  } else if(type === 'validity'){
+    const oi = Number(target);
+    if(!Array.isArray(st.validity.reasonMemos)) st.validity.reasonMemos = ['','',''];
+    st.validity.reasonMemos[oi] = appendMemoText(st.validity.reasonMemos[oi], phrase);
+  }
+  markDirty();
+  renderTeacherTable();
+  renderStudentResultIfCurrent(activeClass, studentIndex);
+}
+
+function backdropClose(e){
+  if(e.target.id === 'memoModal') closeMemoModal();
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') closeMemoModal();
+});
+window.addEventListener('resize', scheduleTeacherRosterHeightUpdate);
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', scheduleTeacherRosterHeightUpdate);
+  window.visualViewport.addEventListener('scroll', scheduleTeacherRosterHeightUpdate);
+}
+
+function saveData(){
+  if(autoSaveTimer){
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+  }
+  const ok = persistState();
+  if(ok){
+    showToast(`저장되었습니다 ${timeStamp()}`);
+  } else {
+    showSaveError();
+  }
+}
+
+function scheduleAutoSave(){
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    autoSaveData();
+  }, 350);
+}
+
+function autoSaveData(){
+  const ok = persistState();
+  autoSaveTimer = null;
+  showToast(ok ? `자동저장되었습니다 ${timeStamp()}` : '저장 실패');
+}
+
+function storagePayload(){
+  lastSavedAt = Date.now();
+  return {
+    shared:{
+      appTitle,
+      rubric:writingRubric,
+      criterionLabels,
+      memoPhrases,
+      classList:CLASSES,
+      studentsPerClass:STUDENTS_PER_CLASS,
+      schema:'argument_scoring_v5'
+    },
+    classes:state.classes,
+    currentClass:activeClass,
+    savedAt:lastSavedAt
+  };
+}
+
+function persistState(){
+  const payload = JSON.stringify(storagePayload());
+  let okMain = false;
+  let okMirror = false;
+  try{ localStorage.setItem(LS_KEY, payload); okMain = true; }catch(e){}
+  try{ localStorage.setItem(LS_MIRROR, payload); okMirror = true; }catch(e){}
+  return okMain || okMirror;
+}
+
+let saveErrorShown = false;
+function showSaveError(){
+  showToast('저장 실패');
+  if(saveErrorShown) return;
+  saveErrorShown = true;
+  setTimeout(()=>{saveErrorShown = false;}, 10000);
+  if(confirm('데이터 저장에 실패했습니다.\n\n브라우저 저장공간 문제일 수 있습니다. 지금 백업 JSON을 내려받을까요?')){
+    downloadBackup();
+  }
+}
+
+function timeStamp(){
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+function showToast(message){
+  const toast = document.getElementById('toast');
+  if(!toast) return;
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(()=>toast.classList.remove('show'), 1600);
+}
+
+function loadData(){
+  const raw = localStorage.getItem(LS_KEY) || localStorage.getItem(LS_MIRROR);
+  if(!raw){
+    alert('저장된 자료 없음');
+    return;
+  }
+  try{
+    state = normalizeState(JSON.parse(raw));
+    showToast('저장 자료를 불러왔습니다');
+    renderAll();
+  }catch(e){
+    alert('저장 자료 불러오기 실패');
+    console.error(e);
+  }
+}
+
+
+function importCSVFile(event){
+  const input = event.target;
+  const file = input.files && input.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const text = String(reader.result || '');
+      importCSVText(text);
+      renderAll();
+      autoSaveData();
+      alert('CSV 불러오기 완료 · 자동저장됨');
+    }catch(e){
+      console.error(e);
+      alert('CSV 불러오기 실패 · 내보낸 CSV 형식 확인 필요');
+    }finally{
+      input.value = '';
+    }
+  };
+  reader.onerror = () => {
+    alert('CSV 파일 읽기 실패');
+    input.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function importCSVText(text){
+  const rows = parseCSV(text.replace(/^\ufeff/, ''));
+  if(rows.length < 2) throw new Error('CSV rows empty');
+
+  const header = rows[0].map(h => String(h || '').trim());
+  const idx = makeHeaderIndex(header);
+  const next = emptyState();
+  CLASSES.forEach(cls => next.classes[cls] = Array.from({length:STUDENTS_PER_CLASS}, () => null));
+  let imported = 0;
+
+  rows.slice(1).forEach((row, rowIndex) => {
+    if(row.every(v => String(v || '').trim() === '')) return;
+
+    const cls = normalizeClassName(getCSV(row, idx, ['반','학반','class','Class'])) || activeClass;
+    if(!CLASSES.includes(cls)) return;
+
+    const numRaw = getCSV(row, idx, ['번호','번','num','number','Number']);
+    const num = Number(String(numRaw || rowIndex + 1).replace(/[^0-9]/g, ''));
+    if(!num || num < 1 || num > STUDENTS_PER_CLASS) return;
+
+    const st = normalizeStudent({}, num);
+    st.name = getCSV(row, idx, ['이름','성명','name','Name']) || '';
+    st.discuss = normalizeBool(getCSV(row, idx, ['논의 필요','논의필요','협의 필요','협의필요','discuss','needsDiscussion']));
+    st.complete = normalizeBool(getCSV(row, idx, ['채점 완료','채점완료','complete']));
+    st.absent = normalizeAbsentBool(getCSV(row, idx, ['미응시','미제출','결시','absent']));
+
+    importCriterion(st, 'clarity', row, idx, '주장의 명확성');
+    st.clarity.topic = normalizeClarityTopic(getCSV(row, idx, ['주제 확인','주제확인','명확성 주제','clarityTopic']));
+    importCriterion(st, 'validity', row, idx, '근거의 타당성');
+    st.validity.reasonMemos = [0,1,2].map(i => getCSV(row, idx, [`근거${i+1} 메모`,`근거 ${i+1} 메모`,`근거${i+1}메모`,`근거의 타당성 근거${i+1} 메모`]) || '');
+    const partRaw = [0,1,2].map(i => [
+      getCSV(row, idx, [`근거${i+1} 타당성`,`근거 ${i+1} 타당성`]),
+      getCSV(row, idx, [`근거${i+1} 적절한 자료`,`근거 ${i+1} 적절한 자료`,`근거${i+1} 자료`,`근거 ${i+1} 자료`])
+    ]);
+    if(partRaw.some(pair => pair.some(v => String(v || '').trim()))){
+      st.validity.parts = partRaw.map(pair => pair.map(normalizeBool));
+    } else {
+      st.validity.parts = normalizeValidityParts(st.validity);
+    }
+    st.validity.checks = validityCompletedChecks(st);
+    st.validity.score = criterionScore(st, 'validity');
+    importCriterion(st, 'structure', row, idx, '글의 짜임새');
+    importCriterion(st, 'completion', row, idx, '분량 도달', '글의 완결성');
+
+    st.sources[0].mark = normalizeMark(getCSV(row, idx, ['출처1','출처 1','자료1 출처','자료 1 출처']));
+    st.sources[0].memo = getCSV(row, idx, ['출처1 메모','출처 1 메모','출처1메모']) || '';
+    st.sources[1].mark = normalizeMark(getCSV(row, idx, ['출처2','출처 2','자료2 출처','자료 2 출처']));
+    st.sources[1].memo = getCSV(row, idx, ['출처2 메모','출처 2 메모','출처2메모']) || '';
+    st.sources[2].mark = normalizeMark(getCSV(row, idx, ['출처3','출처 3','자료3 출처','자료 3 출처']));
+    st.sources[2].memo = getCSV(row, idx, ['출처3 메모','출처 3 메모','출처3메모']) || '';
+
+    next.classes[cls][num-1] = st;
+    imported++;
+  });
+
+  if(!imported) throw new Error('No rows imported');
+  state = next;
+  selectedStudentIndex = null;
+}
+
+function importCriterion(st, key, row, idx, label, oldLabel){
+  const labels = oldLabel ? [label, oldLabel] : [label];
+  const score = getCSV(row, idx, labels.flatMap(name => [`${name} 점수`, name]));
+  const memo = getCSV(row, idx, labels.flatMap(name => [`${name} 메모`, `${name}메모`]));
+  st[key].score = normalizeScore(score);
+  st[key].checks = migrateCriterionChecks(key, st[key].score);
+  st[key].memo = memo || '';
+}
+
+function normalizeClarityTopic(v){
+  const s = String(v || '').trim().toLowerCase();
+  if(!s) return '';
+  if(s.includes('주제1') || s.includes('topic1')) return 'topic1';
+  if(s.includes('주제2') || s.includes('topic2')) return 'topic2';
+  if(s.includes('주제3') || s.includes('topic3')) return 'topic3';
+  return CLARITY_TOPICS[s] ? s : '';
+}
+
+function normalizeScore(v){
+  const n = String(v || '').match(/\d+/)?.[0] || '';
+  return ['20','15','10','5','0'].includes(n) ? n : '';
+}
+
+function normalizeBool(v){
+  const s = String(v || '').trim().toLowerCase();
+  return ['y','yes','true','1','o','○','★','논의','필요'].includes(s) || s.includes('논의') || s.includes('협의') || s.includes('필요');
+}
+
+function normalizeAbsentBool(v){
+  const s = String(v || '').trim().toLowerCase();
+  return normalizeBool(v) || ['x','×','미응시','미제출','결시','absent'].includes(s);
+}
+
+
+function normalizeClassName(v){
+  let s = normalizeClassLabel(v);
+  if(!s) return '';
+  const found = CLASSES.find(cls => normalizeClassLabel(cls).toLowerCase() === s.toLowerCase());
+  return found || s;
+}
+
+function makeHeaderIndex(header){
+  const idx = {};
+  header.forEach((h,i) => {
+    idx[h] = i;
+    idx[h.replace(/\s/g,'')] = i;
+  });
+  return idx;
+}
+
+function getCSV(row, idx, names){
+  for(const name of names){
+    if(idx[name] !== undefined) return row[idx[name]] ?? '';
+    const compact = String(name).replace(/\s/g,'');
+    if(idx[compact] !== undefined) return row[idx[compact]] ?? '';
+  }
+  return '';
+}
+
+function parseCSV(text){
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for(let i=0; i<text.length; i++){
+    const ch = text[i];
+    const next = text[i+1];
+
+    if(ch === '"'){
+      if(inQuotes && next === '"'){
+        cell += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if(ch === ',' && !inQuotes){
+      row.push(cell);
+      cell = '';
+    } else if((ch === '\n' || ch === '\r') && !inQuotes){
+      if(ch === '\r' && next === '\n') i++;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += ch;
+    }
+  }
+  row.push(cell);
+  rows.push(row);
+  return rows;
+}
+
+async function clearAll(){
+  if(!confirm('전체 반 입력 내용을 모두 초기화하겠습니까?\n\n확인을 누르면 먼저 백업 JSON을 저장합니다.')) return;
+  const savedToFolder = await downloadBackup();
+  const destination = savedToFolder ? '지정한 저장 폴더' : '브라우저 다운로드 폴더';
+  if(!confirm(`백업 파일을 ${destination}에 저장했습니다.\n\n이제 데이터를 초기화할까요?`)) return;
+  state = emptyState();
+  localStorage.removeItem(LS_KEY);
+  localStorage.removeItem(LS_MIRROR);
+  showToast('전체 초기화되었습니다');
+  selectedStudentIndex = null;
+  renderAll();
+}
+
+function markDirty(){
+  scheduleAutoSave();
+}
+
+async function exportCSV(){
+  const head = [
+    '반','번호','이름','논의 필요','채점 완료','미응시',
+    '주장의 명확성 점수','주장의 명확성 이유','주제 확인','주장의 명확성 메모',
+    '근거의 타당성 점수','근거의 타당성 이유',
+    '근거1 타당성','근거1 적절한 자료','근거1 메모',
+    '근거2 타당성','근거2 적절한 자료','근거2 메모',
+    '근거3 타당성','근거3 적절한 자료','근거3 메모',
+    '출처1','출처1 메모','출처2','출처2 메모','출처3','출처3 메모','논거의 출처 점수','논거의 출처 이유',
+    '글의 짜임새 점수','글의 짜임새 이유','글의 짜임새 메모',
+    '분량 도달 점수','분량 도달 이유','분량 도달 메모',
+    '총점'
+  ];
+  const rows = [head];
+
+  CLASSES.forEach(cls => {
+    state.classes[cls].forEach((st,i) => {
+      if(!st) return;
+      rows.push([
+        cls, i+1, st.name, st.discuss ? 'Y' : '', st.complete ? 'Y' : '', st.absent ? 'Y' : '',
+        criterionScore(st,'clarity'), scoreReason('clarity', criterionScore(st,'clarity'), st), clarityTopicLabel(st), st.clarity.memo,
+        criterionScore(st,'validity'), scoreReason('validity', criterionScore(st,'validity'), st),
+        ...validityCsvCells(st),
+        st.sources[0].mark, st.sources[0].memo,
+        st.sources[1].mark, st.sources[1].memo,
+        st.sources[2].mark, st.sources[2].memo,
+        sourceScore(st), sourceReason(st),
+        criterionScore(st,'structure'), scoreReason('structure', criterionScore(st,'structure'), st), st.structure.memo,
+        criterionScore(st,'completion'), scoreReason('completion', criterionScore(st,'completion'), st), st.completion.memo,
+        totalScore(st)
+      ]);
+    });
+  });
+
+  const csv = '\ufeff' + rows.map(r => r.map(v => '"' + String(v ?? '').replaceAll('"','""') + '"').join(',')).join('\n');
+  const saved = await saveOutputFile(new Blob([csv], {type:'text/csv;charset=utf-8'}), `${safeFileName(appTitle)}_전체반.csv`);
+  showToast(saved ? 'CSV가 저장 폴더에 저장되었습니다' : 'CSV를 내려받았습니다');
+}
+
+function downloadBlob(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function saveOutputFile(blob, filename){
+  const base = await getBaseDirHandle();
+  if(base){
+    try{
+      const fh = await base.getFileHandle(filename, {create:true});
+      const w = await fh.createWritable();
+      await w.write(blob);
+      await w.close();
+      return true;
+    }catch(e){
+      console.warn('folder save failed', e);
+    }
+  }
+  downloadBlob(blob, filename);
+  return false;
+}
+
+async function downloadBackup(){
+  const payload = storagePayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const saved = await saveOutputFile(blob, backupFilename());
+  try{ localStorage.setItem(LAST_BACKUP_KEY, String(Date.now())); }catch(e){}
+  showToast(saved ? '백업이 저장 폴더에 저장되었습니다' : '백업을 내려받았습니다');
+  return saved;
+}
+
+function backupFilename(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;
+}
+
+function safeFileName(s){
+  return String(s || DEFAULT_APP_TITLE).replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_').replace(/^_+|_+$/g, '') || 'writing_grader';
+}
+
+function openSettings(){
+  document.getElementById('settingsModal').classList.add('show');
+  renderSettings();
+}
+
+function closeSettings(){
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+function settingsBackdropClose(e){
+  if(e.target.id === 'settingsModal') closeSettings();
+}
+
+function renderSettings(){
+  document.getElementById('appTitleInput').value = appTitle || DEFAULT_APP_TITLE;
+  const classInput = document.getElementById('classListInput');
+  if(classInput) classInput.value = CLASSES.join('\n');
+  renderSettingsRosterTabs();
+  renderSettingsRubric();
+  updateFolderButton();
+}
+
+document.querySelectorAll('.settingTab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.settingTab;
+    document.querySelectorAll('.settingTab').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.settingPanel').forEach(p => p.classList.toggle('active', p.id === `setting-${tab}`));
+    if(tab === 'roster') renderSettingsRosterTabs();
+    if(tab === 'rubric') renderSettingsRubric();
+  });
+});
+
+function saveBasicSettings(){
+  appTitle = document.getElementById('appTitleInput').value.trim() || DEFAULT_APP_TITLE;
+  const classInput = document.getElementById('classListInput');
+  if(classInput) applyClassList(classInput.value);
+  selectedTeacherIndex = firstPresentStudentIndex(activeClass);
+  selectedStudentIndex = null;
+  applyAppTitle();
+  saveData();
+  renderAll();
+  renderSettings();
+}
+
+function renderSettingsRosterTabs(){
+  const box = document.getElementById('settingsRosterTabs');
+  if(!box) return;
+  box.innerHTML = CLASSES.map(cls => `<button class="rosterTab ${cls===activeClass?'active':''}" data-cls="${escAttr(cls)}">${esc(cls)}</button>`).join('');
+  box.querySelectorAll('.rosterTab').forEach(btn => {
+    btn.onclick = () => {
+      activeClass = btn.dataset.cls;
+      studentClass = activeClass;
+      selectedTeacherIndex = 0;
+      selectedStudentIndex = null;
+      renderSettingsRosterTabs();
+      renderAll();
+    };
+  });
+  document.getElementById('settingsRosterText').value = presentStudents(activeClass)
+    .map(({st,i}) => `${i+1} ${st.name || ''}`.trim())
+    .join('\n');
+}
+
+function saveRosterSettings(){
+  const text = document.getElementById('settingsRosterText').value;
+  const current = state.classes[activeClass] || [];
+  const next = Array.from({length:STUDENTS_PER_CLASS}, () => null);
+  const entries = text.split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map((line, idx) => {
+      const m = line.match(/^(\d{1,2})[\s.)-]*(.*)$/);
+      const num = m ? Number(m[1]) : idx + 1;
+      const name = (m ? m[2] : line).trim();
+      return {num, name};
+    })
+    .filter(entry => entry.name && entry.num >= 1 && entry.num <= STUDENTS_PER_CLASS);
+
+  entries.forEach(entry => {
+    const index = entry.num - 1;
+    const sameSlot = current[index];
+    const sameName = current.find(st => st && st.name && st.name.trim() === entry.name);
+    const source = sameSlot && sameSlot.name && sameSlot.name.trim() === entry.name ? sameSlot : sameName || sameSlot;
+    const st = normalizeStudent(source || defaultStudent(entry.num), entry.num);
+    st.num = entry.num;
+    st.name = entry.name;
+    next[index] = st;
+  });
+  state.classes[activeClass] = next;
+  selectedTeacherIndex = firstPresentStudentIndex(activeClass);
+  selectedStudentIndex = null;
+  saveData();
+  renderAll();
+  renderSettingsRosterTabs();
+}
+
+function renderSettingsRubric(){
+  const list = document.getElementById('settingsRubricList');
+  if(!list) return;
+  list.innerHTML = ['clarity','validity','structure','completion'].map(key => {
+    const r = writingRubric[key];
+    return `<div class="rubricEdit" data-key="${key}">
+      <div class="rubricTop">
+        <input class="rubricName" value="${escAttr(criterionLabels[key])}" placeholder="영역 이름">
+        <input class="rubricBase" type="number" value="${Number(r.base)||0}" title="기본점">
+      </div>
+      ${(r.opts||[]).map((o,i)=>`<div class="rubricOpt">
+        <input class="rubricDesc" data-oi="${i}" value="${escAttr(o.desc)}" placeholder="체크 항목">
+        <input class="rubricPt" data-oi="${i}" type="number" value="${Number(o.pt)||0}" title="점수">
+      </div>`).join('')}
+    </div>`;
+  }).join('') + `
+    <div class="phraseSettings">
+      <div class="settingHint" style="margin-bottom:8px">항목별 자주 쓰는 메모 문구를 한 줄에 하나씩 입력합니다.</div>
+      ${[
+        ['clarity','주장의 명확성'],
+        ['validity','근거의 타당성'],
+        ['source','논거의 출처'],
+        ['structure','글의 짜임새'],
+        ['completion','분량 도달']
+      ].map(([key,label])=>`
+        <div class="settingRow" style="grid-template-columns:120px 1fr;align-items:start">
+          <label>${label}</label>
+          <textarea class="memoPhraseInput" data-phrase-key="${key}" placeholder="${label} 메모 문구">${esc(phrasesFor(key).join('\n'))}</textarea>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function saveRubricSettings(){
+  document.querySelectorAll('.rubricEdit').forEach(card => {
+    const key = card.dataset.key;
+    criterionLabels[key] = card.querySelector('.rubricName').value.trim() || criterionLabels[key];
+    writingRubric[key].base = Number(card.querySelector('.rubricBase').value) || 0;
+    card.querySelectorAll('.rubricOpt').forEach(row => {
+      const oi = Number(row.querySelector('.rubricDesc').dataset.oi);
+      writingRubric[key].opts[oi] = {
+        desc:row.querySelector('.rubricDesc').value.trim(),
+        pt:Number(row.querySelector('.rubricPt').value) || 0
+      };
+    });
+  });
+  document.querySelectorAll('.memoPhraseInput').forEach(input => {
+    memoPhrases[input.dataset.phraseKey] = input.value
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  });
+  CLASSES.forEach(cls => state.classes[cls].forEach(st => {
+    if(!st) return;
+    ['clarity','validity','structure','completion'].forEach(key => {
+      st[key].score = criterionScore(st, key);
+    });
+  }));
+  saveData();
+  renderAll();
+}
+
+async function importBackupFile(event){
+  const input = event.target;
+  const file = input.files && input.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    state = normalizeState(JSON.parse(text));
+    saveData();
+    renderAll();
+    showToast('백업을 불러왔습니다');
+  }catch(e){
+    console.error(e);
+    alert('백업 JSON 불러오기 실패');
+  }finally{
+    input.value = '';
+  }
+}
+
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open('argument_scoring_handles', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('kv');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value){
+  const db = await idbOpen();
+  await new Promise((resolve,reject)=>{
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(value, key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function idbGet(key){
+  const db = await idbOpen();
+  const value = await new Promise((resolve,reject)=>{
+    const tx = db.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return value;
+}
+
+async function getBaseDirHandle(){
+  if(baseDirHandle) return baseDirHandle;
+  if(!('showDirectoryPicker' in window) || !window.indexedDB) return null;
+  try{
+    baseDirHandle = await idbGet('baseDir');
+    return baseDirHandle;
+  }catch(e){
+    return null;
+  }
+}
+
+async function setBaseFolder(){
+  if(!('showDirectoryPicker' in window)){
+    showToast('이 브라우저는 폴더 저장을 지원하지 않습니다');
+    return;
+  }
+  try{
+    baseDirHandle = await window.showDirectoryPicker({mode:'readwrite'});
+    await idbSet('baseDir', baseDirHandle);
+    updateFolderButton();
+    showToast('저장 폴더가 설정되었습니다');
+  }catch(e){
+    if(e.name !== 'AbortError') showToast('폴더 설정 실패');
+  }
+}
+
+function updateFolderButton(){
+  const btn = document.getElementById('btnSetFolder');
+  if(!btn) return;
+  btn.textContent = baseDirHandle ? `저장 폴더: ${baseDirHandle.name}` : '저장 폴더 설정';
+}
+
+(async()=>{
+  await getBaseDirHandle();
+  updateFolderButton();
+})();
+
+function esc(s){
+  return String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+}
+
+function escAttr(s){
+  return esc(s).replace(/'/g, '&#39;');
+}
+
+function cssSafe(s){
+  return String(s ?? '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+init();
+openLinkedStudentFromUrl();
+</script>
+</body>
+</html>

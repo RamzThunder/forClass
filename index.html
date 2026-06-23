@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>평가 도구 모음</title>
+<style>
+:root{
+  --bg:#f7f8fb;
+  --panel:#fff;
+  --ink:#172033;
+  --muted:#667085;
+  --line:#d9dee8;
+  --accent:#176b87;
+  --accent2:#e9f7fb;
+  --green:#1f7a45;
+  --amber:#9a5b13;
+  --red:#a33a35;
+  --shadow:0 14px 38px rgba(23,32,51,.10);
+}
+*{box-sizing:border-box}
+html{min-height:100%}
+body{
+  margin:0;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  letter-spacing:0;
+}
+a{color:inherit;text-decoration:none}
+.shell{
+  min-height:100vh;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+}
+header{
+  background:#fbfcfe;
+  border-bottom:1px solid var(--line);
+}
+.wrap{
+  width:min(1120px,100%);
+  margin:0 auto;
+  padding:18px 20px;
+}
+.top{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+h1{
+  margin:0;
+  font-size:clamp(24px,4vw,38px);
+  line-height:1.12;
+}
+.sub{
+  margin:7px 0 0;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+.badge{
+  border:1px solid #c7e4ec;
+  background:var(--accent2);
+  color:var(--accent);
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:850;
+  white-space:nowrap;
+}
+main .wrap{
+  padding-top:28px;
+  padding-bottom:34px;
+}
+.toolGrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+}
+.tool{
+  min-height:210px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  box-shadow:var(--shadow);
+  padding:18px;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  gap:16px;
+}
+.tool.available{
+  border-color:#bedde6;
+}
+.toolHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.mark{
+  width:42px;
+  height:42px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:#eef8fb;
+  color:var(--accent);
+  font-weight:950;
+  border:1px solid #c7e4ec;
+  flex:0 0 auto;
+}
+.state{
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:11px;
+  font-weight:900;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.state.ready{
+  color:var(--green);
+  border-color:#bfe3cc;
+  background:#f3fbf6;
+}
+.toolTitle{
+  margin:0;
+  font-size:19px;
+  line-height:1.35;
+}
+.toolText{
+  margin:8px 0 0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.55;
+}
+.actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.btn{
+  min-height:40px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:9px 12px;
+  background:#fff;
+  color:var(--ink);
+  font-weight:850;
+  font-size:13px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.btn.primary{
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+.btn.disabled{
+  color:#8a94a6;
+  background:#f4f6f9;
+  cursor:not-allowed;
+}
+.notice{
+  margin-top:18px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#fff;
+  padding:14px 16px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.6;
+}
+footer{
+  border-top:1px solid var(--line);
+  background:#fbfcfe;
+}
+footer .wrap{
+  padding-top:12px;
+  padding-bottom:12px;
+  color:var(--muted);
+  font-size:12px;
+}
+@media (max-width:860px){
+  .top{align-items:flex-start;flex-direction:column}
+  .toolGrid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:620px){
+  .wrap{padding-left:14px;padding-right:14px}
+  .toolGrid{grid-template-columns:1fr}
+  .tool{min-height:190px}
+  .btn{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="wrap top">
+      <div>
+        <h1>평가 도구 모음</h1>
+        <p class="sub">필요한 채점 도구를 선택하세요. 입력 자료는 각 기기의 브라우저 저장소와 내려받은 백업 파일에 보관됩니다.</p>
+      </div>
+      <div class="badge">GitHub Pages용</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section class="toolGrid" aria-label="평가 도구 목록">
+        <article class="tool available">
+          <div class="toolHead">
+            <div class="mark">W</div>
+            <span class="state ready">사용 가능</span>
+          </div>
+          <div>
+            <h2 class="toolTitle">글쓰기 채점표</h2>
+            <p class="toolText">주장의 명확성, 근거의 타당성, 출처, 글의 짜임새, 분량을 기록하는 공개용 템플릿입니다.</p>
+          </div>
+          <div class="actions">
+            <a class="btn primary" href="argument-writing-grader.html">열기</a>
+          </div>
+        </article>
+
+        <article class="tool">
+          <div class="toolHead">
+            <div class="mark">O</div>
+            <span class="state">준비 중</span>
+          </div>
+          <div>
+            <h2 class="toolTitle">OMR 서술형 채점 도구</h2>
+            <p class="toolText">PDF 답안 영역을 보며 문항별 점수와 메모를 기록하는 도구를 연결할 자리입니다.</p>
+          </div>
+          <div class="actions">
+            <span class="btn disabled">추가 예정</span>
+          </div>
+        </article>
+
+        <article class="tool">
+          <div class="toolHead">
+            <div class="mark">S</div>
+            <span class="state">준비 중</span>
+          </div>
+          <div>
+            <h2 class="toolTitle">말하기 채점표</h2>
+            <p class="toolText">발표와 토론 수행평가를 기록하는 도구를 연결할 자리입니다.</p>
+          </div>
+          <div class="actions">
+            <span class="btn disabled">추가 예정</span>
+          </div>
+        </article>
+
+        <article class="tool">
+          <div class="toolHead">
+            <div class="mark">C</div>
+            <span class="state">준비 중</span>
+          </div>
+          <div>
+            <h2 class="toolTitle">점수 확인</h2>
+            <p class="toolText">학생 확인용 점수 조회 화면을 연결할 자리입니다.</p>
+          </div>
+          <div class="actions">
+            <span class="btn disabled">추가 예정</span>
+          </div>
+        </article>
+      </section>
+
+      <div class="notice">
+        공개 저장소에는 도구 파일만 올리고, 학생 명단과 채점 결과는 도구 안에서 직접 입력하거나 백업 JSON으로 관리하세요.
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">평가 도구 모음</div>
+  </footer>
+</div>
+</body>
+</html>
