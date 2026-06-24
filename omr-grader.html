@@ -173,7 +173,7 @@ textarea{min-height:72px;resize:vertical}
 .progressLabel{font-size:11px;color:var(--muted);font-weight:800;margin-top:2px}
 .autoDetectStatus{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
 .mobileScanNav{display:none}
-.mobileNavBtn,.mobileNavSave{
+.mobileNavBtn,.mobileNavFlag{
   border:1px solid var(--line);
   background:#fff;
   color:var(--ink);
@@ -188,14 +188,19 @@ textarea{min-height:72px;resize:vertical}
   place-items:center;
   flex:0 0 auto;
 }
-.mobileNavSave{
-  background:var(--accent);
-  border-color:var(--accent);
-  color:#fff;
+.mobileNavFlag{
+  color:#7a4b10;
+  border-color:#ecd3a6;
+  background:#fffaf0;
   padding:0 14px;
   flex:0 0 auto;
 }
-.mobileNavBtn:disabled,.mobileNavSave:disabled{opacity:.42}
+.mobileNavFlag.on{
+  background:#9a5b13;
+  border-color:#9a5b13;
+  color:#fff;
+}
+.mobileNavBtn:disabled,.mobileNavFlag:disabled{opacity:.42}
 .mobileNavCenter{
   min-width:0;
   flex:1 1 auto;
@@ -434,7 +439,7 @@ textarea{min-height:72px;resize:vertical}
     <div class="mobileNavPage" id="mobilePageText">PDF 대기 중</div>
     <div class="mobileNavStudent" id="mobileStudentText">명렬을 적용하면 학생 정보가 표시됩니다.</div>
   </div>
-  <button class="mobileNavSave" id="mobileSaveNextBtn" type="button">저장→</button>
+  <button class="mobileNavFlag" id="mobileDiscussionBtn" type="button">논의</button>
   <button class="mobileNavBtn" id="mobileNextBtn" type="button" aria-label="다음 답안">›</button>
 </nav>
 
@@ -573,7 +578,7 @@ const els = {
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   answerText:$("answerText"), autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
-  mobileSaveNextBtn:$("mobileSaveNextBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
+  mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
 };
 let draggedKeywordChip = null;
 let renderToken = 0;
@@ -964,8 +969,10 @@ function updateMobileScanNav(scoped=scopedPages(), scopedIndex=scoped.indexOf(st
   els.mobileStudentText.textContent = studentText || "학생 정보 없음";
   els.mobilePrevBtn.disabled = !state.pdf || (state.activeClass ? scopedIndex <= 0 : state.page <= 1);
   els.mobileNextBtn.disabled = !state.pdf || (state.activeClass ? scopedIndex < 0 || scopedIndex >= scoped.length - 1 : state.page >= state.pageCount);
-  els.mobileSaveNextBtn.disabled = !state.pdf;
-  els.mobileSaveNextBtn.textContent = "저장→";
+  const flagged = Boolean(currentQuestionRecord()?.needsDiscussion);
+  els.mobileDiscussionBtn.disabled = !state.pdf;
+  els.mobileDiscussionBtn.classList.toggle("on", flagged);
+  els.mobileDiscussionBtn.textContent = flagged ? "논의중" : "논의";
 }
 
 function loadRecordIntoForm(){
@@ -2144,7 +2151,7 @@ async function saveAndAdvance(){
 els.saveBtn.addEventListener("click", saveAndAdvance);
 els.mobilePrevBtn.addEventListener("click", () => goScoped(-1));
 els.mobileNextBtn.addEventListener("click", () => goScoped(1));
-els.mobileSaveNextBtn.addEventListener("click", saveAndAdvance);
+els.mobileDiscussionBtn.addEventListener("click", toggleDiscussionFlag);
 els.clearCurrentBtn.addEventListener("click", () => {
   if(!confirm("현재 페이지의 현재 문항 채점 기록을 삭제할까요?")) return;
   const rec = currentRecord();
