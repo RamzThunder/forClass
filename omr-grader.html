@@ -1736,7 +1736,7 @@ function keywordTypeForItem(item, keyword){
 }
 
 function scoreFromKeywordHits(item, hits){
-  if(item.type === "deduct") return hits.reject?.length ? -rejectDeduct(item) : 0;
+  if(item.type === "deduct") return -(hits.reject?.length || 0) * rejectDeduct(item);
   const base = hits.accept?.length ? rubricPoint(item) : hits.partial?.length ? partialPoint(item) : 0;
   return base;
 }
@@ -1757,7 +1757,7 @@ function rubricSubTotals(rubric, scores, question=activeQuestion()){
   });
   const totals = {};
   subOptions(question).forEach(sub => {
-    totals[sub] = Math.max(0, rawTotals[sub] || 0);
+    totals[sub] = rawTotals[sub] || 0;
   });
   return totals;
 }
