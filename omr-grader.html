@@ -1657,6 +1657,7 @@ function readInlineRubricEditor(editor){
 
 function keywordsFromZone(editor, type){
   const zone = editor.querySelector(`.keywordDropZone[data-type="${type}"]`);
+  if(!zone) return [];
   return [...zone.querySelectorAll(".keywordEditChip")]
     .map(chip => keywordValueFromChip(chip))
     .filter(Boolean);
