@@ -1126,7 +1126,7 @@ function inlineRubricEditor(item){
       </select>
       ${subSelectHtml(item.sub || "")}
       <textarea class="rubricNameInput" placeholder="가점 요소 설명">${escapeHtml(item.name)}</textarea>
-      <input class="rubricPointInput" type="number" min="0" step="1" value="${escapeHtml(rubricPoint(item))}" title="점수">
+      ${item.type !== "deduct" ? `<input class="rubricPointInput" type="number" min="0" step="1" value="${escapeHtml(rubricPoint(item))}" title="점수">` : ""}
       <button class="btn mini inlineRubricCancelBtn" type="button" title="닫기">×</button>
       <div class="rubricKeywordRow">
         <label class="field"><span class="label">점수 인정 문구</span><textarea class="rubricAcceptInput" placeholder="답안에 이 표현이나 의미가 있으면 점수 인정">${escapeHtml(item.accept || "")}</textarea></label>
@@ -1642,7 +1642,7 @@ function readInlineRubricEditor(editor){
     type:row.querySelector(".rubricTypeInput").value,
     sub:row.querySelector(".rubricSubInput").value.trim(),
     name:row.querySelector(".rubricNameInput").value.trim(),
-    pt:Number(row.querySelector(".rubricPointInput").value),
+    pt:Number(row.querySelector(".rubricPointInput")?.value ?? 0),
     accept:keywordsFromZone(editor, "accept").join("\n"),
     partial:keywordsFromZone(editor, "partial").join("\n"),
     partialPt:Number(editor.querySelector(".rubricPartialPointInput")?.value || 0),
@@ -1822,7 +1822,7 @@ function readRubricEditorRow(row){
     type:row.querySelector(".rubricTypeInput").value,
     sub:row.querySelector(".rubricSubInput").value.trim(),
     name:row.querySelector(".rubricNameInput").value.trim(),
-    pt:Number(row.querySelector(".rubricPointInput").value),
+    pt:Number(row.querySelector(".rubricPointInput")?.value ?? 0),
     accept:row.querySelector(".rubricAcceptInput").value.trim(),
     partial:row.querySelector(".rubricPartialInput").value.trim(),
     partialPt:Number(row.querySelector(".rubricPartialPointInput").value),
