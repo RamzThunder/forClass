@@ -39,6 +39,9 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .actions,.compactBtns{display:flex;flex-wrap:wrap;gap:8px}
 .actions{justify-content:flex-end}
 .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;min-height:40px;padding:8px 11px;font-weight:750}
+.topActionBtn{width:52px;min-height:40px;padding:5px 6px;font-size:12px;line-height:1.08;display:grid;place-items:center;text-align:center}
+.topActionBtn .twoLine{display:grid;gap:1px}
+.topActionBtn .singleLine{display:block}
 .btn.primary,.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.flag.on{background:#9a5b13;border-color:#9a5b13;color:#fff}
 .btn.danger{color:var(--danger);border-color:#e9c7c4;background:#fff7f6}
@@ -195,10 +198,15 @@ textarea{min-height:72px;resize:vertical}
 .table th{color:var(--muted)}
 .kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;padding:2px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;background:#fff;color:var(--muted);font-size:11px;font-weight:800}
 .modalBackdrop{position:fixed;inset:0;background:rgba(10,16,26,.46);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.shareExportBackdrop{z-index:70}
 .modal{width:min(980px,100%);max-height:min(86vh,900px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 24px 70px rgba(10,16,26,.25)}
 .modalHead{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .modalBody{padding:14px;display:grid;grid-template-columns:minmax(260px,.8fr) minmax(360px,1.2fr);gap:14px}
 .modalBody .panel{margin-bottom:0}
+.shareOptionBody{display:block}
+.shareRequiredList{margin:8px 0 14px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--muted);font-size:12px;line-height:1.6}
+.checkField{display:flex;align-items:center;gap:10px;margin:10px 0;font-weight:800}
+.checkField input{width:auto;min-height:auto}
 .hidden{display:none!important}
 .spinnerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(246,247,249,.82);z-index:5;pointer-events:none}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
@@ -356,10 +364,10 @@ textarea{min-height:72px;resize:vertical}
         </div>
       </div>
       <div class="actions">
-        <button class="btn" id="calibrateBtn" disabled>영역 지정</button>
-        <button class="btn" id="fullPageBtn" disabled>전체 화면 보기</button>
-        <button class="btn primary" id="gradeModeBtn" disabled>채점 화면</button>
-        <button class="btn" id="settingsBtn" type="button">설정</button>
+        <button class="btn topActionBtn" id="calibrateBtn" disabled><span class="twoLine"><span>영역</span><span>지정</span></span></button>
+        <button class="btn topActionBtn" id="fullPageBtn" disabled><span class="twoLine"><span>전체</span><span>답안</span></span></button>
+        <button class="btn topActionBtn primary" id="gradeModeBtn" disabled><span class="singleLine">채점</span></button>
+        <button class="btn topActionBtn" id="settingsBtn" type="button"><span class="singleLine">설정</span></button>
       </div>
     </header>
     <nav class="navstrip">
@@ -507,6 +515,33 @@ textarea{min-height:72px;resize:vertical}
   </div>
 </div>
 
+<div class="modalBackdrop shareExportBackdrop hidden" id="shareExportModal" role="dialog" aria-modal="true" aria-labelledby="shareExportTitle">
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="shareExportTitle">채점 내용 공유용 내보내기</h2>
+      <button class="btn mini" id="closeShareExportBtn" type="button">닫기</button>
+    </div>
+    <div class="modalBody shareOptionBody">
+      <section class="panel">
+        <div class="panelHead"><h2 class="panelTitle">항상 포함</h2></div>
+        <div class="shareRequiredList">
+          학생 정보와 총점<br>
+          문항별 점수 / 총점<br>
+          선택된 점수 인정 · 미인정 · 감점 문구
+        </div>
+        <div class="panelHead"><h2 class="panelTitle">추가로 포함</h2></div>
+        <label class="checkField"><input id="shareIncludeExampleInput" type="checkbox" checked> 예시답안</label>
+        <label class="checkField"><input id="shareIncludeMemoInput" type="checkbox" checked> 문항 메모</label>
+        <label class="checkField"><input id="shareIncludeDiscussionInput" type="checkbox" checked> 논의 필요 표시</label>
+        <div class="compactBtns" style="margin-top:14px">
+          <button class="btn primary" id="createShareReportBtn" type="button">내보내기</button>
+          <button class="btn" id="cancelShareExportBtn" type="button">취소</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
 <div class="modalBackdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="modal">
     <div class="modalHead">
@@ -562,6 +597,7 @@ textarea{min-height:72px;resize:vertical}
         <div class="panelHead"><h2 class="panelTitle">결과</h2></div>
         <div class="compactBtns">
           <button class="btn" id="exportCsvBtn">CSV 내보내기</button>
+          <button class="btn" id="exportShareReportBtn">채점 내용 공유용 내보내기</button>
           <button class="btn" id="exportJsonBtn">JSON 전체 백업</button>
           <button class="btn" id="importJsonBtn">JSON 불러오기</button>
           <input class="hidden" type="file" id="jsonInput" accept="application/json">
@@ -631,10 +667,13 @@ const els = {
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
+  shareExportModal:$("shareExportModal"), closeShareExportBtn:$("closeShareExportBtn"), cancelShareExportBtn:$("cancelShareExportBtn"),
+  createShareReportBtn:$("createShareReportBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
+  shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"),
   rubricEditorPanel:$("rubricEditorPanel"), rubricEditorRows:$("rubricEditorRows"),
   rubricText:$("rubricText"), addRubricItemBtn:$("addRubricItemBtn"), loadRubricTextBtn:$("loadRubricTextBtn"),
   addRubricBottomBtn:$("addRubricBottomBtn"), importHwpxRubricBtn:$("importHwpxRubricBtn"), hwpxRubricInput:$("hwpxRubricInput"),
-  applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportJsonBtn:$("exportJsonBtn"),
+  applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportShareReportBtn:$("exportShareReportBtn"), exportJsonBtn:$("exportJsonBtn"),
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
@@ -837,7 +876,9 @@ function setMode(mode){
   els.calibrateBtn.classList.toggle("primary", mode === "calibrate");
   els.fullPageBtn.classList.toggle("primary", state.fullPage && mode !== "calibrate");
   els.gradeModeBtn.classList.toggle("primary", mode === "grade" && !state.fullPage);
-  els.fullPageBtn.textContent = state.fullPage ? "답안 영역 보기" : "전체 화면 보기";
+  const fullPageLabel = state.fullPage ? "답안 영역 보기" : "전체 답안 보기";
+  els.fullPageBtn.title = fullPageLabel;
+  els.fullPageBtn.setAttribute("aria-label", fullPageLabel);
   renderCurrentPage();
 }
 
@@ -1639,6 +1680,190 @@ function exportCsv(){
     lines.push(row.map(csvCell).join(","));
   });
   download(`OMR_서술형_채점_${dateStamp()}.csv`, "text/csv;charset=utf-8", "\ufeff" + lines.join("\n"));
+}
+
+function exportShareReport(){
+  els.shareExportModal.classList.remove("hidden");
+}
+
+function createShareReport(){
+  cleanupAllRecords();
+  const records = Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
+  if(!records.length){
+    alert("내보낼 채점 기록이 없습니다.");
+    return;
+  }
+  const options = {
+    includeExample:els.shareIncludeExampleInput.checked,
+    includeMemo:els.shareIncludeMemoInput.checked,
+    includeDiscussion:els.shareIncludeDiscussionInput.checked
+  };
+  const html = buildShareReportHtml(records, options);
+  const reportWindow = window.open("", "_blank");
+  if(reportWindow){
+    reportWindow.document.open();
+    reportWindow.document.write(html);
+    reportWindow.document.close();
+    reportWindow.focus();
+    els.shareExportModal.classList.add("hidden");
+  }else{
+    download(`${safeFileName(state.appTitle)}_채점_내용_공유용_${dateStamp()}.html`, "text/html;charset=utf-8", html);
+    els.shareExportModal.classList.add("hidden");
+    alert("팝업이 차단되어 HTML 파일로 저장했습니다.");
+  }
+}
+
+function buildShareReportHtml(records, options){
+  const exportedAt = new Date().toLocaleString("ko-KR");
+  const questionMaxTotal = state.questions.reduce((sum, question) => sum + questionMaxScore(question), 0);
+  return `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(state.appTitle)} 채점 내용 공유용</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#f5f6f8;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 22px 44px}
+  .reportHead{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;margin-bottom:18px}
+  h1{margin:0;font-size:24px;line-height:1.3}
+  .meta{color:#647085;font-size:12px;line-height:1.5}
+  .tools{display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px}
+  button{border:1px solid #d9dee8;background:#fff;color:#172033;border-radius:8px;min-height:38px;padding:7px 11px;font-weight:800;cursor:pointer}
+  .student{break-inside:avoid;page-break-inside:avoid;background:#fff;border:1px solid #d9dee8;border-radius:10px;margin:0 0 18px;overflow:hidden}
+  .studentHead{display:flex;justify-content:space-between;gap:14px;align-items:center;background:#fbfcfe;border-bottom:1px solid #d9dee8;padding:14px 16px}
+  .studentName{font-size:18px;font-weight:900}
+  .score{font-size:18px;font-weight:950;color:#176b87;white-space:nowrap}
+  .question{padding:15px 16px;border-top:1px solid #eef1f5}
+  .question:first-of-type{border-top:0}
+  .questionHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+  h2{margin:0;font-size:15px;line-height:1.45}
+  .example{margin:8px 0 12px;border-left:3px solid #d9dee8;padding-left:10px;color:#41506a;font-size:12px;white-space:pre-wrap;line-height:1.55}
+  .subGroup{display:grid;grid-template-columns:74px minmax(0,1fr) 86px;gap:10px;align-items:stretch;border:1px solid #d9dee8;border-radius:10px;margin:10px 0;background:#fff;overflow:hidden}
+  .subLabel{display:grid;place-items:center;background:#f8fafc;border-right:1px solid #d9dee8;color:#172033;font-size:20px;font-weight:950}
+  .subItems{display:grid;gap:8px;padding:10px 0}
+  .subScore{display:grid;place-items:center;border-left:1px solid #d9dee8;color:#176b87;font-size:17px;font-weight:950;white-space:nowrap}
+  .subScore.negative{color:#a33a35}
+  .item{border:1px solid #d9dee8;border-radius:8px;padding:10px;background:#fbfcfe}
+  .item.deduct{border-color:#edcfcb;background:#fff7f6}
+  .itemTitle{display:flex;justify-content:space-between;gap:10px;font-weight:900;line-height:1.45;margin-bottom:8px}
+  .itemScore{white-space:nowrap;color:#176b87}
+  .item.deduct .itemScore{color:#a33a35}
+  .chips{display:grid;gap:6px}
+  .chip{border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:8px 9px;font-size:12px;line-height:1.5;white-space:pre-wrap}
+  .chip.accept{border-color:#c9e7d2;background:#f4fbf7}
+  .chip.reject{border-color:#edcfcb;background:#fffafa}
+  .chip.deduct{border-color:#edcfcb;background:#fff}
+  .empty{color:#647085;font-size:12px}
+  .memo{margin-top:10px;border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap}
+  .badge{display:inline-block;border:1px solid #edcfcb;border-radius:999px;background:#fff7f6;color:#a33a35;padding:3px 7px;font-size:11px;font-weight:900;margin-left:6px}
+  @media print{
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    .tools{display:none}
+    .student{break-after:page;page-break-after:always;border-radius:0}
+    .student:last-child{break-after:auto;page-break-after:auto}
+  }
+  @media (max-width:720px){
+    .subGroup{grid-template-columns:52px minmax(0,1fr)}
+    .subScore{grid-column:1 / -1;border-left:0;border-top:1px solid #d9dee8;padding:8px}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="reportHead">
+    <div>
+      <h1>${escapeHtml(state.appTitle)} 채점 내용 공유용</h1>
+      <div class="meta">교사 공유용 상세 보고서 · ${escapeHtml(exportedAt)} · ${records.length}명</div>
+    </div>
+    <div class="meta">문항 총점 합계 ${escapeHtml(formatScore(questionMaxTotal))}점</div>
+  </div>
+  <div class="tools"><button type="button" onclick="window.print()">인쇄/PDF 저장</button></div>
+  ${records.map(rec => shareReportStudentHtml(rec, options)).join("")}
+</main>
+</body>
+</html>`;
+}
+
+function shareReportStudentHtml(rec, options){
+  const total = state.questions.reduce((sum, question) => sum + questionTotal(rec, question), 0);
+  const maxTotal = state.questions.reduce((sum, question) => sum + questionMaxScore(question), 0);
+  return `<section class="student">
+    <div class="studentHead">
+      <div>
+        <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
+        <div class="meta">OMR ${escapeHtml(rec.page || "")}쪽</div>
+      </div>
+      <div class="score">${escapeHtml(formatScore(Math.max(0, total)))}점 / ${escapeHtml(formatScore(maxTotal))}점</div>
+    </div>
+    ${state.questions.map(question => shareReportQuestionHtml(rec, question, options)).join("")}
+  </section>`;
+}
+
+function shareReportQuestionHtml(rec, question, options){
+  const qrec = rec.answers?.[question.id] || {};
+  const qtotal = questionTotal(rec, question);
+  const qmax = questionMaxScore(question);
+  const discussion = options.includeDiscussion && qrec.needsDiscussion ? `<span class="badge">논의 필요</span>` : "";
+  const exampleAnswer = String(question.exampleAnswer || "").trim();
+  const example = options.includeExample && exampleAnswer ? `<div class="example"><strong>예시답안</strong>\n${escapeHtml(exampleAnswer)}</div>` : "";
+  const groups = shareReportSubGroupsHtml(question, qrec);
+  const memo = options.includeMemo && String(qrec.memo || "").trim() ? `<div class="memo"><strong>문항 메모</strong>\n${escapeHtml(qrec.memo)}</div>` : "";
+  return `<article class="question">
+    <div class="questionHead">
+      <h2>${escapeHtml(question.label)} ${discussion}</h2>
+      <div class="score">${escapeHtml(formatScore(Math.max(0, qtotal)))}점 / ${escapeHtml(formatScore(qmax))}점</div>
+    </div>
+    ${example}
+    ${groups || `<div class="empty">선택된 채점 근거 없음</div>`}
+    ${memo}
+  </article>`;
+}
+
+function shareReportSubGroupsHtml(question, qrec){
+  const scores = qrec.scores || {};
+  const subTotals = rubricSubTotals(question.rubric, scores, question);
+  return subOptions(question)
+    .map(sub => {
+      const items = question.rubric
+        .filter(item => normalizeSubValue(item.sub || "공통", question) === sub)
+        .map(item => shareReportItemHtml(item, qrec.keywordHits?.[item.id] || {}, scores))
+        .filter(Boolean)
+        .join("");
+      if(!items) return "";
+      const total = Number(subTotals[sub] || 0);
+      return `<section class="subGroup">
+        <div class="subLabel">${escapeHtml(sub)}</div>
+        <div class="subItems">${items}</div>
+        <div class="subScore${total < 0 ? " negative" : ""}">${total > 0 ? "+" : ""}${escapeHtml(formatScore(total))}점</div>
+      </section>`;
+    })
+    .filter(Boolean)
+    .join("");
+}
+
+function shareReportItemHtml(item, hits, scores){
+  const accept = (hits.accept || []).map(keyword => shareKeywordHtml("accept", keyword, keywordScore(item, "accept", keyword)));
+  const reject = (hits.reject || []).map(keyword => {
+    const score = keywordScore(item, "reject", keyword);
+    return shareKeywordHtml(item.type === "deduct" ? "deduct" : "reject", keyword, item.type === "deduct" ? -score : score);
+  });
+  if(!accept.length && !reject.length) return "";
+  const itemScore = Number(scoreValue(scores, item) || 0);
+  return `<section class="item${item.type === "deduct" ? " deduct" : ""}">
+    <div class="itemTitle">
+      <span>${escapeHtml(item.name)}</span>
+      <span class="itemScore">${itemScore > 0 ? "+" : ""}${escapeHtml(formatScore(itemScore))}점</span>
+    </div>
+    <div class="chips">${[...accept, ...reject].join("")}</div>
+  </section>`;
+}
+
+function shareKeywordHtml(type, keyword, score){
+  const labels = {accept:"점수 인정", reject:"미인정", deduct:"감점"};
+  const signed = type === "accept" ? `+${formatScore(score)}` : type === "deduct" ? `-${formatScore(Math.abs(score))}` : `${formatScore(score)}`;
+  return `<div class="chip ${type}"><strong>${escapeHtml(labels[type])}</strong> · ${escapeHtml(signed)}점<br>${escapeHtml(keyword)}</div>`;
 }
 
 function exportJson(){
@@ -2540,6 +2765,12 @@ els.keywordModal.addEventListener("click", evt => {
     }
   }
 });
+els.closeShareExportBtn.addEventListener("click", () => els.shareExportModal.classList.add("hidden"));
+els.cancelShareExportBtn.addEventListener("click", () => els.shareExportModal.classList.add("hidden"));
+els.shareExportModal.addEventListener("click", evt => {
+  if(evt.target === els.shareExportModal) els.shareExportModal.classList.add("hidden");
+});
+els.createShareReportBtn.addEventListener("click", createShareReport);
 els.questionSelect.addEventListener("change", () => setQuestion(els.questionSelect.value));
 els.settingsModal.addEventListener("click", evt => {
   const tab = evt.target.closest(".settingsTab");
@@ -2902,6 +3133,7 @@ els.loadRubricTextBtn.addEventListener("click", () => {
 });
 els.applyRubricBtn.addEventListener("click", applyRubricText);
 els.exportCsvBtn.addEventListener("click", exportCsv);
+els.exportShareReportBtn.addEventListener("click", exportShareReport);
 els.exportJsonBtn.addEventListener("click", exportJson);
 els.importJsonBtn.addEventListener("click", () => els.jsonInput.click());
 els.jsonInput.addEventListener("change", async evt => {
