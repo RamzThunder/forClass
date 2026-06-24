@@ -28,7 +28,12 @@ button{cursor:pointer}
 .sideResizer::before{content:"";position:absolute;inset:0 -5px}
 .sideResizer::after{content:"";position:absolute;top:50%;left:50%;width:2px;height:48px;border-radius:999px;background:#aab4c3;transform:translate(-50%,-50%)}
 .viewer{min-width:0;display:grid;grid-template-rows:auto auto minmax(0,1fr)}
-.topbar{min-height:64px;padding:12px 16px;border-bottom:1px solid var(--line);background:#fbfcfe;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.topbar{min-height:64px;padding:10px 16px;border-bottom:1px solid var(--line);background:#fbfcfe;display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,.9fr) auto;align-items:center;gap:14px}
+.titleCluster{display:flex;align-items:center;gap:10px;min-width:0}
+.titleMain{display:grid;gap:3px;min-width:0}
+.titleQuestion{display:grid;grid-template-columns:minmax(150px,220px) minmax(180px,1fr);gap:10px;align-items:center;min-width:0}
+.backBtn{width:40px;height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);display:grid;place-items:center;font-size:24px;font-weight:850;line-height:1;flex:0 0 auto}
+.backBtn:hover{border-color:var(--accent);color:var(--accent)}
 h1{margin:0;font-size:20px;line-height:1.25}
 .meta,.statusLine{color:var(--muted);font-size:12px;line-height:1.45}
 .actions,.compactBtns{display:flex;flex-wrap:wrap;gap:8px}
@@ -39,13 +44,17 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .btn.danger{color:var(--danger);border-color:#e9c7c4;background:#fff7f6}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .mini{min-height:32px;padding:6px 9px;font-size:12px}
-.navstrip{border-bottom:1px solid var(--line);background:#fff;padding:10px 16px;display:grid;grid-template-columns:minmax(190px,1fr) minmax(180px,.8fr) minmax(260px,1.25fr) minmax(300px,1.35fr) auto;gap:12px;align-items:end}
+.navstrip{border-bottom:1px solid var(--line);background:#fff;padding:8px 16px;display:grid;grid-template-columns:minmax(360px,1fr) auto;gap:12px;align-items:end}
 .navGroup{display:grid;gap:5px}
 .navLabel{color:var(--muted);font-size:11px;font-weight:850}
-.navStudent{display:grid;grid-template-columns:1fr 86px 1fr;gap:8px}
+.answerNavRow{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px;align-items:center}
+.navStudent{display:grid;grid-template-columns:110px 86px minmax(0,1fr);gap:8px}
+.currentAnswerAccess{display:grid;grid-template-columns:minmax(360px,1fr) minmax(280px,.85fr);gap:8px;align-items:start}
+.answerMetaRow{display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:start}
+.memoCompact{min-height:40px;height:40px;resize:vertical;font-size:12px;line-height:1.35;padding:8px 10px}
+.discussionIconBtn{width:42px;min-width:42px;padding:0;font-size:18px;line-height:1}
 .infoText{min-height:38px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--ink);padding:8px 10px;font-weight:800;display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .infoText.emptyValue{color:var(--muted);font-weight:700}
-.classAccess{display:grid;grid-template-columns:118px minmax(0,1fr);gap:8px}
 .questionAccess{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .settingsTabs{display:flex;gap:8px;margin-bottom:12px}
 .settingsTab{min-height:34px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px 10px;font-weight:850}
@@ -53,9 +62,9 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .settingsPane.hidden{display:none!important}
 .questionSettingsList{display:grid;gap:10px;max-height:58vh;overflow:auto}
 .questionEditCard{border:1px solid var(--line);border-radius:8px;background:#fbfcfe;padding:10px;display:grid;gap:8px}
-.questionEditTop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}
+.questionEditTop{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:8px;align-items:start}
 .subQuestionList{display:grid;gap:6px}
-.subQuestionRow{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:start}
+.subQuestionRow{display:grid;grid-template-columns:minmax(0,1fr) 110px 34px;gap:6px;align-items:start}
 .stage{min-height:0;overflow:auto;padding:18px}
 .canvasShell{min-height:calc(100vh - 154px);display:flex;align-items:center;justify-content:center;position:relative}
 .empty{width:min(680px,100%);background:var(--panel);border:1px dashed #b9c3d3;border-radius:8px;padding:28px;text-align:center;box-shadow:var(--shadow)}
@@ -81,10 +90,21 @@ textarea{min-height:72px;resize:vertical}
 .tab{min-height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:850}
 .rubricList{display:grid;gap:9px}
 .subRubricGroup{display:grid;gap:7px}
-.subRubricTitle{position:sticky;top:0;z-index:1;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.subRubricTitle{position:sticky;top:0;z-index:1;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:900;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px}
+.subRubricTitle.dragOver{outline:2px solid var(--accent);outline-offset:2px}
+.subRubricLabel{font-size:15px;color:var(--muted);white-space:nowrap}
+.subExampleAnswerInput{min-width:0;width:100%;min-height:44px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--ink);padding:6px 8px;font-size:12px;font-weight:750;line-height:1.45;resize:vertical;overflow:hidden}
+.subExampleAnswerInput:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14);outline:0}
+.subExampleAnswerInput::placeholder{color:var(--muted);font-weight:750}
 .subScoreBadge{border:1px solid #c6e3ec;border-radius:999px;background:var(--soft);color:var(--accent);padding:3px 8px;font-size:12px;font-weight:950;white-space:nowrap}
+.scoreNow.negative{color:var(--danger)}
+.scoreMax{font-size:.72em;color:var(--muted);font-weight:850;margin-left:2px}
 .criterion{border:1px solid var(--line);border-radius:8px;padding:0;background:#fff;overflow:hidden}
+.criterion[draggable="true"]{cursor:grab}
+.criterion.dragging{opacity:.55}
+.criterion.dragOver{outline:2px solid var(--accent);outline-offset:2px}
 .criterion.on{border-color:var(--accent);background:#f2fbfd}
+.criterion.editLocked{opacity:.42;filter:grayscale(.35)}
 .criterion.deduct{border-color:#edcfcb;background:#fffafa}
 .criterion.deduct.on{border-color:#b2453e;background:#fff7f6}
 .criterionHead{display:grid;grid-template-columns:minmax(0,1fr) 58px;align-items:stretch}
@@ -101,7 +121,7 @@ textarea{min-height:72px;resize:vertical}
 .criterionName{font-weight:800;white-space:pre-wrap;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere}
 .pointBadge{justify-self:end;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:4px 8px;font-size:12px;font-weight:850;white-space:nowrap}
 .criterion.on .pointBadge{background:var(--accent);border-color:var(--accent);color:#fff}
-.keywordGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 11px 11px}
+.keywordGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 11px 11px}
 .keywordGrid.single{grid-template-columns:1fr}
 .keywordBox{border:1px solid var(--line);border-radius:8px;background:#f8fafc;padding:8px;min-height:86px}
 .keywordBox.accept{background:#f4fbf7;border-color:#c9e7d2}
@@ -122,6 +142,9 @@ textarea{min-height:72px;resize:vertical}
 .keywordSummaryText{font-size:12px;font-weight:850;line-height:1.4;word-break:keep-all;overflow-wrap:anywhere}
 .keywordSummaryMeta{font-size:11px;font-weight:900;color:var(--muted);white-space:nowrap}
 .keywordStudentList{font-size:12px;line-height:1.5;color:var(--ink);word-break:keep-all;overflow-wrap:anywhere}
+.discussionList{display:grid;gap:6px}
+.discussionGoBtn{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:8px 9px;text-align:left;font-size:12px;font-weight:850;line-height:1.4;display:grid;grid-template-columns:minmax(95px,.55fr) minmax(0,1fr);gap:8px;align-items:start}
+.discussionGoBtn:hover{border-color:var(--accent);color:var(--accent)}
 .keywordModalBody{grid-template-columns:minmax(280px,.85fr) minmax(380px,1.15fr)}
 .keywordModalList{display:grid;gap:8px;align-content:start;max-height:62vh;overflow:auto}
 .keywordModalBtn{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:9px;text-align:left;display:grid;gap:5px}
@@ -134,16 +157,17 @@ textarea{min-height:72px;resize:vertical}
 .scoreBtn{min-height:34px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;font-weight:800}
 .scoreBtn.on{color:#fff;background:var(--accent);border-color:var(--accent)}
 .rubricEditorRows{display:grid;gap:8px;margin-bottom:10px}
-.rubricEditRow{display:grid;grid-template-columns:104px 86px minmax(0,1fr) 74px 34px;gap:8px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fbfcfe}
+.rubricEditRow{display:grid;grid-template-columns:220px 220px minmax(0,1fr) 34px;gap:8px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fbfcfe}
 .rubricEditRow textarea{min-height:54px}
 .rubricEditRow input{text-align:center;font-weight:800}
-.rubricNameInput{grid-column:3 / 4}
-.rubricKeywordRow{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.rubricEditRow > .inlineRubricCancelBtn{grid-column:4}
+.rubricNameInput{grid-column:1 / -1;width:100%}
+.rubricKeywordRow{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rubricKeywordRow textarea{min-height:96px}
 .inlineRubricEditor{border-top:1px solid var(--line);padding:10px;background:#fbfcfe}
 .inlineRubricEditor .rubricEditRow{margin-bottom:8px}
 .inlineRubricEditor .rubricKeywordRow{display:none}
-.keywordEditBoard{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.keywordEditBoard{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .keywordEditBoard.single{grid-template-columns:1fr}
 .keywordDropZone{border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px;min-height:178px;display:grid;grid-template-rows:auto minmax(82px,1fr) auto;gap:7px}
 .keywordDropZone.accept{background:#f4fbf7;border-color:#c9e7d2}
@@ -151,15 +175,19 @@ textarea{min-height:72px;resize:vertical}
 .keywordDropZone.reject{background:#fff7f6;border-color:#edcfcb}
 .keywordDropZone.dragOver{outline:2px solid var(--accent);outline-offset:2px}
 .keywordEditList{display:grid;align-content:start;gap:5px}
-.keywordEditChip{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:7px 8px;font-size:12px;font-weight:750;line-height:1.5;display:grid;grid-template-columns:minmax(0,1fr) 22px;gap:6px;align-items:start;word-break:keep-all;overflow-wrap:anywhere;cursor:grab}
+.keywordEditChip{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:7px 8px;font-size:12px;font-weight:750;line-height:1.5;display:grid;grid-template-columns:minmax(0,1fr) 70px 22px;gap:6px;align-items:start;word-break:keep-all;overflow-wrap:anywhere;cursor:grab}
 .keywordEditChip:active{cursor:grabbing}
 .keywordEditInput{min-height:44px;border:0;background:transparent;padding:0;text-align:left;font-size:12px;font-weight:750;line-height:1.5;resize:vertical;overflow:hidden}
 .keywordEditInput:focus{outline:0}
+.keywordScoreInput{min-height:36px;padding:5px 6px;font-size:12px;font-weight:900;text-align:center}
 .keywordRemoveBtn{border:0;background:transparent;color:var(--muted);font-weight:900;line-height:1;padding:2px}
 .keywordAddRow{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:5px;align-items:start}
 .keywordAddRow textarea{min-height:48px;font-size:12px;line-height:1.45;resize:vertical}
 .total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:12px;background:var(--soft);border:1px solid #c6e3ec;border-radius:8px;margin-top:10px}
 .total strong{font-size:28px}
+.rubricAddFooter{display:flex;justify-content:center;margin-top:10px}
+.rubricAddBtn{width:100%;min-height:38px;border:1px dashed var(--line);background:#fbfcfe;color:var(--accent);border-radius:8px;font-size:18px;font-weight:950}
+.subAddRubricBtn{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--accent);font-size:18px;font-weight:950;line-height:1}
 .subTotalList{display:grid;gap:6px;margin-top:10px}
 .subTotalItem{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe;padding:8px 10px;font-size:12px;font-weight:850}
 .table{width:100%;border-collapse:collapse;font-size:12px}
@@ -175,6 +203,8 @@ textarea{min-height:72px;resize:vertical}
 .spinnerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(246,247,249,.82);z-index:5;pointer-events:none}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:24px;z-index:80;transform:translate(-50%,16px);border:1px solid var(--line);border-radius:8px;background:#172033;color:#fff;padding:10px 14px;font-size:13px;font-weight:850;box-shadow:0 18px 46px rgba(10,16,26,.28);opacity:0;pointer-events:none;transition:.18s ease}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 .progressWrap{margin-top:5px}
 .progressBar{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
 .progressFill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
@@ -257,7 +287,8 @@ textarea{min-height:72px;resize:vertical}
     padding-bottom:calc(14px + env(safe-area-inset-bottom));
   }
   body.pdfLoaded .side{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
-  .topbar{align-items:flex-start;flex-direction:column}
+  .topbar{display:flex;align-items:flex-start;flex-direction:column}
+  .titleQuestion{grid-template-columns:1fr}
   .actions{justify-content:flex-start}
   .navstrip{grid-template-columns:1fr}
   .canvasShell{min-height:58vh}
@@ -290,11 +321,16 @@ textarea{min-height:72px;resize:vertical}
   .topbar,.navstrip,.side{padding-left:12px;padding-right:12px}
   .actions,.compactBtns{width:100%}
   .actions .btn,.compactBtns .btn{flex:1 1 auto}
+  .currentAnswerAccess{grid-template-columns:1fr}
+  .answerNavRow{grid-template-columns:40px minmax(0,1fr) 40px}
+  .navStudent{grid-template-columns:1fr}
+  .answerMetaRow{grid-template-columns:1fr}
   .scoreBtns{grid-template-columns:repeat(3,1fr)}
   .criterionHead{grid-template-columns:minmax(0,1fr) 52px}
   .empty{padding:20px}
-  .rubricEditRow{grid-template-columns:1fr 1fr 74px 34px}
-  .rubricNameInput{grid-column:1 / -1;grid-row:2}
+  .rubricEditRow{grid-template-columns:1fr 1fr 34px}
+  .rubricEditRow > .inlineRubricCancelBtn{grid-column:3}
+  .rubricNameInput{grid-column:1 / -1}
 }
 </style>
 </head>
@@ -302,12 +338,24 @@ textarea{min-height:72px;resize:vertical}
 <div class="app">
   <main class="viewer">
     <header class="topbar">
-      <div>
-        <h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1>
-        <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
+      <div class="titleCluster">
+        <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
+        <div class="titleMain">
+          <h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1>
+          <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
+        </div>
+      </div>
+      <div class="titleQuestion">
+        <select id="questionSelect" title="채점할 문항"></select>
+        <div>
+          <div class="progressWrap">
+            <div class="progressBar"><div class="progressFill" id="progressFill" style="width:0%"></div></div>
+            <div class="progressLabel" id="progressText"></div>
+          </div>
+          <div class="statusLine" id="questionStatus">설정에서 문항을 관리합니다.</div>
+        </div>
       </div>
       <div class="actions">
-        <a class="btn" href="index.html">도구 목록</a>
         <button class="btn" id="calibrateBtn" disabled>영역 지정</button>
         <button class="btn" id="fullPageBtn" disabled>전체 화면 보기</button>
         <button class="btn primary" id="gradeModeBtn" disabled>채점 화면</button>
@@ -316,42 +364,27 @@ textarea{min-height:72px;resize:vertical}
     </header>
     <nav class="navstrip">
       <div class="navGroup">
-        <div class="navLabel">파일과 페이지</div>
-        <div class="pager">
-          <button class="btn" id="prevBtn" disabled title="이전 페이지">‹</button>
-          <input class="pageInput" id="pageInput" type="number" min="1" value="1" disabled>
-          <button class="btn" id="nextBtn" disabled title="다음 페이지">›</button>
-        </div>
-        <div class="statusLine" id="pageStatus">대기 중</div>
-      </div>
-      <div class="navGroup">
-        <div class="navLabel">채점할 문항</div>
-        <div class="questionAccess">
-          <select id="questionSelect" title="채점할 문항"></select>
-        </div>
-        <div class="statusLine" id="questionStatus">설정에서 문항을 관리합니다.</div>
-        <div class="progressWrap">
-          <div class="progressBar"><div class="progressFill" id="progressFill" style="width:0%"></div></div>
-          <div class="progressLabel" id="progressText"></div>
-        </div>
-      </div>
-      <div class="navGroup">
-        <div class="navLabel">반별 접근</div>
-        <div class="classAccess">
-          <select id="classSelect" title="반 선택"></select>
-          <select id="studentSelect" title="학생 선택" disabled></select>
-        </div>
-        <div class="statusLine" id="classStatus">명렬을 적용하면 반별로 이동할 수 있습니다.</div>
-      </div>
-      <div class="navGroup">
         <div class="navLabel">현재 답안 정보</div>
-        <div class="navStudent">
-          <div class="infoText emptyValue" id="classInput">반</div>
-          <div class="infoText emptyValue" id="numberInput">번호</div>
-          <div class="infoText emptyValue" id="nameInput">이름</div>
+        <div class="currentAnswerAccess">
+          <div class="answerNavRow">
+            <button class="btn" id="prevBtn" disabled title="이전 답안">‹</button>
+            <div class="navStudent">
+              <select id="classSelect" title="반 선택"></select>
+              <select id="numberSelect" title="번호 선택" disabled></select>
+              <select id="nameSelect" title="이름 선택" disabled></select>
+            </div>
+            <button class="btn" id="nextBtn" disabled title="다음 답안">›</button>
+          </div>
+          <div class="answerMetaRow">
+            <button class="btn flag discussionIconBtn" id="discussionBtn" type="button" title="논의 필요 표시" aria-label="논의 필요 표시">☆</button>
+            <textarea class="memoCompact" id="memoInput" placeholder="문항 메모"></textarea>
+          </div>
+          <div class="statusLine hidden" id="classStatus">명렬을 적용하면 학생 정보로 이동할 수 있습니다.</div>
         </div>
       </div>
       <button class="btn" id="changePdfBtn">PDF 선택</button>
+      <input class="pageInput hidden" id="pageInput" type="number" min="1" value="1" disabled>
+      <div class="statusLine hidden" id="pageStatus">대기 중</div>
     </nav>
     <section class="stage">
       <div class="canvasShell">
@@ -375,14 +408,7 @@ textarea{min-height:72px;resize:vertical}
   <div class="sideResizer" id="sideResizer" title="드래그해서 사이드바 너비 조절"></div>
 
   <aside class="side">
-    <section class="panel">
-      <div class="compactBtns" style="margin-bottom:10px">
-        <button class="btn flag" id="discussionBtn" type="button">논의 필요 표시</button>
-      </div>
-      <label class="field"><span class="label">문항 메모</span><textarea id="memoInput" placeholder="감점 사유, 확인 사항 등"></textarea></label>
-    </section>
-
-    <section class="panel">
+    <section class="panel hidden" id="autoAssistPanel">
       <div class="panelHead">
         <h2 class="panelTitle">답안 텍스트 (자동 채점 보조)</h2>
         <div class="compactBtns">
@@ -398,11 +424,12 @@ textarea{min-height:72px;resize:vertical}
       <div class="panelHead">
         <h2 class="panelTitle">루브릭</h2>
         <div class="compactBtns">
-          <button class="btn mini" id="editRubricBtn">항목 추가</button>
-          <button class="btn mini" id="addDeductRubricBtn" type="button">감점 항목 추가</button>
+          <button class="btn mini" id="importHwpxRubricBtn" type="button">HWPX 기준 불러오기</button>
         </div>
       </div>
+      <input type="file" id="hwpxRubricInput" accept=".hwpx,.txt,text/plain" class="hidden">
       <div class="rubricList" id="rubricList"></div>
+      <div class="rubricAddFooter"><button class="rubricAddBtn" id="addRubricBottomBtn" type="button" title="루브릭 항목 추가">+</button></div>
       <div class="subTotalList" id="subTotalList"></div>
       <div class="total"><span>문항 전체 합계</span><strong id="totalScore">0</strong></div>
       <div class="compactBtns" style="margin-top:10px">
@@ -413,6 +440,13 @@ textarea{min-height:72px;resize:vertical}
       <div class="statusLine" style="margin-top:10px">
         단축키: <span class="kbd">←</span> <span class="kbd">→</span> 페이지 이동, <span class="kbd">S</span> 저장 후 다음
       </div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHead">
+        <h2 class="panelTitle">논의 필요 학생</h2>
+      </div>
+      <div class="discussionList" id="discussionList"></div>
     </section>
 
     <section class="panel">
@@ -452,6 +486,7 @@ textarea{min-height:72px;resize:vertical}
   <button class="mobileNavFlag" id="mobileDiscussionBtn" type="button">논의</button>
   <button class="mobileNavBtn" id="mobileNextBtn" type="button" aria-label="다음 답안">›</button>
 </nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="modalBackdrop hidden" id="keywordModal" role="dialog" aria-modal="true" aria-labelledby="keywordModalTitle">
   <div class="modal">
@@ -483,6 +518,7 @@ textarea{min-height:72px;resize:vertical}
         <button class="settingsTab on" type="button" data-pane="basic">기본</button>
         <button class="settingsTab" type="button" data-pane="questions">문항</button>
         <button class="settingsTab" type="button" data-pane="roster">명렬</button>
+        <button class="settingsTab" type="button" data-pane="lab">실험실</button>
         <button class="settingsTab" type="button" data-pane="results">결과</button>
       </div>
       <section class="panel settingsPane" id="settingsBasicPane">
@@ -512,6 +548,16 @@ textarea{min-height:72px;resize:vertical}
         <textarea id="rosterText" placeholder="1반,1,학생1&#10;1반,2,학생2&#10;1반,3,학생3" style="min-height:260px"></textarea>
         <div class="statusLine" id="rosterStatus">명렬 없음</div>
       </section>
+      <section class="panel settingsPane hidden" id="settingsLabPane">
+        <div class="panelHead"><h2 class="panelTitle">실험실</h2></div>
+        <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
+          <span>
+            <span class="label">자동 채점 보조</span>
+            <span class="statusLine">학생 답안 텍스트에서 루브릭 키워드를 자동 탐지합니다.</span>
+          </span>
+          <input id="autoAssistEnabledInput" type="checkbox" style="width:auto;min-height:auto">
+        </label>
+      </section>
       <section class="panel settingsPane hidden" id="settingsResultsPane">
         <div class="panelHead"><h2 class="panelTitle">결과</h2></div>
         <div class="compactBtns">
@@ -530,6 +576,7 @@ textarea{min-height:72px;resize:vertical}
 
 <script type="module">
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
+import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
 
 const STORAGE_KEY = "publicOmrEssayGraderState.v1";
@@ -541,14 +588,17 @@ const defaultRubric = [
   {name:"표현과 형식 충족", pt:3}
 ];
 const defaultQuestions = [
-  {id:"q1", label:"1번 문제", subs:[], crop:{x:.10,y:.52,w:.80,h:.20}, rubric:structuredClone(defaultRubric)},
-  {id:"q2", label:"2번 문제", subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
+  {id:"q1", label:"1번 문제", maxScore:0, subScores:{}, exampleAnswer:"", subs:[], crop:{x:.10,y:.52,w:.80,h:.20}, rubric:structuredClone(defaultRubric)},
+  {id:"q2", label:"2번 문제", maxScore:0, subScores:{}, exampleAnswer:"", subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
 ];
 
 const state = {
   appTitle:"OMR 서술형 채점 도구 템플릿",
   pdf:null,
   fileName:"",
+  lastPdfName:"",
+  lastPdfPage:1,
+  lastPdfPageCount:0,
   page:1,
   pageCount:0,
   mode:"grade",
@@ -559,7 +609,8 @@ const state = {
   editingRubricId:"",
   questions:structuredClone(defaultQuestions),
   roster:[],
-  records:{}
+  records:{},
+  settings:{autoAssistEnabled:false}
 };
 
 const $ = id => document.getElementById(id);
@@ -571,26 +622,29 @@ const els = {
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), gradeModeBtn:$("gradeModeBtn"),
   settingsBtn:$("settingsBtn"), settingsModal:$("settingsModal"), closeSettingsBtn:$("closeSettingsBtn"),
   prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), pageInput:$("pageInput"), pageStatus:$("pageStatus"),
-  classSelect:$("classSelect"), studentSelect:$("studentSelect"), classStatus:$("classStatus"),
+  classSelect:$("classSelect"), numberSelect:$("numberSelect"), nameSelect:$("nameSelect"), classStatus:$("classStatus"),
   questionSelect:$("questionSelect"), questionStatus:$("questionStatus"),
   addQuestionBtn:$("addQuestionBtn"), questionSettingsList:$("questionSettingsList"),
   rosterText:$("rosterText"), applyRosterBtn:$("applyRosterBtn"),
-  rosterStatus:$("rosterStatus"), classInput:$("classInput"), numberInput:$("numberInput"),
-  nameInput:$("nameInput"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
+  rosterStatus:$("rosterStatus"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), discussionList:$("discussionList"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
   saveBtn:$("saveBtn"), saveOnlyBtn:$("saveOnlyBtn"), clearCurrentBtn:$("clearCurrentBtn"),
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
-  editRubricBtn:$("editRubricBtn"), addDeductRubricBtn:$("addDeductRubricBtn"), rubricEditorPanel:$("rubricEditorPanel"), rubricEditorRows:$("rubricEditorRows"),
+  rubricEditorPanel:$("rubricEditorPanel"), rubricEditorRows:$("rubricEditorRows"),
   rubricText:$("rubricText"), addRubricItemBtn:$("addRubricItemBtn"), loadRubricTextBtn:$("loadRubricTextBtn"),
+  addRubricBottomBtn:$("addRubricBottomBtn"), importHwpxRubricBtn:$("importHwpxRubricBtn"), hwpxRubricInput:$("hwpxRubricInput"),
   applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportJsonBtn:$("exportJsonBtn"),
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
+  autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
+  toast:$("toast"),
   answerText:$("answerText"), autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
   mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
 };
 let draggedKeywordChip = null;
+let draggedRubricId = "";
 let renderToken = 0;
 
 function loadSavedState(){
@@ -605,6 +659,10 @@ function loadSavedState(){
     state.appTitle = saved.appTitle || saved.title || state.appTitle;
     state.activeQuestion = saved.activeQuestion || state.activeQuestion;
     state.activeClass = saved.activeClass || state.activeClass;
+    state.lastPdfName = saved.lastPdfName || saved.sourcePdfName || saved.fileName || "";
+    state.lastPdfPage = Number(saved.lastPdfPage || saved.page || 1) || 1;
+    state.lastPdfPageCount = Number(saved.lastPdfPageCount || saved.pageCount || 0) || 0;
+    state.settings = {...state.settings, ...(saved.settings || {})};
   }catch(err){console.warn(err)}
   normalizeQuestions();
   normalizeRecords();
@@ -614,6 +672,7 @@ function loadSavedState(){
   updateRosterStatus();
   updateClassControls();
   applyAppTitle();
+  applySettings();
 }
 
 function persist(){
@@ -622,9 +681,13 @@ function persist(){
     appTitle:state.appTitle,
     activeQuestion:state.activeQuestion,
     activeClass:state.activeClass,
+    lastPdfName:state.lastPdfName,
+    lastPdfPage:state.page || state.lastPdfPage || 1,
+    lastPdfPageCount:state.pageCount || state.lastPdfPageCount || 0,
     questions:state.questions,
     roster:state.roster,
-    records:state.records
+    records:state.records,
+    settings:state.settings
   }));
 }
 
@@ -636,6 +699,12 @@ function applyAppTitle(){
   if(els.appTitleInput) els.appTitleInput.value = title;
 }
 
+function applySettings(){
+  const enabled = Boolean(state.settings?.autoAssistEnabled);
+  els.autoAssistPanel.classList.toggle("hidden", !enabled);
+  if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
+}
+
 function normalizeQuestions(){
   const source = Array.isArray(state.questions) && state.questions.length ? state.questions : structuredClone(defaultQuestions);
   state.questions = source.map((saved, index) => {
@@ -643,6 +712,9 @@ function normalizeQuestions(){
     return {
       id:saved.id || `q_${Date.now().toString(36)}_${index}`,
       label:saved.label || fallback.label,
+      maxScore:nonNegativeNumber(saved.maxScore ?? saved.totalScore ?? fallback.maxScore ?? 0),
+      subScores:normalizeSubScores(saved.subScores || saved.subMaxScores || {}),
+      exampleAnswer:String(saved.exampleAnswer || saved.answer || ""),
       subs:normalizeQuestionSubs(saved),
       crop:{...fallback.crop, ...(saved.crop || {})},
       rubric:normalizeRubric(Array.isArray(saved.rubric) ? saved.rubric : structuredClone(fallback.rubric))
@@ -663,12 +735,14 @@ function normalizeRubric(rubric){
       name:item.name || item.desc || "가점 요소",
       pt,
       accept:item.accept || item.acceptText || item.include || "",
+      acceptScores:item.acceptScores || {},
       partial:item.partial || item.partialText || "",
       partialPt:Number.isFinite(partialPt) ? partialPt : Math.max(0, pt - (Number.isFinite(legacyPartialDeduct) ? legacyPartialDeduct : 1)),
       reject:item.reject || item.rejectText || item.exclude || "",
+      rejectScores:item.rejectScores || {},
       rejectDeduct:Number(item.rejectDeduct ?? item.rejectPt ?? item.rejectScore ?? 0) || 0
     };
-  }).filter(item => item.name && (item.type === "deduct" || item.pt > 0));
+  }).filter(item => item.name && (item.type === "deduct" || item.pt > 0 || item.accept || item.reject));
 }
 
 function normalizeQuestionSubs(question){
@@ -676,6 +750,17 @@ function normalizeQuestionSubs(question){
   if(Array.isArray(question.subQuestions)) return question.subQuestions.map(sub => String(sub).trim()).filter(Boolean);
   const count = Math.max(0, Math.min(20, Number(question.subCount || 0) || 0));
   return Array.from({length:count}, (_, index) => `(${index + 1})`);
+}
+
+function normalizeSubScores(scores){
+  return Object.fromEntries(Object.entries(scores || {})
+    .map(([sub, score]) => [String(sub), nonNegativeNumber(score)])
+    .filter(([, score]) => score > 0));
+}
+
+function nonNegativeNumber(value){
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
 function normalizeRecords(){
@@ -831,6 +916,9 @@ function addQuestion(){
   const question = {
     id:createRubricId().replace(/^r_/, "q_"),
     label:`${index}번 문제`,
+    exampleAnswer:"",
+    maxScore:0,
+    subScores:{},
     subs:[],
     crop:{x:.10,y:.52,w:.80,h:.20},
     rubric:structuredClone(defaultRubric)
@@ -851,12 +939,14 @@ function renderQuestionSettings(){
     <div class="questionEditCard" data-id="${escapeHtml(question.id)}">
       <div class="questionEditTop">
         <input class="questionNameInput" value="${escapeHtml(question.label)}" title="문항 이름">
+        <input class="questionMaxScoreInput" type="number" min="0" step="1" value="${escapeHtml(questionMaxScore(question))}" title="문항 총점" placeholder="총점">
         <button class="btn mini danger questionDeleteBtn" type="button" ${state.questions.length <= 1 ? "disabled" : ""}>삭제</button>
       </div>
       <div class="subQuestionList">
         ${subOptions(question).filter(sub => sub !== "공통" || question.subs?.length).map((sub, subIndex) => `
           <div class="subQuestionRow" data-index="${subIndex}">
             <input class="subQuestionInput" value="${escapeHtml(sub)}" title="소문항 이름">
+            <input class="subQuestionScoreInput" type="number" min="0" step="1" value="${escapeHtml(subMaxScore(question, sub))}" title="소문항 총점" placeholder="총점">
             <button class="btn mini subQuestionDeleteBtn" type="button">×</button>
           </div>
         `).join("")}
@@ -869,6 +959,8 @@ function renderQuestionSettings(){
 function persistQuestionSettings(){
   state.questions.forEach(question => {
     question.subs = (question.subs || []).map(sub => String(sub).trim()).filter(Boolean);
+    question.maxScore = nonNegativeNumber(question.maxScore);
+    question.subScores = normalizeSubScores(question.subScores || {});
     question.rubric.forEach(item => {
       item.sub = normalizeSubValue(item.sub || "공통", question);
     });
@@ -884,13 +976,19 @@ async function openPdf(file){
   const buffer = await file.arrayBuffer();
   state.pdf = await pdfjsLib.getDocument({data:buffer}).promise;
   state.fileName = file.name;
+  const rememberedPage = state.lastPdfName === file.name ? state.lastPdfPage : 1;
+  state.lastPdfName = file.name;
   state.pageCount = state.pdf.numPages;
-  state.page = firstScopedPage() || 1;
+  state.lastPdfPageCount = state.pageCount;
+  state.page = clamp(rememberedPage || firstScopedPage() || 1, 1, state.pageCount);
+  if(state.activeClass && !scopedPages().includes(state.page)) state.page = firstScopedPage() || state.page;
+  state.lastPdfPage = state.page;
   els.empty.classList.add("hidden");
   [els.pageInput, els.prevBtn, els.nextBtn, els.saveBtn, els.saveOnlyBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
+  persist();
 }
 
 async function renderCurrentPage(){
@@ -950,7 +1048,7 @@ function updateChrome(){
   document.body.classList.toggle("pdfLoaded", Boolean(state.pdf));
   els.fileMeta.textContent = state.pdf
     ? `${state.fileName} · ${activeQuestion().label} · ${className ? `${className} · ` : ""}${state.page} / ${state.pageCount}쪽`
-    : "PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.";
+    : pdfRestoreHint();
   els.pageInput.value = state.page;
   els.pageInput.max = state.pageCount || 1;
   els.pageStatus.textContent = state.pdf
@@ -961,6 +1059,14 @@ function updateChrome(){
   updateClassControls();
   updateProgress();
   updateMobileScanNav(scoped, scopedIndex);
+}
+
+function pdfRestoreHint(){
+  if(!state.lastPdfName) return "PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.";
+  const pageText = state.lastPdfPageCount
+    ? ` · 마지막 위치 ${state.lastPdfPage || 1} / ${state.lastPdfPageCount}쪽`
+    : "";
+  return `지난 PDF: ${state.lastPdfName}${pageText} · PDF 선택으로 다시 불러오세요.`;
 }
 
 function updateMobileScanNav(scoped=scopedPages(), scopedIndex=scoped.indexOf(state.page)){
@@ -986,12 +1092,7 @@ function updateMobileScanNav(scoped=scopedPages(), scopedIndex=scoped.indexOf(st
 }
 
 function loadRecordIntoForm(){
-  const rec = currentRecord();
-  const student = studentForPage(state.page);
   const qrec = currentQuestionRecord();
-  setInfoText(els.classInput, rec?.className || student?.className || "", "반");
-  setInfoText(els.numberInput, rec?.number || student?.number || "", "번호");
-  setInfoText(els.nameInput, rec?.name || student?.name || "", "이름");
   els.memoInput.value = qrec?.memo || "";
   updateDiscussionButton();
   els.answerText.value = "";
@@ -999,6 +1100,7 @@ function loadRecordIntoForm(){
   renderRubric();
   updateResults();
   updateKeywordSummary();
+  updateDiscussionList();
   updateMobileScanNav();
 }
 
@@ -1022,19 +1124,31 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
   groupEl.className = "subRubricGroup";
   const title = document.createElement("div");
   title.className = "subRubricTitle";
-  title.innerHTML = `<span>${escapeHtml(sub)}</span><strong class="subScoreBadge">${escapeHtml(subTotal)}점</strong>`;
+  title.dataset.sub = sub;
+  const exampleAnswer = exampleAnswerForSub(sub);
+  title.innerHTML = `
+    <span class="subRubricLabel">${escapeHtml(sub)}</span>
+    <textarea class="subExampleAnswerInput" data-sub="${escapeHtml(sub)}" placeholder="예시답안 입력">${escapeHtml(exampleAnswer)}</textarea>
+    <span style="display:flex;align-items:center;gap:6px">
+      <strong class="subScoreBadge">${scoreFractionHtml(subTotal, subMaxScore(activeQuestion(), sub))}</strong>
+      <button class="subAddRubricBtn" type="button" data-sub="${escapeHtml(sub)}" title="이 소문항에 루브릭 추가">+</button>
+    </span>
+  `;
   groupEl.appendChild(title);
   els.rubricList.appendChild(groupEl);
   items.forEach(item => {
     const wrap = document.createElement("div");
     wrap.className = `criterion${item.type === "deduct" ? " deduct" : ""}`;
-    const selected = ["accept","partial","reject"].some(type => keywordHits?.[item.id]?.[type]?.length);
+    wrap.dataset.id = item.id;
+    wrap.draggable = !state.editingRubricId;
+    if(state.editingRubricId && state.editingRubricId !== item.id) wrap.classList.add("editLocked");
+    const selected = ["accept","reject"].some(type => keywordHits?.[item.id]?.[type]?.length);
     if(selected) wrap.classList.add("on");
     const head = document.createElement("div");
     head.className = "criterionHead";
     const title = document.createElement("div");
     title.className = "criterionTitle";
-    title.innerHTML = `<div class="criterionName">${escapeHtml(item.name)}</div><div class="pointBadge">${item.type === "deduct" ? `-${rejectDeduct(item)}` : `+${rubricPoint(item)}`}</div>`;
+    title.innerHTML = `<div class="criterionName">${escapeHtml(item.name)}</div><div class="pointBadge">${escapeHtml(rubricBadgeText(item, keywordHits?.[item.id] || {}))}</div>`;
     head.appendChild(title);
     const editBtn = document.createElement("button");
     editBtn.className = `criterionEditBtn${state.editingRubricId === item.id ? " on" : ""}`;
@@ -1049,21 +1163,16 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
       const keywordGrid = document.createElement("div");
       keywordGrid.className = item.type === "deduct" ? "keywordGrid single" : "keywordGrid";
       const acceptKeywords = splitKeywords(item.accept);
-      const partialKeywords = splitKeywords(item.partial);
       const rejectKeywords = splitKeywords(item.reject);
       keywordGrid.innerHTML = item.type === "deduct" ? `
         <div class="keywordBox reject">
-          <div class="keywordTitle">감점 문구 · -${rejectDeduct(item)}</div>
+          <div class="keywordTitle">감점 문구</div>
           ${keywordButtonsHtml(item, "reject", rejectKeywords, keywordHits)}
         </div>
       ` : `
         <div class="keywordBox accept">
           <div class="keywordTitle">점수 인정 문구</div>
           ${keywordButtonsHtml(item, "accept", acceptKeywords, keywordHits)}
-        </div>
-        <div class="keywordBox partial">
-          <div class="keywordTitle">부분점수 문구 · +${partialPoint(item)}</div>
-          ${keywordButtonsHtml(item, "partial", partialKeywords, keywordHits)}
         </div>
         <div class="keywordBox reject">
           <div class="keywordTitle">미인정 문구</div>
@@ -1076,6 +1185,29 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
   });
 }
 
+function exampleAnswerForSub(sub, question=activeQuestion()){
+  const answer = String(question.exampleAnswer || "").trim();
+  if(!answer) return "";
+  if(sub === "공통") return answer;
+  return splitAnswerBySub(answer)[sub] || "";
+}
+
+function setExampleAnswerForSub(sub, value, question=activeQuestion()){
+  const text = String(value || "").trim();
+  if(sub === "공통"){
+    question.exampleAnswer = text;
+    return;
+  }
+  const answers = splitAnswerBySub(question.exampleAnswer || "");
+  if(text) answers[sub] = text;
+  else delete answers[sub];
+  question.exampleAnswer = subOptions(question)
+    .filter(option => option !== "공통")
+    .map(option => answers[option] ? `${option} ${answers[option]}` : "")
+    .filter(Boolean)
+    .join("\n");
+}
+
 function toggleKeywordHit(itemId, type, keyword){
   ensureQuestionRecord();
   const item = activeRubric().find(entry => entry.id === itemId);
@@ -1086,12 +1218,8 @@ function toggleKeywordHit(itemId, type, keyword){
   const currentList = Array.isArray(itemHits[type]) ? itemHits[type] : [];
   const isOn = currentList.includes(keyword);
   itemHits[type] = isOn ? currentList.filter(value => value !== keyword) : currentList.concat(keyword);
-  if(type === "accept" && !isOn){
-    itemHits.partial = [];
-  }else if(type === "partial" && !isOn){
-    itemHits.accept = [];
-  }
-  const hasHits = ["accept","partial","reject"].some(hitType => itemHits[hitType]?.length);
+  itemHits.partial = [];
+  const hasHits = ["accept","reject"].some(hitType => itemHits[hitType]?.length);
   if(hasHits) qrec.keywordHits[item.id] = itemHits;
   else delete qrec.keywordHits[item.id];
   qrec.scores[item.id] = scoreFromKeywordHits(item, itemHits);
@@ -1111,7 +1239,9 @@ function keywordButtonsHtml(item, type, keywords, keywordHits){
   const selected = keywordHits?.[item.id]?.[type] || [];
   return `<div class="keywordChips">${keywords.map(keyword => {
     const on = selected.includes(keyword) ? " on" : "";
-    return `<button class="keywordChip ${type}${on}" type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)}</button>`;
+    const score = keywordScore(item, type, keyword);
+    const label = type === "accept" ? `+${score}` : score ? `-${score}` : "0";
+    return `<button class="keywordChip ${type}${on}" type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} · ${escapeHtml(label)}점</button>`;
   }).join("")}</div>`;
 }
 
@@ -1120,24 +1250,21 @@ function inlineRubricEditor(item){
   editor.className = "inlineRubricEditor";
   editor.innerHTML = `
     <div class="rubricEditRow" data-id="${escapeHtml(item.id)}">
+      ${subSelectHtml(item.sub || "")}
       <select class="rubricTypeInput" title="루브릭 유형">
         <option value="score"${item.type !== "deduct" ? " selected" : ""}>채점용</option>
         <option value="deduct"${item.type === "deduct" ? " selected" : ""}>감점용</option>
       </select>
-      ${subSelectHtml(item.sub || "")}
-      <textarea class="rubricNameInput" placeholder="가점 요소 설명">${escapeHtml(item.name)}</textarea>
-      ${item.type !== "deduct" ? `<input class="rubricPointInput" type="number" min="0" step="1" value="${escapeHtml(rubricPoint(item))}" title="점수">` : ""}
       <button class="btn mini inlineRubricCancelBtn" type="button" title="닫기">×</button>
+      <textarea class="rubricNameInput" placeholder="루브릭 제목">${escapeHtml(item.name)}</textarea>
       <div class="rubricKeywordRow">
         <label class="field"><span class="label">점수 인정 문구</span><textarea class="rubricAcceptInput" placeholder="답안에 이 표현이나 의미가 있으면 점수 인정">${escapeHtml(item.accept || "")}</textarea></label>
-        <label class="field"><span class="label">부분점수 문구</span><textarea class="rubricPartialInput" placeholder="부분점수를 줄 표현">${escapeHtml(item.partial || "")}</textarea></label>
-        <label class="field"><span class="label">감점 문구</span><textarea class="rubricRejectInput" placeholder="소문항에서 감점할 표현, 오개념, 부족한 표현 등">${escapeHtml(item.reject || "")}</textarea></label>
+        <label class="field"><span class="label">${item.type === "deduct" ? "감점 문구" : "미인정 문구"}</span><textarea class="rubricRejectInput" placeholder="미인정 또는 감점할 표현">${escapeHtml(item.reject || "")}</textarea></label>
       </div>
     </div>
     <div class="keywordEditBoard${item.type === "deduct" ? " single" : ""}">
-      ${item.type === "deduct" ? "" : keywordEditZoneHtml("accept", "점수 인정", splitKeywords(item.accept))}
-      ${item.type === "deduct" ? "" : keywordEditZoneHtml("partial", "부분점수", splitKeywords(item.partial), `<input class="rubricPartialPointInput" type="number" min="0" step="1" value="${escapeHtml(partialPoint(item))}" title="부분점수">`)}
-      ${keywordEditZoneHtml("reject", item.type === "deduct" ? "감점" : "미인정", splitKeywords(item.reject), item.type === "deduct" ? `<input class="rubricRejectDeductInput" type="number" min="0" step="1" value="${escapeHtml(rejectDeduct(item))}" title="감점">` : "")}
+      ${item.type === "deduct" ? "" : keywordEditZoneHtml(item, "accept", "점수 인정", splitKeywords(item.accept))}
+      ${keywordEditZoneHtml(item, "reject", item.type === "deduct" ? "감점" : "미인정", splitKeywords(item.reject))}
     </div>
     <div class="compactBtns">
       <button class="btn mini primary inlineRubricApplyBtn" type="button">이 항목 적용</button>
@@ -1148,12 +1275,12 @@ function inlineRubricEditor(item){
   return editor;
 }
 
-function keywordEditZoneHtml(type, title, keywords, scoreControl=""){
+function keywordEditZoneHtml(item, type, title, keywords){
   return `
     <div class="keywordDropZone ${type}" data-type="${type}">
-      <div class="keywordTitle">${escapeHtml(title)}${scoreControl}</div>
+      <div class="keywordTitle">${escapeHtml(title)}</div>
       <div class="keywordEditList">
-        ${keywords.map(keyword => keywordEditChipHtml(keyword)).join("")}
+        ${keywords.map(keyword => keywordEditChipHtml(item, type, keyword)).join("")}
       </div>
       <div class="keywordAddRow">
         <textarea class="keywordAddInput" placeholder="키워드 또는 판정 문구 추가"></textarea>
@@ -1168,10 +1295,11 @@ function subSelectHtml(value, className="rubricSubInput"){
   return `<select class="${className}" title="소문항">${subOptions().map(option => `<option value="${escapeHtml(option)}"${option === selectedValue ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
 }
 
-function keywordEditChipHtml(keyword){
+function keywordEditChipHtml(item, type, keyword){
   return `
     <div class="keywordEditChip" draggable="true" data-keyword="${escapeHtml(keyword)}">
       <textarea class="keywordEditInput" title="키워드 수정">${escapeHtml(keyword)}</textarea>
+      <input class="keywordScoreInput" type="number" step="1" min="0" value="${escapeHtml(keywordScore(item, type, keyword))}" title="점수">
       <button class="keywordRemoveBtn" type="button" title="삭제">×</button>
     </div>
   `;
@@ -1183,7 +1311,7 @@ function resizeKeywordTextarea(textarea){
 }
 
 function resizeKeywordTextareas(root=els.rubricList){
-  root.querySelectorAll(".keywordEditInput,.keywordAddInput").forEach(resizeKeywordTextarea);
+  root.querySelectorAll(".keywordEditInput,.keywordAddInput,.subExampleAnswerInput").forEach(resizeKeywordTextarea);
 }
 
 function updateTotal(){
@@ -1191,12 +1319,13 @@ function updateTotal(){
   const scores = qrec?.scores || {};
   const totals = rubricSubTotals(activeRubric(), scores);
   els.subTotalList.innerHTML = "";
-  els.totalScore.textContent = Object.values(totals).reduce((sum, value) => sum + value, 0);
+  const current = Object.values(totals).reduce((sum, value) => sum + value, 0);
+  els.totalScore.innerHTML = scoreFractionHtml(current, questionMaxScore());
 }
 
 function updateProgress(){
   const question = activeQuestion();
-  const pages = scopedPages();
+  const pages = progressPages();
   const total = pages.length;
   const graded = pages.filter(page => {
     const rec = state.records[String(page)];
@@ -1205,6 +1334,14 @@ function updateProgress(){
   const pct = total > 0 ? Math.round(graded / total * 100) : 0;
   els.progressFill.style.width = `${pct}%`;
   els.progressText.textContent = total > 0 ? `채점 완료: ${graded} / ${total}명 (${pct}%)` : "";
+}
+
+function progressPages(){
+  const rosterLength = currentRoster().length;
+  const recordPages = Object.keys(state.records).map(Number).filter(page => Number.isFinite(page) && page > 0);
+  const count = rosterLength || state.pageCount || Math.max(0, ...recordPages, 0);
+  const pageLimit = state.pdf ? state.pageCount : count;
+  return Array.from({length:count}, (_, index) => index + 1).filter(page => page <= pageLimit);
 }
 
 function autoDetectKeywords(){
@@ -1217,17 +1354,16 @@ function autoDetectKeywords(){
   let matches = 0;
   activeRubric().forEach(item => {
     const prev = qrec.keywordHits[item.id] || {};
-    const next = {accept:[...(prev.accept||[])], partial:[...(prev.partial||[])], reject:[...(prev.reject||[])]};
+    const next = {accept:[...(prev.accept||[])], partial:[], reject:[...(prev.reject||[])]};
     let changed = false;
-    ["accept","partial","reject"].forEach(type => {
+    ["accept","reject"].forEach(type => {
       splitKeywords(item[type]).forEach(keyword => {
         if(!keyword || next[type].includes(keyword)) return;
         if(lower.includes(keyword.toLowerCase())){next[type].push(keyword);matches++;changed = true;}
       });
     });
     if(changed){
-      if(next.accept.length && next.partial.length) next.partial = [];
-      const hasHits = next.accept.length || next.partial.length || next.reject.length;
+      const hasHits = next.accept.length || next.reject.length;
       if(hasHits){qrec.keywordHits[item.id] = next;qrec.scores[item.id] = scoreFromKeywordHits(item, next);}
     }
   });
@@ -1252,7 +1388,7 @@ function questionRecordHasData(qrec, question=activeQuestion()){
   const hasScore = question.rubric.some(item => Number(scoreValue(scores, item) || 0) > 0);
   if(hasScore) return true;
   return Object.values(qrec.keywordHits || {}).some(hit =>
-    ["accept","partial","reject"].some(type => Array.isArray(hit?.[type]) && hit[type].length)
+    ["accept","reject"].some(type => Array.isArray(hit?.[type]) && hit[type].length)
   );
 }
 
@@ -1294,12 +1430,15 @@ function toggleDiscussionFlag(){
   updateDiscussionButton();
   updateResults();
   updateProgress();
+  updateDiscussionList();
 }
 
 function updateDiscussionButton(){
   const flagged = Boolean(currentQuestionRecord()?.needsDiscussion);
   els.discussionBtn.classList.toggle("on", flagged);
-  els.discussionBtn.textContent = flagged ? "논의 필요 표시됨" : "논의 필요 표시";
+  els.discussionBtn.textContent = flagged ? "★" : "☆";
+  els.discussionBtn.title = flagged ? "논의 필요 표시됨" : "논의 필요 표시";
+  els.discussionBtn.setAttribute("aria-label", els.discussionBtn.title);
 }
 
 function saveCurrent(){
@@ -1314,6 +1453,9 @@ async function goPage(nextPage){
   if(!state.pdf) return;
   saveCurrent();
   state.page = normalizeTargetPage(nextPage);
+  state.lastPdfPage = state.page;
+  state.lastPdfPageCount = state.pageCount;
+  persist();
   await renderCurrentPage();
   loadRecordIntoForm();
 }
@@ -1353,10 +1495,35 @@ function discussionLabels(rec){
     .map(question => question.label);
 }
 
+function updateDiscussionList(){
+  if(!els.discussionList) return;
+  const records = discussionRecords();
+  if(!records.length){
+    els.discussionList.innerHTML = `<div class="statusLine">현재 문항에서 논의 표시된 학생이 없습니다.</div>`;
+    return;
+  }
+  els.discussionList.innerHTML = records.map(rec => {
+    const qrec = rec.answers?.[state.activeQuestion] || {};
+    const memo = String(qrec.memo || "").trim();
+    return `
+      <button class="discussionGoBtn" type="button" data-page="${escapeHtml(rec.page)}">
+        <span>${escapeHtml(studentLabelForRecord(rec))}</span>
+        <span class="keywordStudentMeta">${escapeHtml(memo || "메모 없음")}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function discussionRecords(){
+  return Object.values(state.records)
+    .filter(rec => rec.answers?.[state.activeQuestion]?.needsDiscussion)
+    .sort((a,b) => Number(a.page) - Number(b.page));
+}
+
 function updateKeywordSummary(){
   const entries = keywordEntries();
   if(!entries.length){
-    els.keywordSummary.textContent = "루브릭에 인정/부분점수/미인정/감점 문구를 입력하면 학생 목록을 모아볼 수 있습니다.";
+    els.keywordSummary.textContent = "루브릭에 인정/미인정/감점 문구를 입력하면 학생 목록을 모아볼 수 있습니다.";
     return;
   }
   const hitCount = entries.reduce((sum, entry) => sum + keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length, 0);
@@ -1366,15 +1533,13 @@ function updateKeywordSummary(){
 function keywordEntries(){
   return activeRubric().flatMap(item => ([
     ...splitKeywords(item.accept).map(keyword => ({item, type:"accept", keyword})),
-    ...splitKeywords(item.partial).map(keyword => ({item, type:"partial", keyword})),
     ...splitKeywords(item.reject).map(keyword => ({item, type:"reject", keyword}))
   ]));
 }
 
-function keywordTypeLabel(item, type){
-  if(type === "accept") return `인정 +${rubricPoint(item)}`;
-  if(type === "partial") return `부분 +${partialPoint(item)}`;
-  return item.type === "deduct" ? `감점 -${rejectDeduct(item)}` : "미인정";
+function keywordTypeLabel(item, type, keyword=""){
+  if(type === "accept") return `인정 +${keywordScore(item, type, keyword)}`;
+  return item.type === "deduct" ? `감점 -${keywordScore(item, type, keyword)}` : `미인정 -${keywordScore(item, type, keyword)}`;
 }
 
 function renderKeywordModal(selectedKey=""){
@@ -1393,7 +1558,7 @@ function renderKeywordModal(selectedKey=""){
       <button class="keywordModalBtn${on}" type="button" data-entry-index="${index}">
         <div class="keywordSummaryTop">
           <div class="keywordSummaryText">${escapeHtml(entry.keyword)}</div>
-          <div class="keywordSummaryMeta">${keywordTypeLabel(entry.item, entry.type)} · ${count}명</div>
+          <div class="keywordSummaryMeta">${keywordTypeLabel(entry.item, entry.type, entry.keyword)} · ${count}명</div>
         </div>
         <div class="keywordStudentMeta">${escapeHtml(entry.item.sub || "공통")} · ${escapeHtml(entry.item.name)}</div>
       </button>
@@ -1405,7 +1570,7 @@ function renderKeywordModal(selectedKey=""){
 function renderKeywordStudentDetail(itemId, type, keyword){
   const item = activeRubric().find(entry => entry.id === itemId);
   const records = keywordStudentRecords(itemId, type, keyword);
-  els.keywordStudentTitle.textContent = item ? `${item.sub || "공통"} · ${keywordTypeLabel(item, type)}` : "학생 명렬";
+  els.keywordStudentTitle.textContent = item ? `${item.sub || "공통"} · ${keywordTypeLabel(item, type, keyword)}` : "학생 명렬";
   if(!records.length){
     els.keywordStudentDetail.innerHTML = `<div class="statusLine">이 키워드로 표시한 학생이 아직 없습니다.</div>`;
     return;
@@ -1494,7 +1659,8 @@ function buildJsonBackup(){
     sidebarWidth:sidebarWidth(),
     questions:structuredClone(state.questions),
     roster:structuredClone(state.roster),
-    records:structuredClone(state.records)
+    records:structuredClone(state.records),
+    settings:structuredClone(state.settings)
   };
 }
 
@@ -1513,6 +1679,7 @@ function importJsonBackup(payload){
   if(Array.isArray(data.rubric)) state.questions[0].rubric = data.rubric;
   state.roster = nextRoster;
   state.records = nextRecords;
+  state.settings = {...state.settings, ...(data.settings || {})};
   state.activeQuestion = data.activeQuestion || state.questions[0]?.id || state.activeQuestion;
   state.activeClass = data.activeClass || "";
   normalizeQuestions();
@@ -1523,6 +1690,7 @@ function importJsonBackup(payload){
   updateQuestionControls();
   updateRosterStatus();
   updateClassControls();
+  applySettings();
   applyAppTitle();
   if(Number.isFinite(Number(data.sidebarWidth))) setSidebarWidth(Number(data.sidebarWidth));
   persist();
@@ -1539,6 +1707,11 @@ function applyRubricText(){
     alert("루브릭 항목을 하나 이상 입력해주세요.");
     return;
   }
+  replaceActiveRubric(items);
+  els.rubricEditorPanel.classList.add("hidden");
+}
+
+function replaceActiveRubric(items){
   const previousItems = Object.fromEntries(activeRubric().map(item => [item.id, item]));
   activeQuestion().rubric = items;
   Object.values(state.records).forEach(rec => {
@@ -1554,7 +1727,6 @@ function applyRubricText(){
   persist();
   renderRubric();
   updateResults();
-  els.rubricEditorPanel.classList.add("hidden");
 }
 
 function rubricPoint(item){
@@ -1570,6 +1742,17 @@ function partialPoint(item){
 function rejectDeduct(item){
   const value = Number(item?.rejectDeduct ?? item?.rejectPt ?? item?.rejectScore ?? 0);
   return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function rubricBadgeText(item, hits={}){
+  return formatSignedScore(scoreFromKeywordHits(item, hits));
+}
+
+function formatSignedScore(value){
+  const number = Number(value) || 0;
+  if(number > 0) return `+${formatScore(number)}`;
+  if(number < 0) return `-${formatScore(Math.abs(number))}`;
+  return "0";
 }
 
 function applyInlineRubricItem(editor){
@@ -1615,17 +1798,19 @@ function deleteInlineRubricItem(editor){
   updateProgress();
 }
 
-function addInlineRubricItem(type="score"){
+function addInlineRubricItem(type="score", sub=subOptions()[0]){
   const item = {
     id:createRubricId(),
     type,
-    sub:subOptions()[0],
+    sub,
     name:type === "deduct" ? "감점 요소" : "가점 요소",
-    pt:type === "deduct" ? 0 : 1,
+    pt:0,
     accept:"",
+    acceptScores:{},
     partial:"",
     partialPt:0,
     reject:"",
+    rejectScores:{},
     rejectDeduct:type === "deduct" ? 1 : 0
   };
   activeQuestion().rubric.push(item);
@@ -1642,17 +1827,18 @@ function readInlineRubricEditor(editor){
     type:row.querySelector(".rubricTypeInput").value,
     sub:row.querySelector(".rubricSubInput").value.trim(),
     name:row.querySelector(".rubricNameInput").value.trim(),
-    pt:Number(row.querySelector(".rubricPointInput")?.value ?? 0),
+    pt:0,
     accept:keywordsFromZone(editor, "accept").join("\n"),
-    partial:keywordsFromZone(editor, "partial").join("\n"),
-    partialPt:Number(editor.querySelector(".rubricPartialPointInput")?.value || 0),
+    acceptScores:keywordScoresFromZone(editor, "accept"),
+    partial:"",
+    partialPt:0,
     reject:keywordsFromZone(editor, "reject").join("\n"),
-    rejectDeduct:Number(editor.querySelector(".rubricRejectDeductInput")?.value || 0)
+    rejectScores:keywordScoresFromZone(editor, "reject"),
+    rejectDeduct:0
   };
-  if(!Number.isFinite(item.partialPt) || item.partialPt < 0) item.partialPt = 0;
-  if(!Number.isFinite(item.rejectDeduct) || item.rejectDeduct < 0) item.rejectDeduct = 0;
-  if(item.type === "deduct") item.pt = 0;
-  return item.name && Number.isFinite(item.pt) && (item.type === "deduct" || item.pt > 0) ? item : null;
+  item.pt = splitKeywords(item.accept).reduce((sum, keyword) => sum + keywordScore(item, "accept", keyword), 0);
+  item.rejectDeduct = Math.max(0, ...splitKeywords(item.reject).map(keyword => keywordScore(item, "reject", keyword)));
+  return item.name ? item : null;
 }
 
 function keywordsFromZone(editor, type){
@@ -1665,6 +1851,18 @@ function keywordsFromZone(editor, type){
 
 function keywordValueFromChip(chip){
   return normalizeKeywordText(chip.querySelector(".keywordEditInput")?.value || chip.dataset.keyword || "");
+}
+
+function keywordScoresFromZone(editor, type){
+  const zone = editor.querySelector(`.keywordDropZone[data-type="${type}"]`);
+  if(!zone) return {};
+  return Object.fromEntries([...zone.querySelectorAll(".keywordEditChip")]
+    .map(chip => {
+      const keyword = keywordValueFromChip(chip);
+      const score = Number(chip.querySelector(".keywordScoreInput")?.value || 0);
+      return [keyword, Number.isFinite(score) && score >= 0 ? score : 0];
+    })
+    .filter(([keyword]) => keyword));
 }
 
 function normalizeKeywordText(text){
@@ -1687,7 +1885,15 @@ function addKeywordToZone(zone){
   if(!keyword) return;
   const list = zone.querySelector(".keywordEditList");
   const exists = [...list.querySelectorAll(".keywordEditChip")].some(chip => keywordValueFromChip(chip) === keyword);
-  if(!exists) list.insertAdjacentHTML("beforeend", keywordEditChipHtml(keyword));
+  if(!exists){
+    const editor = zone.closest(".inlineRubricEditor");
+    const item = activeRubric().find(entry => entry.id === editor?.querySelector(".rubricEditRow")?.dataset.id) || {
+      type:editor?.querySelector(".rubricTypeInput")?.value || "score",
+      pt:1,
+      rejectDeduct:1
+    };
+    list.insertAdjacentHTML("beforeend", keywordEditChipHtml(item, zone.dataset.type, keyword));
+  }
   input.value = "";
   resizeKeywordTextareas(zone);
 }
@@ -1700,6 +1906,39 @@ function moveKeywordChip(chip, targetZone){
   const duplicate = [...targetList.querySelectorAll(".keywordEditChip")].find(entry => keywordValueFromChip(entry) === keyword);
   if(duplicate && duplicate !== chip) duplicate.remove();
   targetList.appendChild(chip);
+}
+
+function moveRubricItem(draggedId, targetId, placeAfter=false){
+  if(!draggedId || !targetId || draggedId === targetId) return;
+  const rubric = activeRubric();
+  const fromIndex = rubric.findIndex(item => item.id === draggedId);
+  const toIndex = rubric.findIndex(item => item.id === targetId);
+  if(fromIndex < 0 || toIndex < 0) return;
+  const [item] = rubric.splice(fromIndex, 1);
+  const target = rubric.find(entry => entry.id === targetId);
+  if(target) item.sub = target.sub || "";
+  const targetIndex = rubric.findIndex(entry => entry.id === targetId);
+  rubric.splice(targetIndex + (placeAfter ? 1 : 0), 0, item);
+  persist();
+  renderRubric();
+}
+
+function moveRubricItemToSubEnd(draggedId, sub){
+  const rubric = activeRubric();
+  const fromIndex = rubric.findIndex(item => item.id === draggedId);
+  if(fromIndex < 0) return;
+  const [item] = rubric.splice(fromIndex, 1);
+  item.sub = sub;
+  let insertIndex = rubric.length;
+  for(let i = rubric.length - 1; i >= 0; i--){
+    if(normalizeSubValue(rubric[i].sub || "공통") === sub){
+      insertIndex = i + 1;
+      break;
+    }
+  }
+  rubric.splice(insertIndex, 0, item);
+  persist();
+  renderRubric();
 }
 
 function reconcileRubricItemRecord(qrec, previousItem, nextItem, keywordAliases={}){
@@ -1730,15 +1969,22 @@ function reconcileRubricItemRecord(qrec, previousItem, nextItem, keywordAliases=
 function keywordTypeForItem(item, keyword){
   if(!item) return "";
   if(splitKeywords(item.accept).includes(keyword)) return "accept";
-  if(splitKeywords(item.partial).includes(keyword)) return "partial";
   if(splitKeywords(item.reject).includes(keyword)) return "reject";
   return "";
 }
 
 function scoreFromKeywordHits(item, hits){
-  if(item.type === "deduct") return -(hits.reject?.length || 0) * rejectDeduct(item);
-  const base = hits.accept?.length ? rubricPoint(item) : hits.partial?.length ? partialPoint(item) : 0;
-  return base;
+  const accept = (hits.accept || []).reduce((sum, keyword) => sum + keywordScore(item, "accept", keyword), 0);
+  const reject = (hits.reject || []).reduce((sum, keyword) => sum + keywordScore(item, "reject", keyword), 0);
+  return accept - reject;
+}
+
+function keywordScore(item, type, keyword){
+  const scores = type === "accept" ? item?.acceptScores : item?.rejectScores;
+  const mapped = Number(scores?.[keyword]);
+  if(Number.isFinite(mapped) && mapped >= 0) return mapped;
+  if(type === "accept") return Math.max(1, rubricPoint(item) || 1);
+  return item?.type === "deduct" ? Math.max(1, rejectDeduct(item) || 1) : 0;
 }
 
 function scoreValue(scores, item){
@@ -1762,6 +2008,27 @@ function rubricSubTotals(rubric, scores, question=activeQuestion()){
   return totals;
 }
 
+function questionMaxScore(question=activeQuestion()){
+  const explicit = nonNegativeNumber(question.maxScore);
+  if(explicit > 0) return explicit;
+  return Object.values(question.subScores || {}).reduce((sum, value) => sum + nonNegativeNumber(value), 0);
+}
+
+function subMaxScore(question, sub){
+  return nonNegativeNumber(question?.subScores?.[sub]);
+}
+
+function scoreFractionHtml(current, max){
+  const isNegative = Number(current) < 0;
+  const displayCurrent = isNegative ? 0 : current;
+  return `<span class="scoreNow${isNegative ? " negative" : ""}">${escapeHtml(formatScore(displayCurrent))}점</span><span class="scoreMax">/${escapeHtml(formatScore(max))}점</span>`;
+}
+
+function formatScore(value){
+  const number = Number(value) || 0;
+  return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
+}
+
 function setInfoText(el, value, fallback){
   const text = String(value || "").trim();
   el.textContent = text || fallback;
@@ -1781,6 +2048,172 @@ function parseRubricLines(text){
       return {id:createRubricId(), type:"score", sub:parsed.sub, name:parsed.name, pt, accept:"", partial:"", partialPt:0, reject:"", rejectDeduct:0};
     })
     .filter(item => item.name && Number.isFinite(item.pt) && item.pt > 0);
+}
+
+async function rubricTextFromFile(file){
+  if(file.name.toLowerCase().endsWith(".hwpx")){
+    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const preview = zip.file("Preview/PrvText.txt");
+    if(preview) return preview.async("string");
+    const section = zip.file("Contents/section0.xml");
+    if(section) return textFromHwpxXml(await section.async("string"));
+    throw new Error("HWPX 안에서 채점 기준 텍스트를 찾지 못했습니다.");
+  }
+  return file.text();
+}
+
+function textFromHwpxXml(xmlText){
+  const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+  return [...doc.getElementsByTagNameNS("*", "t")]
+    .map(node => node.textContent || "")
+    .join("\n");
+}
+
+function parseHwpxRubric(text){
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const answerRows = {};
+  const rubricRows = {};
+  let mode = "";
+  lines.forEach(line => {
+    const cells = angleCells(line);
+    if(!cells.length) return;
+    if(cells.includes("예시 답안")){mode = "answers"; return;}
+    if(cells.includes("채점 기준")){mode = "rubric"; return;}
+    if(mode === "answers" && /^\d+$/.test(cells[0] || "")){
+      answerRows[cells[0]] = cells.slice(1).join(" ");
+    }
+    if(mode === "rubric" && /^\d+$/.test(cells[0] || "")){
+      rubricRows[cells[0]] = parseHwpxRubricRow(cells);
+    }
+  });
+  Object.entries(rubricRows).forEach(([number, items]) => {
+    const answerBySub = splitAnswerBySub(answerRows[number] || "");
+    items.forEach(item => {
+      const answerKeywords = answerBySub[item.sub] || "";
+      item.accept = uniqueLines([item.accept, keywordCandidates(item.name), keywordCandidates(answerKeywords)]).join("\n");
+      item.partial = uniqueLines([item.partial, keywordCandidates(item.partial)]).join("\n");
+      item.reject = uniqueLines([item.reject, keywordCandidates(item.reject)]).join("\n");
+      item.acceptScores = Object.fromEntries(splitKeywords(item.accept).map(keyword => [keyword, rubricPoint(item)]));
+      item.rejectScores = Object.fromEntries(splitKeywords(item.reject).map(keyword => [keyword, item.type === "deduct" ? rejectDeduct(item) : 0]));
+    });
+  });
+  return {rubrics:rubricRows, answers:answerRows};
+}
+
+function angleCells(line){
+  return [...line.matchAll(/<([^<>]*)>/g)].map(match => match[1].trim());
+}
+
+function parseHwpxRubricRow(cells){
+  const items = [];
+  let sub = "";
+  let lastScoreItem = null;
+  for(let i = 1; i < cells.length;){
+    if(isSubLabel(cells[i])){sub = cells[i]; lastScoreItem = null; i++; continue;}
+    const desc = cells[i++] || "";
+    const scoreText = cells[i++] || "";
+    if(!desc || !scoreText) continue;
+    const deduct = scoreText.match(/(\d+)\s*점?\s*감점/);
+    if(deduct){
+      if(lastScoreItem){
+        lastScoreItem.reject = uniqueLines([lastScoreItem.reject, desc]).join("\n");
+        lastScoreItem.rejectDeduct = Math.max(lastScoreItem.rejectDeduct || 0, Number(deduct[1]));
+        lastScoreItem.rejectScores = {...(lastScoreItem.rejectScores || {}), [desc]:Number(deduct[1])};
+      }else{
+        items.push({
+          id:createRubricId(), type:"deduct", sub, name:desc, pt:0,
+          accept:"", acceptScores:{}, partial:"", partialPt:0, reject:desc, rejectScores:{[desc]:Number(deduct[1])}, rejectDeduct:Number(deduct[1])
+        });
+      }
+    }else{
+      const pt = Number(String(scoreText).replace(/[^\d.]/g, ""));
+      if(Number.isFinite(pt) && pt > 0){
+        if(lastScoreItem && lastScoreItem.sub === sub && pt < lastScoreItem.pt && !lastScoreItem.partial){
+          lastScoreItem.partial = desc;
+          lastScoreItem.partialPt = pt;
+        }else{
+          lastScoreItem = {
+            id:createRubricId(), type:"score", sub, name:desc, pt,
+            accept:desc, acceptScores:{[desc]:pt}, partial:"", partialPt:Math.max(0, pt - 1), reject:"", rejectScores:{}, rejectDeduct:0
+          };
+          items.push(lastScoreItem);
+        }
+      }
+    }
+  }
+  return items;
+}
+
+function isSubLabel(value){
+  return /^\(?\d+\)?$/.test(String(value || "").trim());
+}
+
+function splitAnswerBySub(text){
+  const result = {};
+  const value = String(text || "");
+  const markers = [...value.matchAll(/\((\d+)\)/g)];
+  markers.forEach((marker, index) => {
+    const next = markers[index + 1];
+    result[`(${marker[1]})`] = value.slice(marker.index + marker[0].length, next ? next.index : value.length).trim();
+  });
+  return result;
+}
+
+function keywordCandidates(text){
+  const value = String(text || "").trim();
+  if(!value) return [];
+  const quoted = [...value.matchAll(/[‘'“"]([^’'”"]{2,})[’'”"]/g)].map(match => match[1].trim());
+  const clauses = value
+    .replace(/[‘’“"]/g, "")
+    .split(/(?:,|\.|하며|하고|라는|이라는|으로|로서|다는|음을|임을|함을|있음|있다는|보이고|제시하고|활용하였으나)/)
+    .map(part => part.replace(/^(또는|그리고|및|둘 다|답안의|구체적으로|바르게)\s+/, "").trim())
+    .filter(part => part.length >= 3 && part.length <= 34 && !/^(점|감점|부족|맞춤법)$/.test(part));
+  return uniqueLines([quoted, clauses]).slice(0, 8);
+}
+
+function uniqueLines(groups){
+  const seen = new Set();
+  return groups.flat().map(value => normalizeKeywordText(value)).filter(value => {
+    if(!value || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+function activeQuestionNumber(){
+  return questionNumber(activeQuestion());
+}
+
+async function importHwpxRubric(file){
+  const text = await rubricTextFromFile(file);
+  const parsed = parseHwpxRubric(text);
+  const number = activeQuestionNumber();
+  applyExampleAnswers(parsed.answers);
+  const items = parsed.rubrics[number] || parsed.rubrics[Object.keys(parsed.rubrics)[0]];
+  if(!items?.length){
+    throw new Error("현재 문항에 맞는 채점 기준을 찾지 못했습니다.");
+  }
+  replaceActiveRubric(items);
+}
+
+function applyExampleAnswers(answerRows){
+  Object.entries(answerRows || {}).forEach(([number, answer]) => {
+    const question = state.questions.find(entry => questionNumber(entry) === number);
+    if(question) question.exampleAnswer = normalizeExampleAnswer(answer);
+  });
+  updateQuestionControls();
+}
+
+function questionNumber(question){
+  const match = String(question?.label || "").match(/\d+/);
+  return match ? match[0] : "";
+}
+
+function normalizeExampleAnswer(answer){
+  return String(answer || "")
+    .replace(/\s*\((\d+)\)\s*/g, "\n($1) ")
+    .replace(/\n+/g, "\n")
+    .trim();
 }
 
 function drawRubricEditor(items=activeRubric()){
@@ -1803,8 +2236,7 @@ function addRubricEditorRow(name="", pt=1, id=createRubricId(), sub="", accept="
     <button class="btn mini rubricDeleteBtn" type="button" title="삭제">×</button>
     <div class="rubricKeywordRow">
       <label class="field"><span class="label">점수 인정 문구</span><textarea class="rubricAcceptInput" placeholder="답안에 이 표현이나 의미가 있으면 기본점수 인정">${escapeHtml(accept)}</textarea></label>
-      <label class="field"><span class="label">부분점수 문구</span><textarea class="rubricPartialInput" placeholder="부분점수를 줄 표현">${escapeHtml(partial)}</textarea><input class="rubricPartialPointInput" type="number" min="0" step="1" value="${escapeHtml(partialPointValue)}" title="부분점수"></label>
-      <label class="field"><span class="label">감점 문구</span><textarea class="rubricRejectInput" placeholder="소문항에서 감점할 표현, 오개념, 부족한 표현 등">${escapeHtml(reject)}</textarea><input class="rubricRejectDeductInput" type="number" min="0" step="1" value="${escapeHtml(rejectDeductValue)}" title="감점"></label>
+      <label class="field"><span class="label">미인정/감점 문구</span><textarea class="rubricRejectInput" placeholder="미인정 또는 감점할 표현">${escapeHtml(reject)}</textarea><input class="rubricRejectDeductInput" type="number" min="0" step="1" value="${escapeHtml(rejectDeductValue)}" title="기본 감점"></label>
     </div>
   `;
   els.rubricEditorRows.appendChild(row);
@@ -1824,9 +2256,11 @@ function readRubricEditorRow(row){
     name:row.querySelector(".rubricNameInput").value.trim(),
     pt:Number(row.querySelector(".rubricPointInput")?.value ?? 0),
     accept:row.querySelector(".rubricAcceptInput").value.trim(),
-    partial:row.querySelector(".rubricPartialInput").value.trim(),
-    partialPt:Number(row.querySelector(".rubricPartialPointInput").value),
+    acceptScores:Object.fromEntries(splitKeywords(row.querySelector(".rubricAcceptInput").value).map(keyword => [keyword, Number(row.querySelector(".rubricPointInput")?.value ?? 1) || 1])),
+    partial:"",
+    partialPt:0,
     reject:row.querySelector(".rubricRejectInput").value.trim(),
+    rejectScores:Object.fromEntries(splitKeywords(row.querySelector(".rubricRejectInput").value).map(keyword => [keyword, Number(row.querySelector(".rubricRejectDeductInput").value) || 0])),
     rejectDeduct:Number(row.querySelector(".rubricRejectDeductInput").value)
   };
   if(!Number.isFinite(item.partialPt) || item.partialPt < 0) item.partialPt = 0;
@@ -1934,31 +2368,51 @@ function updateClassControls(){
   const classes = classNames();
   const currentClassStillExists = !state.activeClass || classes.includes(state.activeClass);
   if(!currentClassStillExists) state.activeClass = "";
+  const classFocused = document.activeElement === els.classSelect;
 
   const classOptions = [`<option value="">전체 반</option>`]
-    .concat(classes.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`));
-  const previousClassValue = els.classSelect.value;
-  const nextClassHtml = classOptions.join("");
-  if(els.classSelect.innerHTML !== nextClassHtml) els.classSelect.innerHTML = nextClassHtml;
-  els.classSelect.value = state.activeClass;
-  if(previousClassValue !== els.classSelect.value) els.classSelect.value = state.activeClass;
+    .concat(classes.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`))
+    .join("");
+  if(!classFocused){
+    if(els.classSelect.innerHTML !== classOptions) els.classSelect.innerHTML = classOptions;
+    els.classSelect.value = state.activeClass;
+  }
 
   const pages = scopedPages();
   const currentPageInScope = pages.includes(state.page);
-  const studentOptions = pages.map(page => {
+  const numberOptions = pages.map(page => {
     const student = studentForPage(page);
-    const label = student
-      ? `${student.number ? `${student.number}번 ` : ""}${student.name || `${page}쪽`}`
-      : `${page}쪽`;
+    const rec = state.records[String(page)];
+    const number = rec?.number || student?.number || "";
+    const label = number ? `${number}번` : `${page}쪽`;
     return `<option value="${page}">${escapeHtml(label)}</option>`;
   }).join("");
-  els.studentSelect.innerHTML = studentOptions || `<option value="">학생 없음</option>`;
-  els.studentSelect.disabled = !pages.length;
-  els.studentSelect.value = currentPageInScope ? String(state.page) : "";
+  const nameOptions = pages.map(page => {
+    const student = studentForPage(page);
+    const rec = state.records[String(page)];
+    const name = rec?.name || student?.name || "";
+    const number = rec?.number || student?.number || "";
+    const label = name || (number ? `${number}번` : `${page}쪽`);
+    return `<option value="${page}">${escapeHtml(label)}</option>`;
+  }).join("");
+  const nextNumberHtml = numberOptions || `<option value="">번호 없음</option>`;
+  const nextNameHtml = nameOptions || `<option value="">이름 없음</option>`;
+  const numberFocused = document.activeElement === els.numberSelect;
+  const nameFocused = document.activeElement === els.nameSelect;
+  if(!numberFocused){
+    if(els.numberSelect.innerHTML !== nextNumberHtml) els.numberSelect.innerHTML = nextNumberHtml;
+    els.numberSelect.disabled = !pages.length;
+    els.numberSelect.value = currentPageInScope ? String(state.page) : "";
+  }
+  if(!nameFocused){
+    if(els.nameSelect.innerHTML !== nextNameHtml) els.nameSelect.innerHTML = nextNameHtml;
+    els.nameSelect.disabled = !pages.length;
+    els.nameSelect.value = currentPageInScope ? String(state.page) : "";
+  }
 
   const rosterLength = currentRoster().length;
   if(!rosterLength){
-    els.classStatus.textContent = "명렬을 적용하면 반별로 이동할 수 있습니다.";
+    els.classStatus.textContent = "명렬을 적용하면 학생 정보로 이동할 수 있습니다.";
   }else if(state.activeClass){
     const position = currentPageInScope ? `${pages.indexOf(state.page) + 1}/${pages.length}` : `0/${pages.length}`;
     els.classStatus.textContent = `${state.activeClass} · ${pages.length}명 · 현재 ${position}`;
@@ -2031,6 +2485,15 @@ function download(filename, mime, text){
   URL.revokeObjectURL(url);
 }
 
+let toastTimer = null;
+function showToast(message){
+  if(!els.toast) return;
+  els.toast.textContent = message;
+  els.toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2200);
+}
+
 els.pdfInput.addEventListener("change", evt => {
   const file = evt.target.files?.[0];
   if(file) openPdf(file).catch(err => alert(`PDF를 열 수 없습니다: ${err.message}`));
@@ -2099,7 +2562,8 @@ els.settingsModal.addEventListener("click", evt => {
   const subDelete = evt.target.closest(".subQuestionDeleteBtn");
   if(subDelete){
     const row = subDelete.closest(".subQuestionRow");
-    question.subs.splice(Number(row.dataset.index), 1);
+    const removed = question.subs.splice(Number(row.dataset.index), 1)[0];
+    if(removed && question.subScores) delete question.subScores[removed];
     question.rubric.forEach(item => item.sub = normalizeSubValue(item.sub || "공통", question));
     persistQuestionSettings();
     return;
@@ -2119,6 +2583,11 @@ els.applyTitleBtn.addEventListener("click", () => {
   applyAppTitle();
   persist();
 });
+els.autoAssistEnabledInput.addEventListener("change", () => {
+  state.settings.autoAssistEnabled = Boolean(els.autoAssistEnabledInput.checked);
+  applySettings();
+  persist();
+});
 els.settingsModal.addEventListener("change", evt => {
   const card = evt.target.closest(".questionEditCard");
   if(!card) return;
@@ -2128,12 +2597,32 @@ els.settingsModal.addEventListener("change", evt => {
     const label = evt.target.value.trim();
     if(label) question.label = label;
   }
+  const maxScoreInput = evt.target.closest(".questionMaxScoreInput");
+  if(maxScoreInput){
+    question.maxScore = nonNegativeNumber(maxScoreInput.value);
+  }
   const subInput = evt.target.closest(".subQuestionInput");
   if(subInput){
     const row = subInput.closest(".subQuestionRow");
+    const previous = question.subs[Number(row.dataset.index)];
     const value = subInput.value.trim();
-    if(value) question.subs[Number(row.dataset.index)] = value;
+    if(value){
+      question.subs[Number(row.dataset.index)] = value;
+      if(previous && previous !== value && question.subScores?.[previous] != null){
+        question.subScores = {...(question.subScores || {}), [value]:question.subScores[previous]};
+        delete question.subScores[previous];
+      }
+    }
     question.rubric.forEach(item => item.sub = normalizeSubValue(item.sub || "공통", question));
+  }
+  const subScoreInput = evt.target.closest(".subQuestionScoreInput");
+  if(subScoreInput){
+    const row = subScoreInput.closest(".subQuestionRow");
+    const sub = question.subs[Number(row.dataset.index)] || row.querySelector(".subQuestionInput")?.value.trim();
+    question.subScores = {...(question.subScores || {})};
+    const value = nonNegativeNumber(subScoreInput.value);
+    if(sub && value > 0) question.subScores[sub] = value;
+    else if(sub) delete question.subScores[sub];
   }
   persistQuestionSettings();
 });
@@ -2161,6 +2650,17 @@ els.clearCurrentBtn.addEventListener("click", () => {
 });
 els.discussionBtn.addEventListener("click", toggleDiscussionFlag);
 els.rubricList.addEventListener("click", evt => {
+  if(state.editingRubricId){
+    const activeEditor = evt.target.closest(".inlineRubricEditor");
+    const activeCriterion = evt.target.closest(".criterion");
+    const isAllowedEditorClick = activeEditor || activeCriterion?.dataset.id === state.editingRubricId;
+    const isExampleInput = evt.target.closest(".subExampleAnswerInput");
+    if(!isAllowedEditorClick && !isExampleInput){
+      evt.preventDefault();
+      showToast("현재 편집 중인 루브릭을 먼저 적용하거나 닫아주세요.");
+      return;
+    }
+  }
   const applyInlineBtn = evt.target.closest(".inlineRubricApplyBtn");
   if(applyInlineBtn){
     applyInlineRubricItem(applyInlineBtn.closest(".inlineRubricEditor"));
@@ -2169,6 +2669,11 @@ els.rubricList.addEventListener("click", evt => {
   const deleteInlineBtn = evt.target.closest(".inlineRubricDeleteBtn");
   if(deleteInlineBtn){
     deleteInlineRubricItem(deleteInlineBtn.closest(".inlineRubricEditor"));
+    return;
+  }
+  const subAddBtn = evt.target.closest(".subAddRubricBtn");
+  if(subAddBtn){
+    addInlineRubricItem("score", subAddBtn.dataset.sub || subOptions()[0]);
     return;
   }
   const addKeywordBtn = evt.target.closest(".keywordAddBtn");
@@ -2181,7 +2686,7 @@ els.rubricList.addEventListener("click", evt => {
     removeKeywordBtn.closest(".keywordEditChip").remove();
     return;
   }
-  if(evt.target.closest(".keywordEditInput")) return;
+  if(evt.target.closest(".keywordEditInput,.keywordScoreInput")) return;
   const cancelInlineBtn = evt.target.closest(".inlineRubricCancelBtn");
   if(cancelInlineBtn){
     state.editingRubricId = "";
@@ -2190,6 +2695,10 @@ els.rubricList.addEventListener("click", evt => {
   }
   const editBtn = evt.target.closest(".criterionEditBtn");
   if(editBtn){
+    if(state.editingRubricId === editBtn.dataset.id){
+      showToast("편집을 끝내려면 아래의 적용 또는 닫기 버튼을 눌러주세요.");
+      return;
+    }
     state.editingRubricId = state.editingRubricId === editBtn.dataset.id ? "" : editBtn.dataset.id;
     renderRubric();
     return;
@@ -2201,6 +2710,13 @@ els.rubricList.addEventListener("click", evt => {
   }
 });
 els.rubricList.addEventListener("input", evt => {
+  const exampleInput = evt.target.closest(".subExampleAnswerInput");
+  if(exampleInput){
+    resizeKeywordTextarea(exampleInput);
+    setExampleAnswerForSub(exampleInput.dataset.sub, exampleInput.value);
+    persist();
+    return;
+  }
   const textarea = evt.target.closest(".keywordEditInput,.keywordAddInput");
   if(textarea) resizeKeywordTextarea(textarea);
 });
@@ -2217,36 +2733,83 @@ els.rubricList.addEventListener("keydown", evt => {
 });
 els.rubricList.addEventListener("dragstart", evt => {
   const chip = evt.target.closest(".keywordEditChip");
-  if(!chip) return;
-  if(evt.target.closest(".keywordEditInput")){
-    evt.preventDefault();
+  if(chip){
+    if(evt.target.closest(".keywordEditInput,.keywordScoreInput")){
+      evt.preventDefault();
+      return;
+    }
+    chip.dataset.keyword = keywordValueFromChip(chip);
+    draggedKeywordChip = chip;
+    evt.dataTransfer.effectAllowed = "move";
+    evt.dataTransfer.setData("text/plain", chip.dataset.keyword || "");
     return;
   }
-  chip.dataset.keyword = keywordValueFromChip(chip);
-  draggedKeywordChip = chip;
+  const criterion = evt.target.closest(".criterion");
+  if(!criterion || state.editingRubricId){
+    evt.preventDefault();
+    if(state.editingRubricId) showToast("편집 중에는 루브릭 순서를 바꿀 수 없습니다.");
+    return;
+  }
+  draggedRubricId = criterion.dataset.id || "";
+  criterion.classList.add("dragging");
   evt.dataTransfer.effectAllowed = "move";
-  evt.dataTransfer.setData("text/plain", chip.dataset.keyword || "");
+  evt.dataTransfer.setData("text/plain", draggedRubricId);
 });
 els.rubricList.addEventListener("dragend", () => {
   draggedKeywordChip = null;
+  draggedRubricId = "";
   els.rubricList.querySelectorAll(".keywordDropZone.dragOver").forEach(zone => zone.classList.remove("dragOver"));
+  els.rubricList.querySelectorAll(".criterion.dragging,.criterion.dragOver,.subRubricTitle.dragOver").forEach(item => item.classList.remove("dragging","dragOver"));
 });
 els.rubricList.addEventListener("dragover", evt => {
   const zone = evt.target.closest(".keywordDropZone");
-  if(!zone || !draggedKeywordChip) return;
-  evt.preventDefault();
-  zone.classList.add("dragOver");
+  if(zone && draggedKeywordChip){
+    evt.preventDefault();
+    zone.classList.add("dragOver");
+    return;
+  }
+  const criterion = evt.target.closest(".criterion");
+  if(criterion && draggedRubricId && criterion.dataset.id !== draggedRubricId){
+    evt.preventDefault();
+    criterion.classList.add("dragOver");
+    return;
+  }
+  const subTitle = evt.target.closest(".subRubricTitle");
+  if(subTitle && draggedRubricId){
+    evt.preventDefault();
+    subTitle.classList.add("dragOver");
+  }
 });
 els.rubricList.addEventListener("dragleave", evt => {
   const zone = evt.target.closest(".keywordDropZone");
   if(zone && !zone.contains(evt.relatedTarget)) zone.classList.remove("dragOver");
+  const criterion = evt.target.closest(".criterion");
+  if(criterion && !criterion.contains(evt.relatedTarget)) criterion.classList.remove("dragOver");
+  const subTitle = evt.target.closest(".subRubricTitle");
+  if(subTitle && !subTitle.contains(evt.relatedTarget)) subTitle.classList.remove("dragOver");
 });
 els.rubricList.addEventListener("drop", evt => {
   const zone = evt.target.closest(".keywordDropZone");
-  if(!zone || !draggedKeywordChip) return;
-  evt.preventDefault();
-  zone.classList.remove("dragOver");
-  moveKeywordChip(draggedKeywordChip, zone);
+  if(zone && draggedKeywordChip){
+    evt.preventDefault();
+    zone.classList.remove("dragOver");
+    moveKeywordChip(draggedKeywordChip, zone);
+    return;
+  }
+  const criterion = evt.target.closest(".criterion");
+  if(criterion && draggedRubricId && criterion.dataset.id !== draggedRubricId){
+    evt.preventDefault();
+    const rect = criterion.getBoundingClientRect();
+    const placeAfter = evt.clientY > rect.top + rect.height / 2;
+    moveRubricItem(draggedRubricId, criterion.dataset.id, placeAfter);
+    return;
+  }
+  const subTitle = evt.target.closest(".subRubricTitle");
+  if(subTitle && draggedRubricId){
+    evt.preventDefault();
+    subTitle.classList.remove("dragOver");
+    moveRubricItemToSubEnd(draggedRubricId, subTitle.dataset.sub || subOptions()[0]);
+  }
 });
 els.memoInput.addEventListener("input", () => {
   if(!state.pdf) return;
@@ -2254,6 +2817,19 @@ els.memoInput.addEventListener("input", () => {
   persist();
   updateResults();
   updateDiscussionButton();
+  updateDiscussionList();
+});
+els.discussionList.addEventListener("click", evt => {
+  const btn = evt.target.closest(".discussionGoBtn");
+  if(!btn) return;
+  const page = Number(btn.dataset.page);
+  if(!Number.isFinite(page) || page <= 0) return;
+  if(state.pdf) goPage(page);
+  else{
+    state.page = page;
+    loadRecordIntoForm();
+    updateClassControls();
+  }
 });
 els.applyRosterBtn.addEventListener("click", () => {
   state.roster = parseRoster(els.rosterText.value);
@@ -2275,6 +2851,7 @@ els.rosterText.addEventListener("input", () => {
 els.classSelect.addEventListener("change", async () => {
   saveCurrent();
   state.activeClass = els.classSelect.value;
+  els.classSelect.blur();
   updateClassControls();
   state.page = firstScopedPage() || state.page || 1;
   if(state.pdf){
@@ -2283,19 +2860,34 @@ els.classSelect.addEventListener("change", async () => {
   loadRecordIntoForm();
   updateChrome();
 });
-els.studentSelect.addEventListener("change", () => {
-  const page = Number(els.studentSelect.value);
+function handleAnswerSelectChange(select){
+  const page = Number(select.value);
   if(!Number.isFinite(page) || page <= 0) return;
+  select.blur();
   if(state.pdf) goPage(page);
   else{
     state.page = page;
     loadRecordIntoForm();
     updateClassControls();
   }
-});
-els.editRubricBtn.addEventListener("click", () => addInlineRubricItem("score"));
-els.addDeductRubricBtn.addEventListener("click", () => addInlineRubricItem("deduct"));
+}
+els.numberSelect.addEventListener("change", () => handleAnswerSelectChange(els.numberSelect));
+els.nameSelect.addEventListener("change", () => handleAnswerSelectChange(els.nameSelect));
+els.addRubricBottomBtn.addEventListener("click", () => addInlineRubricItem("score"));
 els.addRubricItemBtn.addEventListener("click", () => addRubricEditorRow("", 1, createRubricId(), ""));
+els.importHwpxRubricBtn.addEventListener("click", () => els.hwpxRubricInput.click());
+els.hwpxRubricInput.addEventListener("change", async evt => {
+  const file = evt.target.files?.[0];
+  if(!file) return;
+  try{
+    await importHwpxRubric(file);
+    alert(`${activeQuestion().label} 기준을 불러왔습니다. 키워드 후보를 확인한 뒤 적용하세요.`);
+  }catch(err){
+    alert(`HWPX 기준을 불러올 수 없습니다: ${err.message}`);
+  }finally{
+    evt.target.value = "";
+  }
+});
 els.rubricEditorRows.addEventListener("click", evt => {
   const btn = evt.target.closest(".rubricDeleteBtn");
   if(btn) btn.closest(".rubricEditRow").remove();
@@ -2345,6 +2937,8 @@ bindCropDrag();
 bindSidebarResize();
 renderRubric();
 updateResults();
+updateDiscussionList();
+updateChrome();
 </script>
 </body>
 </html>
