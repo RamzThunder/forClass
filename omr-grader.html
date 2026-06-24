@@ -81,14 +81,22 @@ textarea{min-height:72px;resize:vertical}
 .tab{min-height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:850}
 .rubricList{display:grid;gap:9px}
 .subRubricGroup{display:grid;gap:7px}
-.subRubricTitle{position:sticky;top:0;z-index:1;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:900}
+.subRubricTitle{position:sticky;top:0;z-index:1;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.subScoreBadge{border:1px solid #c6e3ec;border-radius:999px;background:var(--soft);color:var(--accent);padding:3px 8px;font-size:12px;font-weight:950;white-space:nowrap}
 .criterion{border:1px solid var(--line);border-radius:8px;padding:0;background:#fff;overflow:hidden}
 .criterion.on{border-color:var(--accent);background:#f2fbfd}
+.criterion.deduct{border-color:#edcfcb;background:#fffafa}
+.criterion.deduct.on{border-color:#b2453e;background:#fff7f6}
 .criterionHead{display:grid;grid-template-columns:minmax(0,1fr) 58px;align-items:stretch}
 .criterionTitle{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:8px;align-items:start;padding:11px;background:#fbfcfe}
 .criterion.on .criterionTitle{background:#eef8fb}
+.criterion.deduct .criterionTitle{background:#fff7f6}
+.criterion.deduct.on .criterionTitle{background:#fee9e7}
 .criterionEditBtn{border:0;border-left:1px solid var(--line);background:#fbfcfe;color:var(--muted);font-size:12px;font-weight:850}
 .criterionEditBtn.on{background:var(--accent);color:#fff}
+.criterion.deduct .criterionEditBtn{background:#fff7f6}
+.criterion.deduct .pointBadge{color:#a33a35;border-color:#edcfcb;background:#fff}
+.criterion.deduct.on .pointBadge{background:#b2453e;border-color:#b2453e;color:#fff}
 .criterionTop{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:8px;align-items:start;margin-bottom:8px}
 .criterionName{font-weight:800;white-space:pre-wrap;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere}
 .pointBadge{justify-self:end;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:4px 8px;font-size:12px;font-weight:850;white-space:nowrap}
@@ -996,38 +1004,28 @@ function renderRubric(){
   const qrec = currentQuestionRecord();
   const scores = qrec?.scores || {};
   const keywordHits = qrec?.keywordHits || {};
+  const subTotals = rubricSubTotals(activeRubric(), scores);
   els.rubricList.innerHTML = "";
-  renderRubricSection(activeRubric().filter(item => item.type !== "deduct"), "score", scores, keywordHits);
-  renderRubricSection(activeRubric().filter(item => item.type === "deduct"), "deduct", scores, keywordHits);
+  subOptions().forEach(sub => {
+    const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
+    if(items.length) renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
+  });
   updateTotal();
   updateKeywordSummary();
   resizeKeywordTextareas();
 }
 
-function renderRubricSection(items, type, scores, keywordHits){
-  if(!items.length) return;
-  if(type === "deduct"){
-    const title = document.createElement("div");
-    title.className = "subRubricTitle";
-    title.textContent = "소문항별 감점 루브릭";
-    els.rubricList.appendChild(title);
-  }
-  let currentSub = null;
-  let groupEl = null;
+function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
+  const groupEl = document.createElement("div");
+  groupEl.className = "subRubricGroup";
+  const title = document.createElement("div");
+  title.className = "subRubricTitle";
+  title.innerHTML = `<span>${escapeHtml(sub)}</span><strong class="subScoreBadge">${escapeHtml(subTotal)}점</strong>`;
+  groupEl.appendChild(title);
+  els.rubricList.appendChild(groupEl);
   items.forEach(item => {
-    const sub = normalizeSubValue(item.sub || "공통");
-    if(sub !== currentSub){
-      currentSub = sub;
-      groupEl = document.createElement("div");
-      groupEl.className = "subRubricGroup";
-      const title = document.createElement("div");
-      title.className = "subRubricTitle";
-      title.textContent = sub;
-      groupEl.appendChild(title);
-      els.rubricList.appendChild(groupEl);
-    }
     const wrap = document.createElement("div");
-    wrap.className = "criterion";
+    wrap.className = `criterion${item.type === "deduct" ? " deduct" : ""}`;
     const selected = ["accept","partial","reject"].some(type => keywordHits?.[item.id]?.[type]?.length);
     if(selected) wrap.classList.add("on");
     const head = document.createElement("div");
@@ -1190,9 +1188,7 @@ function updateTotal(){
   const qrec = currentQuestionRecord();
   const scores = qrec?.scores || {};
   const totals = rubricSubTotals(activeRubric(), scores);
-  els.subTotalList.innerHTML = subOptions().map(sub => `
-    <div class="subTotalItem"><span>${escapeHtml(sub)} 소문항 합계</span><strong>${totals[sub] || 0}</strong></div>
-  `).join("");
+  els.subTotalList.innerHTML = "";
   els.totalScore.textContent = Object.values(totals).reduce((sum, value) => sum + value, 0);
 }
 
