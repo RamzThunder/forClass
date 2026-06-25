@@ -52,7 +52,7 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .navLabel{color:var(--muted);font-size:11px;font-weight:850}
 .answerNavRow{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px;align-items:center}
 .navStudent{display:grid;grid-template-columns:110px 86px minmax(0,1fr);gap:8px}
-.studentStatusLine{grid-column:1 / -1;display:flex;align-items:center;gap:6px;min-height:20px;margin-top:4px}
+.studentStatusLine{grid-column:1 / -1;display:flex;align-items:center;gap:6px;min-height:20px;margin-top:4px;justify-content:flex-start}
 .studentStateChip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:2px 8px;font-size:11px;font-weight:850;white-space:nowrap}
 .studentStateChip::before{content:"";width:7px;height:7px;border-radius:50%;background:#a8b1c0}
 .studentStateChip.done{border-color:#cbded2;background:#f7fbf8;color:#286044}
@@ -60,6 +60,7 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .studentStateChip.active{border-color:#e2d1a4;background:#fffdf7;color:#785a16}
 .studentStateChip.active::before{background:#c88a1a}
 .studentStateChip.empty{border-color:#d9dee8;background:#f8fafc;color:var(--muted)}
+.studentStateChip.empty::before{background:#a8b1c0}
 .currentAnswerAccess{display:grid;grid-template-columns:minmax(360px,1fr) minmax(280px,.85fr);gap:8px;align-items:start}
 .answerMetaRow{display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:start}
 .memoCompact{min-height:40px;height:40px;resize:vertical;font-size:12px;line-height:1.35;padding:8px 10px}
@@ -2854,7 +2855,7 @@ function updateStudentStatusChip(currentPageInScope=scopedPages().includes(state
     return;
   }
   const status = gradingStateForPage(state.page);
-  els.studentStatusLine.innerHTML = `<span class="studentStateChip ${escapeHtml(status.key)}">${escapeHtml(status.label)}</span><span class="statusLine">${escapeHtml(activeQuestion().label)} 기준</span>`;
+  els.studentStatusLine.innerHTML = `<span class="studentStateChip ${escapeHtml(status.key)}">${escapeHtml(status.label)}</span>`;
 }
 
 function bindCropDrag(){
