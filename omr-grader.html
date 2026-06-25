@@ -200,8 +200,7 @@ textarea{min-height:72px;resize:vertical}
 .keywordEditInput:focus{outline:0}
 .keywordScoreInput{min-height:36px;padding:5px 6px;font-size:12px;font-weight:900;text-align:center}
 .keywordRemoveBtn{border:0;background:transparent;color:var(--muted);font-weight:900;line-height:1;padding:2px}
-.keywordAddRow{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:5px;align-items:start}
-.keywordAddRow textarea{min-height:48px;font-size:12px;line-height:1.45;resize:vertical}
+.keywordAddBtn{margin-top:4px;width:100%}
 .total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:12px;background:var(--soft);border:1px solid #c6e3ec;border-radius:8px;margin-top:10px}
 .total strong{font-size:28px}
 .rubricAddFooter{display:flex;justify-content:center;margin-top:10px}
@@ -1457,10 +1456,7 @@ function keywordEditZoneHtml(item, type, title, keywords){
       <div class="keywordEditList">
         ${keywords.map(keyword => keywordEditChipHtml(item, type, keyword)).join("")}
       </div>
-      <div class="keywordAddRow">
-        <textarea class="keywordAddInput" placeholder="키워드 또는 판정 문구 추가"></textarea>
-        <button class="btn mini keywordAddBtn" type="button">+</button>
-      </div>
+      <button class="btn mini keywordAddBtn" type="button">+ 키워드 추가</button>
     </div>
   `;
 }
@@ -1486,7 +1482,7 @@ function resizeKeywordTextarea(textarea){
 }
 
 function resizeKeywordTextareas(root=els.rubricList){
-  root.querySelectorAll(".keywordEditInput,.keywordAddInput,.subExampleAnswerInput").forEach(resizeKeywordTextarea);
+  root.querySelectorAll(".keywordEditInput,.subExampleAnswerInput").forEach(resizeKeywordTextarea);
 }
 
 function updateTotal(){
@@ -2406,22 +2402,18 @@ function keywordAliasesFromEditor(editor){
 }
 
 function addKeywordToZone(zone){
-  const input = zone.querySelector(".keywordAddInput");
-  const keyword = normalizeKeywordText(input.value);
-  if(!keyword) return;
   const list = zone.querySelector(".keywordEditList");
-  const exists = [...list.querySelectorAll(".keywordEditChip")].some(chip => keywordValueFromChip(chip) === keyword);
-  if(!exists){
-    const editor = zone.closest(".inlineRubricEditor");
-    const item = activeRubric().find(entry => entry.id === editor?.querySelector(".rubricEditRow")?.dataset.id) || {
-      type:editor?.querySelector(".rubricTypeInput")?.value || "score",
-      pt:1,
-      rejectDeduct:1
-    };
-    list.insertAdjacentHTML("beforeend", keywordEditChipHtml(item, zone.dataset.type, keyword));
-  }
-  input.value = "";
-  resizeKeywordTextareas(zone);
+  const editor = zone.closest(".inlineRubricEditor");
+  const item = activeRubric().find(entry => entry.id === editor?.querySelector(".rubricEditRow")?.dataset.id) || {
+    type:editor?.querySelector(".rubricTypeInput")?.value || "score",
+    pt:1,
+    rejectDeduct:1
+  };
+  list.insertAdjacentHTML("afterbegin", keywordEditChipHtml(item, zone.dataset.type, "새 키워드"));
+  const textarea = list.firstElementChild.querySelector(".keywordEditInput");
+  resizeKeywordTextarea(textarea);
+  textarea.focus();
+  textarea.select();
 }
 
 function moveKeywordChip(chip, targetZone){
@@ -3292,7 +3284,7 @@ els.rubricList.addEventListener("input", evt => {
     persist();
     return;
   }
-  const textarea = evt.target.closest(".keywordEditInput,.keywordAddInput");
+  const textarea = evt.target.closest(".keywordEditInput");
   if(textarea) resizeKeywordTextarea(textarea);
 });
 els.rubricList.addEventListener("change", evt => {
@@ -3301,10 +3293,6 @@ els.rubricList.addEventListener("change", evt => {
 });
 els.rubricList.addEventListener("keydown", evt => {
   if(evt.key !== "Enter" || !evt.ctrlKey) return;
-  const input = evt.target.closest(".keywordAddInput");
-  if(!input) return;
-  evt.preventDefault();
-  addKeywordToZone(input.closest(".keywordDropZone"));
 });
 els.rubricList.addEventListener("dragstart", evt => {
   const chip = evt.target.closest(".keywordEditChip");
