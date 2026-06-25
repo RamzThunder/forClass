@@ -52,6 +52,14 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .navLabel{color:var(--muted);font-size:11px;font-weight:850}
 .answerNavRow{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px;align-items:center}
 .navStudent{display:grid;grid-template-columns:110px 86px minmax(0,1fr);gap:8px}
+.studentStatusLine{grid-column:1 / -1;display:flex;align-items:center;gap:6px;min-height:20px;margin-top:4px}
+.studentStateChip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:2px 8px;font-size:11px;font-weight:850;white-space:nowrap}
+.studentStateChip::before{content:"";width:7px;height:7px;border-radius:50%;background:#a8b1c0}
+.studentStateChip.done{border-color:#cbded2;background:#f7fbf8;color:#286044}
+.studentStateChip.done::before{background:#2d8a57}
+.studentStateChip.active{border-color:#e2d1a4;background:#fffdf7;color:#785a16}
+.studentStateChip.active::before{background:#c88a1a}
+.studentStateChip.empty{border-color:#d9dee8;background:#f8fafc;color:var(--muted)}
 .currentAnswerAccess{display:grid;grid-template-columns:minmax(360px,1fr) minmax(280px,.85fr);gap:8px;align-items:start}
 .answerMetaRow{display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:start}
 .memoCompact{min-height:40px;height:40px;resize:vertical;font-size:12px;line-height:1.35;padding:8px 10px}
@@ -94,12 +102,16 @@ textarea{min-height:72px;resize:vertical}
 .rubricList{display:grid;gap:9px}
 .subRubricGroup{display:grid;gap:7px}
 .subRubricTitle{position:sticky;top:0;z-index:1;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:900;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px}
+.subRubricGroup.unwritten .subRubricTitle{border-color:#d5a13b;background:#fffaf0}
 .subRubricTitle.dragOver{outline:2px solid var(--accent);outline-offset:2px}
 .subRubricLabel{font-size:15px;color:var(--muted);white-space:nowrap}
 .subExampleAnswerInput{min-width:0;width:100%;min-height:44px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--ink);padding:6px 8px;font-size:12px;font-weight:750;line-height:1.45;resize:vertical;overflow:hidden}
 .subExampleAnswerInput:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14);outline:0}
 .subExampleAnswerInput::placeholder{color:var(--muted);font-weight:750}
 .subScoreBadge{border:1px solid #c6e3ec;border-radius:999px;background:var(--soft);color:var(--accent);padding:3px 8px;font-size:12px;font-weight:950;white-space:nowrap}
+.subUnwrittenBtn,.completeBtn{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--muted);min-height:30px;padding:4px 8px;font-size:12px;font-weight:900;white-space:nowrap}
+.subUnwrittenBtn.on{background:#9a6512;border-color:#9a6512;color:#fff}
+.completeBtn.on{background:#1f7a45;border-color:#1f7a45;color:#fff}
 .scoreNow.negative{color:var(--danger)}
 .scoreMax{font-size:.72em;color:var(--muted);font-weight:850;margin-left:2px}
 .criterion{border:1px solid var(--line);border-radius:8px;padding:0;background:#fff;overflow:hidden}
@@ -380,6 +392,7 @@ textarea{min-height:72px;resize:vertical}
               <select id="classSelect" title="반 선택"></select>
               <select id="numberSelect" title="번호 선택" disabled></select>
               <select id="nameSelect" title="이름 선택" disabled></select>
+              <div class="studentStatusLine" id="studentStatusLine" aria-live="polite"></div>
             </div>
             <button class="btn" id="nextBtn" disabled title="다음 답안">›</button>
           </div>
@@ -441,12 +454,12 @@ textarea{min-height:72px;resize:vertical}
       <div class="subTotalList" id="subTotalList"></div>
       <div class="total"><span>문항 전체 합계</span><strong id="totalScore">0</strong></div>
       <div class="compactBtns" style="margin-top:10px">
-        <button class="btn primary" id="saveBtn" disabled>저장 후 다음</button>
-        <button class="btn" id="saveOnlyBtn" disabled>저장</button>
+        <button class="completeBtn" id="completeBtn" type="button" disabled>채점 완료</button>
+        <button class="btn primary" id="completeNextBtn" type="button" disabled>채점 완료 후 다음</button>
         <button class="btn danger" id="clearCurrentBtn" disabled>현재 문항 삭제</button>
       </div>
       <div class="statusLine" style="margin-top:10px">
-        단축키: <span class="kbd">←</span> <span class="kbd">→</span> 페이지 이동, <span class="kbd">S</span> 저장 후 다음
+        단축키: <span class="kbd">←</span> <span class="kbd">→</span> 페이지 이동, <span class="kbd">S</span> 채점 완료 후 다음
       </div>
     </section>
 
@@ -659,12 +672,12 @@ const els = {
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), gradeModeBtn:$("gradeModeBtn"),
   settingsBtn:$("settingsBtn"), settingsModal:$("settingsModal"), closeSettingsBtn:$("closeSettingsBtn"),
   prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), pageInput:$("pageInput"), pageStatus:$("pageStatus"),
-  classSelect:$("classSelect"), numberSelect:$("numberSelect"), nameSelect:$("nameSelect"), classStatus:$("classStatus"),
+  classSelect:$("classSelect"), numberSelect:$("numberSelect"), nameSelect:$("nameSelect"), studentStatusLine:$("studentStatusLine"), classStatus:$("classStatus"),
   questionSelect:$("questionSelect"), questionStatus:$("questionStatus"),
   addQuestionBtn:$("addQuestionBtn"), questionSettingsList:$("questionSettingsList"), initialSetupNotice:$("initialSetupNotice"),
   rosterText:$("rosterText"), applyRosterBtn:$("applyRosterBtn"),
   rosterStatus:$("rosterStatus"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), discussionList:$("discussionList"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
-  saveBtn:$("saveBtn"), saveOnlyBtn:$("saveOnlyBtn"), clearCurrentBtn:$("clearCurrentBtn"),
+  completeNextBtn:$("completeNextBtn"), clearCurrentBtn:$("clearCurrentBtn"), completeBtn:$("completeBtn"),
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
@@ -720,7 +733,8 @@ function isDefaultQuestionLabel(label, index){
 }
 
 function hasQuestionBasics(question, index){
-  if(questionMaxScore(question) > 0) return true;
+  if(nonNegativeNumber(question.maxScore) > 0) return true;
+  if(Object.values(question.subScores || {}).some(value => nonNegativeNumber(value) > 0)) return true;
   if((question.subs || []).length) return true;
   if(String(question.exampleAnswer || "").trim()) return true;
   return !isDefaultQuestionLabel(question.label, index);
@@ -863,6 +877,8 @@ function normalizeRecords(){
       if(!qrec) return;
       if(!qrec.scores) qrec.scores = {};
       if(!qrec.keywordHits) qrec.keywordHits = {};
+      if(!qrec.unwrittenSubs || typeof qrec.unwrittenSubs !== "object") qrec.unwrittenSubs = {};
+      qrec.completed = Boolean(qrec.completed);
       question.rubric.forEach(item => {
         const hits = qrec.keywordHits?.[item.id] || {};
         qrec.scores[item.id] = scoreFromKeywordHits(item, hits);
@@ -900,13 +916,16 @@ function ensureRecord(key=recordKey()){
 function ensureQuestionRecord(key=recordKey()){
   ensureRecord(key);
   if(!state.records[key].answers[state.activeQuestion]){
-    state.records[key].answers[state.activeQuestion] = {scores:blankScores(), memo:"", keywordHits:{}, needsDiscussion:false};
+    state.records[key].answers[state.activeQuestion] = {scores:blankScores(), memo:"", keywordHits:{}, needsDiscussion:false, completed:false, unwrittenSubs:{}};
   }
   if(!state.records[key].answers[state.activeQuestion].scores){
     state.records[key].answers[state.activeQuestion].scores = blankScores();
   }
   if(!state.records[key].answers[state.activeQuestion].keywordHits){
     state.records[key].answers[state.activeQuestion].keywordHits = {};
+  }
+  if(!state.records[key].answers[state.activeQuestion].unwrittenSubs){
+    state.records[key].answers[state.activeQuestion].unwrittenSubs = {};
   }
 }
 
@@ -982,8 +1001,7 @@ async function setQuestion(id){
   state.activeQuestion = id;
   state.editingRubricId = "";
   updateQuestionControls();
-  renderRubric();
-  updateResults();
+  loadRecordIntoForm();
   updateChrome();
   if(state.pdf) await renderCurrentPage();
 }
@@ -1072,7 +1090,7 @@ async function openPdf(file){
   if(state.activeClass && !scopedPages().includes(state.page)) state.page = firstScopedPage() || state.page;
   state.lastPdfPage = state.page;
   els.empty.classList.add("hidden");
-  [els.pageInput, els.prevBtn, els.nextBtn, els.saveBtn, els.saveOnlyBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
+  [els.pageInput, els.prevBtn, els.nextBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
@@ -1144,6 +1162,8 @@ function updateChrome(){
     : "대기 중";
   els.prevBtn.disabled = !state.pdf || (state.activeClass ? scopedIndex <= 0 : state.page <= 1);
   els.nextBtn.disabled = !state.pdf || (state.activeClass ? scopedIndex < 0 || scopedIndex >= scoped.length - 1 : state.page >= state.pageCount);
+  els.completeBtn.disabled = !state.pdf;
+  els.completeNextBtn.disabled = !state.pdf;
   updateClassControls();
   updateProgress();
   updateMobileScanNav(scoped, scopedIndex);
@@ -1183,6 +1203,7 @@ function loadRecordIntoForm(){
   const qrec = currentQuestionRecord();
   els.memoInput.value = qrec?.memo || "";
   updateDiscussionButton();
+  updateCompleteButton();
   els.answerText.value = "";
   els.autoDetectStatus.textContent = "";
   renderRubric();
@@ -1200,7 +1221,7 @@ function renderRubric(){
   els.rubricList.innerHTML = "";
   subOptions().forEach(sub => {
     const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
-    if(items.length) renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
+    renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
   });
   updateTotal();
   updateKeywordSummary();
@@ -1208,8 +1229,10 @@ function renderRubric(){
 }
 
 function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
+  const qrec = currentQuestionRecord();
+  const isUnwritten = Boolean(qrec?.unwrittenSubs?.[sub]);
   const groupEl = document.createElement("div");
-  groupEl.className = "subRubricGroup";
+  groupEl.className = `subRubricGroup${isUnwritten ? " unwritten" : ""}`;
   const title = document.createElement("div");
   title.className = "subRubricTitle";
   title.dataset.sub = sub;
@@ -1218,6 +1241,7 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
     <span class="subRubricLabel">${escapeHtml(sub)}</span>
     <textarea class="subExampleAnswerInput" data-sub="${escapeHtml(sub)}" placeholder="예시답안 입력">${escapeHtml(exampleAnswer)}</textarea>
     <span style="display:flex;align-items:center;gap:6px">
+      <button class="subUnwrittenBtn${isUnwritten ? " on" : ""}" type="button" data-sub="${escapeHtml(sub)}" aria-pressed="${isUnwritten ? "true" : "false"}">미작성</button>
       <strong class="subScoreBadge">${scoreFractionHtml(subTotal, subMaxScore(activeQuestion(), sub))}</strong>
       <button class="subAddRubricBtn" type="button" data-sub="${escapeHtml(sub)}" title="이 소문항에 루브릭 추가">+</button>
     </span>
@@ -1301,6 +1325,8 @@ function toggleKeywordHit(itemId, type, keyword){
   const item = activeRubric().find(entry => entry.id === itemId);
   if(!item || !keyword) return;
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  const sub = normalizeSubValue(item.sub || "공통");
+  if(qrec.unwrittenSubs?.[sub]) delete qrec.unwrittenSubs[sub];
   if(!qrec.keywordHits) qrec.keywordHits = {};
   const itemHits = qrec.keywordHits[item.id] || {accept:[], partial:[], reject:[]};
   const currentList = Array.isArray(itemHits[type]) ? itemHits[type] : [];
@@ -1316,6 +1342,34 @@ function toggleKeywordHit(itemId, type, keyword){
   persist();
   renderRubric();
   updateResults();
+  updateClassControls();
+}
+
+function clearSubScores(qrec, sub){
+  activeRubric()
+    .filter(item => normalizeSubValue(item.sub || "공통") === sub)
+    .forEach(item => {
+      if(qrec.keywordHits) delete qrec.keywordHits[item.id];
+      if(qrec.scores) qrec.scores[item.id] = 0;
+    });
+}
+
+function toggleSubUnwritten(sub){
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  qrec.unwrittenSubs = qrec.unwrittenSubs || {};
+  const normalizedSub = normalizeSubValue(sub);
+  if(qrec.unwrittenSubs[normalizedSub]){
+    delete qrec.unwrittenSubs[normalizedSub];
+  }else{
+    qrec.unwrittenSubs[normalizedSub] = true;
+    clearSubScores(qrec, normalizedSub);
+  }
+  syncFormToRecord();
+  persist();
+  renderRubric();
+  updateResults();
+  updateClassControls();
 }
 
 function splitKeywords(text){
@@ -1417,7 +1471,7 @@ function updateProgress(){
   const total = pages.length;
   const graded = pages.filter(page => {
     const rec = state.records[String(page)];
-    return questionRecordHasData(rec?.answers?.[question.id], question);
+    return Boolean(rec?.answers?.[question.id]?.completed);
   }).length;
   const pct = total > 0 ? Math.round(graded / total * 100) : 0;
   els.progressFill.style.width = `${pct}%`;
@@ -1452,11 +1506,16 @@ function autoDetectKeywords(){
     });
     if(changed){
       const hasHits = next.accept.length || next.reject.length;
-      if(hasHits){qrec.keywordHits[item.id] = next;qrec.scores[item.id] = scoreFromKeywordHits(item, next);}
+      if(hasHits){
+        const sub = normalizeSubValue(item.sub || "공통");
+        if(qrec.unwrittenSubs?.[sub]) delete qrec.unwrittenSubs[sub];
+        qrec.keywordHits[item.id] = next;
+        qrec.scores[item.id] = scoreFromKeywordHits(item, next);
+      }
     }
   });
   if(!matches){els.autoDetectStatus.textContent = "매칭되는 키워드가 없습니다. 답안 텍스트를 확인하세요.";return;}
-  persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();
+  persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();
   els.autoDetectStatus.textContent = `${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`;
 }
 
@@ -1470,14 +1529,23 @@ function recordHasData(rec){
 
 function questionRecordHasData(qrec, question=activeQuestion()){
   if(!qrec) return false;
+  if(qrec.completed) return true;
   if(qrec.needsDiscussion) return true;
   if(String(qrec.memo || "").trim()) return true;
+  if(Object.values(qrec.unwrittenSubs || {}).some(Boolean)) return true;
   const scores = qrec.scores || {};
   const hasScore = question.rubric.some(item => Number(scoreValue(scores, item) || 0) > 0);
   if(hasScore) return true;
   return Object.values(qrec.keywordHits || {}).some(hit =>
     ["accept","reject"].some(type => Array.isArray(hit?.[type]) && hit[type].length)
   );
+}
+
+function gradingStateForPage(page, question=activeQuestion()){
+  const qrec = state.records[String(page)]?.answers?.[question.id];
+  if(qrec?.completed) return {key:"done", label:"채점 완료"};
+  if(questionRecordHasData(qrec, question)) return {key:"active", label:"채점 중"};
+  return {key:"empty", label:"미채점"};
 }
 
 function cleanupRecord(key=recordKey()){
@@ -1519,6 +1587,7 @@ function toggleDiscussionFlag(){
   updateResults();
   updateProgress();
   updateDiscussionList();
+  updateClassControls();
 }
 
 function updateDiscussionButton(){
@@ -1527,6 +1596,37 @@ function updateDiscussionButton(){
   els.discussionBtn.textContent = flagged ? "★" : "☆";
   els.discussionBtn.title = flagged ? "논의 필요 표시됨" : "논의 필요 표시";
   els.discussionBtn.setAttribute("aria-label", els.discussionBtn.title);
+}
+
+function updateCompleteButton(){
+  const completed = Boolean(currentQuestionRecord()?.completed);
+  els.completeBtn.classList.toggle("on", completed);
+  els.completeBtn.textContent = completed ? "채점 완료됨" : "채점 완료";
+  els.completeBtn.setAttribute("aria-pressed", completed ? "true" : "false");
+}
+
+function setCompletedFlag(completed){
+  if(!state.pdf) return;
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  qrec.completed = Boolean(completed);
+  syncFormToRecord();
+  persist();
+  updateCompleteButton();
+  updateProgress();
+  updateResults();
+  updateClassControls();
+}
+
+function toggleCompletedFlag(){
+  setCompletedFlag(!currentQuestionRecord()?.completed);
+}
+
+async function completeAndAdvance(){
+  if(!state.pdf) return;
+  setCompletedFlag(true);
+  if(state.activeClass) await goScoped(1);
+  else if(state.page < state.pageCount) await goPage(state.page + 1);
 }
 
 function saveCurrent(){
@@ -1564,23 +1664,40 @@ async function goScoped(delta){
 
 function updateResults(){
   const questionHeaders = state.questions.map(q => `<th>${escapeHtml(q.label)}</th>`).join("");
-  els.resultHead.innerHTML = `<tr><th>쪽</th><th>반</th><th>번호</th><th>이름</th><th>논의</th>${questionHeaders}<th>합계</th></tr>`;
+  els.resultHead.innerHTML = `<tr><th>쪽</th><th>반</th><th>번호</th><th>이름</th><th>완료</th><th>논의</th>${questionHeaders}<th>합계</th></tr>`;
   const rows = Object.values(state.records)
     .filter(recordHasData)
     .sort((a,b) => Number(a.page) - Number(b.page))
     .map(rec => {
       const totals = state.questions.map(q => questionTotal(rec, q));
       const total = totals.reduce((sum, value) => sum + value, 0);
+      const completed = completedLabels(rec).join(", ");
       const discussion = discussionLabels(rec).join(", ");
-      return `<tr><td>${rec.page}</td><td>${escapeHtml(rec.className || "")}</td><td>${escapeHtml(rec.number || "")}</td><td>${escapeHtml(rec.name || "")}</td><td>${escapeHtml(discussion)}</td>${totals.map(v => `<td>${v}</td>`).join("")}<td>${total}</td></tr>`;
+      const questionCells = state.questions.map((q, index) => {
+        const unwritten = unwrittenLabels(rec.answers?.[q.id]).join(", ");
+        return `<td>${escapeHtml(totals[index])}${unwritten ? `<div class="statusLine">미작성: ${escapeHtml(unwritten)}</div>` : ""}</td>`;
+      }).join("");
+      return `<tr><td>${rec.page}</td><td>${escapeHtml(rec.className || "")}</td><td>${escapeHtml(rec.number || "")}</td><td>${escapeHtml(rec.name || "")}</td><td>${escapeHtml(completed)}</td><td>${escapeHtml(discussion)}</td>${questionCells}<td>${total}</td></tr>`;
     }).join("");
-  els.resultBody.innerHTML = rows || `<tr><td colspan="${6 + state.questions.length}">저장된 결과 없음</td></tr>`;
+  els.resultBody.innerHTML = rows || `<tr><td colspan="${7 + state.questions.length}">저장된 결과 없음</td></tr>`;
+}
+
+function completedLabels(rec){
+  return state.questions
+    .filter(question => rec.answers?.[question.id]?.completed)
+    .map(question => question.label);
 }
 
 function discussionLabels(rec){
   return state.questions
     .filter(question => rec.answers?.[question.id]?.needsDiscussion)
     .map(question => question.label);
+}
+
+function unwrittenLabels(qrec){
+  return Object.entries(qrec?.unwrittenSubs || {})
+    .filter(([, value]) => Boolean(value))
+    .map(([sub]) => sub);
 }
 
 function updateDiscussionList(){
@@ -1706,22 +1823,22 @@ function questionTotal(rec, question){
 }
 
 function exportCsv(){
-  const headers = ["page","class","number","name","discussion_needed"];
+  const headers = ["page","class","number","name","completed","discussion_needed"];
   state.questions.forEach(q => {
     q.rubric.forEach((r, index) => headers.push(`${q.label}_${r.sub || "공통"}_${index + 1}_${r.name}`));
-    headers.push(`${q.label}_total`, `${q.label}_memo`);
+    headers.push(`${q.label}_total`, `${q.label}_completed`, `${q.label}_unwritten`, `${q.label}_memo`);
   });
   headers.push("total");
   const lines = [headers.map(csvCell).join(",")];
   Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page)).forEach(rec => {
-    const row = [rec.page, rec.className || "", rec.number || "", rec.name || "", discussionLabels(rec).join("; ")];
+    const row = [rec.page, rec.className || "", rec.number || "", rec.name || "", completedLabels(rec).join("; "), discussionLabels(rec).join("; ")];
     let total = 0;
     state.questions.forEach(q => {
       const qrec = rec.answers?.[q.id] || {};
       q.rubric.forEach(item => row.push(scoreValue(qrec.scores || {}, item) || ""));
       const qtotal = questionTotal(rec, q);
       total += qtotal;
-      row.push(qtotal, [qrec.needsDiscussion ? "논의 필요" : "", qrec.memo || ""].filter(Boolean).join(" / "));
+      row.push(qtotal, qrec.completed ? "완료" : "", unwrittenLabels(qrec).join("; "), [qrec.needsDiscussion ? "논의 필요" : "", qrec.memo || ""].filter(Boolean).join(" / "));
     });
     row.push(total);
     lines.push(row.map(csvCell).join(","));
@@ -1777,7 +1894,9 @@ function buildShareReportHtml(records, options){
   .meta{color:#647085;font-size:12px;line-height:1.5}
   .tools{display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px}
   button{border:1px solid #d9dee8;background:#fff;color:#172033;border-radius:8px;min-height:38px;padding:7px 11px;font-weight:800;cursor:pointer}
-  .student{break-inside:avoid;page-break-inside:avoid;background:#fff;border:1px solid #d9dee8;border-radius:10px;margin:0 0 18px;overflow:hidden}
+  .printPage{--student-scale:1;width:min(100%,210mm);height:297mm;margin:0 auto 18px;padding:10mm;background:#fff;overflow:hidden;box-shadow:0 8px 28px rgba(23,32,51,.12)}
+  .studentScale{transform:scale(var(--student-scale));transform-origin:top left;width:calc(100% / var(--student-scale))}
+  .student{break-inside:avoid;page-break-inside:avoid;background:#fff;border:1px solid #d9dee8;border-radius:10px;overflow:hidden}
   .studentHead{display:flex;justify-content:space-between;gap:14px;align-items:center;background:#fbfcfe;border-bottom:1px solid #d9dee8;padding:14px 16px}
   .studentName{font-size:18px;font-weight:900}
   .score{font-size:18px;font-weight:950;color:#176b87;white-space:nowrap}
@@ -1787,7 +1906,9 @@ function buildShareReportHtml(records, options){
   h2{margin:0;font-size:15px;line-height:1.45}
   .example{margin:8px 0 12px;border-left:3px solid #d9dee8;padding-left:10px;color:#41506a;font-size:12px;white-space:pre-wrap;line-height:1.55}
   .subGroup{display:grid;grid-template-columns:74px minmax(0,1fr) 86px;gap:10px;align-items:stretch;border:1px solid #d9dee8;border-radius:10px;margin:10px 0;background:#fff;overflow:hidden}
+  .subGroup.unwritten{border-color:#d5a13b;background:#fffaf0}
   .subLabel{display:grid;place-items:center;background:#f8fafc;border-right:1px solid #d9dee8;color:#172033;font-size:20px;font-weight:950}
+  .subGroup.unwritten .subLabel{background:#fff4cf}
   .subItems{display:grid;gap:8px;padding:10px 0}
   .subScore{display:grid;place-items:center;border-left:1px solid #d9dee8;color:#176b87;font-size:17px;font-weight:950;white-space:nowrap}
   .subScore.negative{color:#a33a35}
@@ -1804,14 +1925,20 @@ function buildShareReportHtml(records, options){
   .empty{color:#647085;font-size:12px}
   .memo{margin-top:10px;border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap}
   .badge{display:inline-block;border:1px solid #edcfcb;border-radius:999px;background:#fff7f6;color:#a33a35;padding:3px 7px;font-size:11px;font-weight:900;margin-left:6px}
+  .badge.done{border-color:#c9e7d2;background:#f4fbf7;color:#1f7a45}
   @media print{
+    @page{size:A4;margin:0}
     body{background:#fff}
     .wrap{max-width:none;padding:0}
     .tools{display:none}
-    .student{break-after:page;page-break-after:always;border-radius:0}
-    .student:last-child{break-after:auto;page-break-after:auto}
+    .reportHead{display:none}
+    .printPage{width:210mm;height:297mm;margin:0;padding:10mm;box-shadow:none;break-after:page;page-break-after:always}
+    .printPage:last-child{break-after:auto;page-break-after:auto}
+    .student{border-radius:0}
   }
   @media (max-width:720px){
+    .printPage{width:100%;height:auto;min-height:0;padding:10px;box-shadow:none}
+    .studentScale{transform:none;width:100%}
     .subGroup{grid-template-columns:52px minmax(0,1fr)}
     .subScore{grid-column:1 / -1;border-left:0;border-top:1px solid #d9dee8;padding:8px}
   }
@@ -1826,9 +1953,28 @@ function buildShareReportHtml(records, options){
     </div>
     <div class="meta">문항 총점 합계 ${escapeHtml(formatScore(questionMaxTotal))}점</div>
   </div>
-  <div class="tools"><button type="button" onclick="window.print()">인쇄/PDF 저장</button></div>
+  <div class="tools"><button type="button" onclick="fitStudentPages();window.print()">인쇄/PDF 저장</button></div>
   ${records.map(rec => shareReportStudentHtml(rec, options)).join("")}
 </main>
+<script>
+function fitStudentPages(){
+  document.querySelectorAll(".printPage").forEach(page => {
+    page.style.setProperty("--student-scale", "1");
+    const sheet = page.querySelector(".studentScale");
+    if(!sheet) return;
+    const styles = getComputedStyle(page);
+    const availableHeight = page.clientHeight - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
+    const naturalHeight = sheet.scrollHeight;
+    if(!availableHeight || !naturalHeight) return;
+    const scale = Math.min(1, availableHeight / naturalHeight);
+    page.style.setProperty("--student-scale", String(Math.max(0.01, scale)));
+  });
+}
+window.addEventListener("load", fitStudentPages);
+window.addEventListener("resize", fitStudentPages);
+window.addEventListener("beforeprint", fitStudentPages);
+setTimeout(fitStudentPages, 120);
+<\/script>
 </body>
 </html>`;
 }
@@ -1836,15 +1982,19 @@ function buildShareReportHtml(records, options){
 function shareReportStudentHtml(rec, options){
   const total = state.questions.reduce((sum, question) => sum + questionTotal(rec, question), 0);
   const maxTotal = state.questions.reduce((sum, question) => sum + questionMaxScore(question), 0);
-  return `<section class="student">
-    <div class="studentHead">
-      <div>
-        <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
-        <div class="meta">OMR ${escapeHtml(rec.page || "")}쪽</div>
-      </div>
-      <div class="score">${escapeHtml(formatScore(Math.max(0, total)))}점 / ${escapeHtml(formatScore(maxTotal))}점</div>
+  return `<section class="printPage">
+    <div class="studentScale">
+      <section class="student">
+        <div class="studentHead">
+          <div>
+            <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
+            <div class="meta">OMR ${escapeHtml(rec.page || "")}쪽</div>
+          </div>
+          <div class="score">${escapeHtml(formatScore(Math.max(0, total)))}점 / ${escapeHtml(formatScore(maxTotal))}점</div>
+        </div>
+        ${state.questions.map(question => shareReportQuestionHtml(rec, question, options)).join("")}
+      </section>
     </div>
-    ${state.questions.map(question => shareReportQuestionHtml(rec, question, options)).join("")}
   </section>`;
 }
 
@@ -1853,13 +2003,14 @@ function shareReportQuestionHtml(rec, question, options){
   const qtotal = questionTotal(rec, question);
   const qmax = questionMaxScore(question);
   const discussion = options.includeDiscussion && qrec.needsDiscussion ? `<span class="badge">논의 필요</span>` : "";
+  const completed = qrec.completed ? `<span class="badge done">채점 완료</span>` : "";
   const exampleAnswer = String(question.exampleAnswer || "").trim();
   const example = options.includeExample && exampleAnswer ? `<div class="example"><strong>예시답안</strong>\n${escapeHtml(exampleAnswer)}</div>` : "";
   const groups = shareReportSubGroupsHtml(question, qrec);
   const memo = options.includeMemo && String(qrec.memo || "").trim() ? `<div class="memo"><strong>문항 메모</strong>\n${escapeHtml(qrec.memo)}</div>` : "";
   return `<article class="question">
     <div class="questionHead">
-      <h2>${escapeHtml(question.label)} ${discussion}</h2>
+      <h2>${escapeHtml(question.label)} ${completed} ${discussion}</h2>
       <div class="score">${escapeHtml(formatScore(Math.max(0, qtotal)))}점 / ${escapeHtml(formatScore(qmax))}점</div>
     </div>
     ${example}
@@ -1878,11 +2029,12 @@ function shareReportSubGroupsHtml(question, qrec){
         .map(item => shareReportItemHtml(item, qrec.keywordHits?.[item.id] || {}, scores))
         .filter(Boolean)
         .join("");
-      if(!items) return "";
+      const isUnwritten = Boolean(qrec.unwrittenSubs?.[sub]);
+      if(!items && !isUnwritten) return "";
       const total = Number(subTotals[sub] || 0);
-      return `<section class="subGroup">
+      return `<section class="subGroup${isUnwritten ? " unwritten" : ""}">
         <div class="subLabel">${escapeHtml(sub)}</div>
-        <div class="subItems">${items}</div>
+        <div class="subItems">${isUnwritten ? `<div class="item"><strong>미작성</strong></div>` : items}</div>
         <div class="subScore${total < 0 ? " negative" : ""}">${total > 0 ? "+" : ""}${escapeHtml(formatScore(total))}점</div>
       </section>`;
     })
@@ -2664,7 +2816,8 @@ function updateClassControls(){
     const rec = state.records[String(page)];
     const name = rec?.name || student?.name || "";
     const number = rec?.number || student?.number || "";
-    const label = name || (number ? `${number}번` : `${page}쪽`);
+    const status = gradingStateForPage(page);
+    const label = `${name || (number ? `${number}번` : `${page}쪽`)} · ${status.label}`;
     return `<option value="${page}">${escapeHtml(label)}</option>`;
   }).join("");
   const nextNumberHtml = numberOptions || `<option value="">번호 없음</option>`;
@@ -2691,6 +2844,17 @@ function updateClassControls(){
   }else{
     els.classStatus.textContent = `전체 반 · ${rosterLength}명`;
   }
+  updateStudentStatusChip(currentPageInScope);
+}
+
+function updateStudentStatusChip(currentPageInScope=scopedPages().includes(state.page)){
+  if(!els.studentStatusLine) return;
+  if(!currentPageInScope){
+    els.studentStatusLine.innerHTML = `<span class="studentStateChip empty">학생 선택 없음</span>`;
+    return;
+  }
+  const status = gradingStateForPage(state.page);
+  els.studentStatusLine.innerHTML = `<span class="studentStateChip ${escapeHtml(status.key)}">${escapeHtml(status.label)}</span><span class="statusLine">${escapeHtml(activeQuestion().label)} 기준</span>`;
 }
 
 function bindCropDrag(){
@@ -2903,13 +3067,7 @@ els.addQuestionBtn.addEventListener("click", addQuestion);
 els.prevBtn.addEventListener("click", () => goScoped(-1));
 els.nextBtn.addEventListener("click", () => goScoped(1));
 els.pageInput.addEventListener("change", () => goPage(Number(els.pageInput.value)));
-els.saveOnlyBtn.addEventListener("click", saveCurrent);
-async function saveAndAdvance(){
-  saveCurrent();
-  if(state.activeClass) await goScoped(1);
-  else if(state.page < state.pageCount) await goPage(state.page + 1);
-}
-els.saveBtn.addEventListener("click", saveAndAdvance);
+els.completeNextBtn.addEventListener("click", completeAndAdvance);
 els.mobilePrevBtn.addEventListener("click", () => goScoped(-1));
 els.mobileNextBtn.addEventListener("click", () => goScoped(1));
 els.mobileDiscussionBtn.addEventListener("click", toggleDiscussionFlag);
@@ -2922,6 +3080,7 @@ els.clearCurrentBtn.addEventListener("click", () => {
   updateChrome();
 });
 els.discussionBtn.addEventListener("click", toggleDiscussionFlag);
+els.completeBtn.addEventListener("click", toggleCompletedFlag);
 els.rubricList.addEventListener("click", evt => {
   if(state.editingRubricId){
     const activeEditor = evt.target.closest(".inlineRubricEditor");
@@ -2947,6 +3106,11 @@ els.rubricList.addEventListener("click", evt => {
   const subAddBtn = evt.target.closest(".subAddRubricBtn");
   if(subAddBtn){
     addInlineRubricItem("score", subAddBtn.dataset.sub || subOptions()[0]);
+    return;
+  }
+  const subUnwrittenBtn = evt.target.closest(".subUnwrittenBtn");
+  if(subUnwrittenBtn){
+    toggleSubUnwritten(subUnwrittenBtn.dataset.sub || subOptions()[0]);
     return;
   }
   const addKeywordBtn = evt.target.closest(".keywordAddBtn");
@@ -3091,6 +3255,7 @@ els.memoInput.addEventListener("input", () => {
   updateResults();
   updateDiscussionButton();
   updateDiscussionList();
+  updateClassControls();
 });
 els.discussionList.addEventListener("click", evt => {
   const btn = evt.target.closest(".discussionGoBtn");
@@ -3201,7 +3366,7 @@ window.addEventListener("keydown", evt => {
   if(["INPUT","TEXTAREA"].includes(document.activeElement.tagName)) return;
   if(evt.key === "ArrowLeft") goScoped(-1);
   if(evt.key === "ArrowRight") goScoped(1);
-  if(evt.key.toLowerCase() === "s") els.saveBtn.click();
+  if(evt.key.toLowerCase() === "s") els.completeNextBtn.click();
 });
 
 els.autoDetectBtn.addEventListener("click", autoDetectKeywords);
