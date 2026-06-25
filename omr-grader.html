@@ -556,6 +556,7 @@ textarea{min-height:72px;resize:vertical}
         <button class="settingsTab" type="button" data-pane="lab">실험실</button>
         <button class="settingsTab" type="button" data-pane="results">결과</button>
       </div>
+      <div class="statusLine hidden" id="initialSetupNotice" style="margin-bottom:10px">처음 사용 전 문항 총점/소문항을 먼저 입력하고, 오른쪽 루브릭 영역에서 채점 기준을 정리해 주세요.</div>
       <section class="panel settingsPane" id="settingsBasicPane">
         <div class="panelHead">
           <h2 class="panelTitle">기본 설정</h2>
@@ -660,7 +661,7 @@ const els = {
   prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), pageInput:$("pageInput"), pageStatus:$("pageStatus"),
   classSelect:$("classSelect"), numberSelect:$("numberSelect"), nameSelect:$("nameSelect"), classStatus:$("classStatus"),
   questionSelect:$("questionSelect"), questionStatus:$("questionStatus"),
-  addQuestionBtn:$("addQuestionBtn"), questionSettingsList:$("questionSettingsList"),
+  addQuestionBtn:$("addQuestionBtn"), questionSettingsList:$("questionSettingsList"), initialSetupNotice:$("initialSetupNotice"),
   rosterText:$("rosterText"), applyRosterBtn:$("applyRosterBtn"),
   rosterStatus:$("rosterStatus"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), discussionList:$("discussionList"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
   saveBtn:$("saveBtn"), saveOnlyBtn:$("saveOnlyBtn"), clearCurrentBtn:$("clearCurrentBtn"),
@@ -712,6 +713,52 @@ function loadSavedState(){
   updateClassControls();
   applyAppTitle();
   applySettings();
+}
+
+function isDefaultQuestionLabel(label, index){
+  return String(label || "").trim() === `${index + 1}번 문제`;
+}
+
+function hasQuestionBasics(question, index){
+  if(questionMaxScore(question) > 0) return true;
+  if((question.subs || []).length) return true;
+  if(String(question.exampleAnswer || "").trim()) return true;
+  return !isDefaultQuestionLabel(question.label, index);
+}
+
+function hasMeaningfulRubric(question){
+  const defaults = defaultRubric.map(item => `${item.name}|${Number(item.pt) || 0}`);
+  return (question.rubric || []).some(item => {
+    const signature = `${String(item.name || "").trim()}|${Number(item.pt) || 0}`;
+    return item.accept || item.partial || item.reject || !defaults.includes(signature);
+  });
+}
+
+function needsInitialSetup(){
+  const hasBasics = state.questions.some((question, index) => hasQuestionBasics(question, index));
+  const hasRubric = state.questions.some(question => hasMeaningfulRubric(question));
+  return !hasBasics && !hasRubric && !Object.keys(state.records || {}).length;
+}
+
+function selectSettingsPane(paneName){
+  const target = paneName || "basic";
+  els.settingsModal.querySelectorAll(".settingsTab").forEach(btn => btn.classList.toggle("on", btn.dataset.pane === target));
+  els.settingsModal.querySelectorAll(".settingsPane").forEach(pane => pane.classList.add("hidden"));
+  const pane = $(`settings${target[0].toUpperCase()}${target.slice(1)}Pane`);
+  if(pane) pane.classList.remove("hidden");
+}
+
+function openSettings(paneName="basic", options={}){
+  renderQuestionSettings();
+  if(els.initialSetupNotice) els.initialSetupNotice.classList.toggle("hidden", !options.initialSetup);
+  selectSettingsPane(paneName);
+  els.settingsModal.classList.remove("hidden");
+}
+
+function promptInitialSetupIfNeeded(){
+  if(!needsInitialSetup()) return;
+  openSettings("questions", {initialSetup:true});
+  showToast("문항 정보와 루브릭을 먼저 설정해 주세요.");
 }
 
 function persist(){
@@ -2727,10 +2774,7 @@ els.changePdfBtn.addEventListener("click", () => els.pdfInput.click());
 els.calibrateBtn.addEventListener("click", () => setMode("calibrate"));
 els.fullPageBtn.addEventListener("click", toggleFullPage);
 els.gradeModeBtn.addEventListener("click", () => setMode("grade"));
-els.settingsBtn.addEventListener("click", () => {
-  renderQuestionSettings();
-  els.settingsModal.classList.remove("hidden");
-});
+els.settingsBtn.addEventListener("click", () => openSettings());
 els.closeSettingsBtn.addEventListener("click", () => els.settingsModal.classList.add("hidden"));
 els.settingsModal.addEventListener("click", evt => {
   if(evt.target === els.settingsModal) els.settingsModal.classList.add("hidden");
@@ -2775,9 +2819,7 @@ els.questionSelect.addEventListener("change", () => setQuestion(els.questionSele
 els.settingsModal.addEventListener("click", evt => {
   const tab = evt.target.closest(".settingsTab");
   if(tab){
-    els.settingsModal.querySelectorAll(".settingsTab").forEach(btn => btn.classList.toggle("on", btn === tab));
-    els.settingsModal.querySelectorAll(".settingsPane").forEach(pane => pane.classList.add("hidden"));
-    $(`settings${tab.dataset.pane[0].toUpperCase()}${tab.dataset.pane.slice(1)}Pane`).classList.remove("hidden");
+    selectSettingsPane(tab.dataset.pane);
     return;
   }
   const card = evt.target.closest(".questionEditCard");
@@ -3171,6 +3213,7 @@ renderRubric();
 updateResults();
 updateDiscussionList();
 updateChrome();
+promptInitialSetupIfNeeded();
 </script>
 </body>
 </html>
