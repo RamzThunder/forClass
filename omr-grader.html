@@ -51,8 +51,7 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .navGroup{display:grid;gap:5px}
 .navLabel{color:var(--muted);font-size:11px;font-weight:850}
 .answerNavRow{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px;align-items:center}
-.navStudent{display:grid;grid-template-columns:110px 86px minmax(0,1fr);gap:8px}
-.studentStatusLine{grid-column:1 / -1;display:flex;align-items:center;gap:6px;min-height:20px;margin-top:4px;justify-content:flex-start}
+.navStudent{display:grid;grid-template-columns:110px 86px minmax(170px,360px) 42px;gap:8px;justify-content:start}
 .studentStateChip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:2px 8px;font-size:11px;font-weight:850;white-space:nowrap}
 .studentStateChip::before{content:"";width:7px;height:7px;border-radius:50%;background:#a8b1c0}
 .studentStateChip.done{border-color:#cbded2;background:#f7fbf8;color:#286044}
@@ -61,6 +60,10 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .studentStateChip.active::before{background:#c88a1a}
 .studentStateChip.empty{border-color:#d9dee8;background:#f8fafc;color:var(--muted)}
 .studentStateChip.empty::before{background:#a8b1c0}
+.filterToggleBtn{width:42px;min-width:42px;padding:0;display:grid;place-items:center}
+.filterToggleBtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.filterGlyph{position:relative;display:block;width:16px;height:16px;color:currentColor}
+.filterGlyph::before{content:"";position:absolute;left:2px;top:3px;width:12px;height:11px;background:currentColor;clip-path:polygon(0 0,100% 0,64% 48%,64% 100%,36% 100%,36% 48%)}
 .currentAnswerAccess{display:grid;grid-template-columns:minmax(360px,1fr) minmax(280px,.85fr);gap:8px;align-items:start}
 .answerMetaRow{display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:start}
 .memoCompact{min-height:40px;height:40px;resize:vertical;font-size:12px;line-height:1.35;padding:8px 10px}
@@ -393,7 +396,7 @@ textarea{min-height:72px;resize:vertical}
               <select id="classSelect" title="반 선택"></select>
               <select id="numberSelect" title="번호 선택" disabled></select>
               <select id="nameSelect" title="이름 선택" disabled></select>
-              <div class="studentStatusLine" id="studentStatusLine" aria-live="polite"></div>
+              <button class="btn filterToggleBtn" id="incompleteOnlyBtn" type="button" title="미완료만 보기" aria-label="미완료만 보기"><span class="filterGlyph" aria-hidden="true"></span></button>
             </div>
             <button class="btn" id="nextBtn" disabled title="다음 답안">›</button>
           </div>
@@ -455,9 +458,12 @@ textarea{min-height:72px;resize:vertical}
       <div class="subTotalList" id="subTotalList"></div>
       <div class="total"><span>문항 전체 합계</span><strong id="totalScore">0</strong></div>
       <div class="compactBtns" style="margin-top:10px">
+        <button class="btn" id="nextIncompleteBtn" type="button" disabled>다음 미완료</button>
+        <button class="btn" id="markAllUnwrittenBtn" type="button" disabled>전체 미작성</button>
+        <button class="btn" id="undoBtn" type="button" disabled>되돌리기</button>
         <button class="completeBtn" id="completeBtn" type="button" disabled>채점 완료</button>
         <button class="btn primary" id="completeNextBtn" type="button" disabled>채점 완료 후 다음</button>
-        <button class="btn danger" id="clearCurrentBtn" disabled>현재 문항 삭제</button>
+        <button class="btn danger" id="clearCurrentBtn" disabled>초기화</button>
       </div>
       <div class="statusLine" style="margin-top:10px">
         단축키: <span class="kbd">←</span> <span class="kbd">→</span> 페이지 이동, <span class="kbd">S</span> 채점 완료 후 다음
@@ -661,7 +667,7 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false}
+  settings:{autoAssistEnabled:false, incompleteOnly:false}
 };
 
 const $ = id => document.getElementById(id);
@@ -673,12 +679,13 @@ const els = {
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), gradeModeBtn:$("gradeModeBtn"),
   settingsBtn:$("settingsBtn"), settingsModal:$("settingsModal"), closeSettingsBtn:$("closeSettingsBtn"),
   prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), pageInput:$("pageInput"), pageStatus:$("pageStatus"),
-  classSelect:$("classSelect"), numberSelect:$("numberSelect"), nameSelect:$("nameSelect"), studentStatusLine:$("studentStatusLine"), classStatus:$("classStatus"),
+  classSelect:$("classSelect"), numberSelect:$("numberSelect"), nameSelect:$("nameSelect"), classStatus:$("classStatus"),
   questionSelect:$("questionSelect"), questionStatus:$("questionStatus"),
   addQuestionBtn:$("addQuestionBtn"), questionSettingsList:$("questionSettingsList"), initialSetupNotice:$("initialSetupNotice"),
   rosterText:$("rosterText"), applyRosterBtn:$("applyRosterBtn"),
   rosterStatus:$("rosterStatus"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), discussionList:$("discussionList"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
-  completeNextBtn:$("completeNextBtn"), clearCurrentBtn:$("clearCurrentBtn"), completeBtn:$("completeBtn"),
+  incompleteOnlyBtn:$("incompleteOnlyBtn"), nextIncompleteBtn:$("nextIncompleteBtn"), markAllUnwrittenBtn:$("markAllUnwrittenBtn"),
+  undoBtn:$("undoBtn"), completeNextBtn:$("completeNextBtn"), clearCurrentBtn:$("clearCurrentBtn"), completeBtn:$("completeBtn"),
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
@@ -700,6 +707,7 @@ const els = {
 let draggedKeywordChip = null;
 let draggedRubricId = "";
 let renderToken = 0;
+let undoSnapshot = null;
 
 function loadSavedState(){
   try{
@@ -1091,7 +1099,7 @@ async function openPdf(file){
   if(state.activeClass && !scopedPages().includes(state.page)) state.page = firstScopedPage() || state.page;
   state.lastPdfPage = state.page;
   els.empty.classList.add("hidden");
-  [els.pageInput, els.prevBtn, els.nextBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
+  [els.pageInput, els.prevBtn, els.nextBtn, els.nextIncompleteBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
@@ -1165,6 +1173,11 @@ function updateChrome(){
   els.nextBtn.disabled = !state.pdf || (state.activeClass ? scopedIndex < 0 || scopedIndex >= scoped.length - 1 : state.page >= state.pageCount);
   els.completeBtn.disabled = !state.pdf;
   els.completeNextBtn.disabled = !state.pdf;
+  els.nextIncompleteBtn.disabled = !state.pdf || !nextIncompletePage();
+  els.markAllUnwrittenBtn.disabled = !state.pdf;
+  els.incompleteOnlyBtn.classList.toggle("primary", Boolean(state.settings?.incompleteOnly));
+  els.incompleteOnlyBtn.title = state.settings?.incompleteOnly ? "미완료 필터 끄기" : "미완료만 보기";
+  els.incompleteOnlyBtn.setAttribute("aria-label", els.incompleteOnlyBtn.title);
   updateClassControls();
   updateProgress();
   updateMobileScanNav(scoped, scopedIndex);
@@ -1322,9 +1335,10 @@ function setExampleAnswerForSub(sub, value, question=activeQuestion()){
 }
 
 function toggleKeywordHit(itemId, type, keyword){
-  ensureQuestionRecord();
   const item = activeRubric().find(entry => entry.id === itemId);
   if(!item || !keyword) return;
+  snapshotCurrentQuestion("키워드 선택 변경");
+  ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   const sub = normalizeSubValue(item.sub || "공통");
   if(qrec.unwrittenSubs?.[sub]) delete qrec.unwrittenSubs[sub];
@@ -1356,6 +1370,7 @@ function clearSubScores(qrec, sub){
 }
 
 function toggleSubUnwritten(sub){
+  snapshotCurrentQuestion("소문항 미작성 변경");
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   qrec.unwrittenSubs = qrec.unwrittenSubs || {};
@@ -1366,6 +1381,23 @@ function toggleSubUnwritten(sub){
     qrec.unwrittenSubs[normalizedSub] = true;
     clearSubScores(qrec, normalizedSub);
   }
+  syncFormToRecord();
+  persist();
+  renderRubric();
+  updateResults();
+  updateClassControls();
+}
+
+function markAllSubsUnwritten(){
+  if(!state.pdf) return;
+  snapshotCurrentQuestion("전체 소문항 미작성");
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  qrec.unwrittenSubs = qrec.unwrittenSubs || {};
+  subOptions().forEach(sub => {
+    qrec.unwrittenSubs[sub] = true;
+    clearSubScores(qrec, sub);
+  });
   syncFormToRecord();
   persist();
   renderRubric();
@@ -1491,6 +1523,7 @@ function autoDetectKeywords(){
   const text = els.answerText.value.trim();
   if(!text){els.autoDetectStatus.textContent = "답안 텍스트를 먼저 입력하세요.";return;}
   if(!state.pdf){els.autoDetectStatus.textContent = "PDF를 먼저 불러오세요.";return;}
+  snapshotCurrentQuestion("키워드 자동 탐지");
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   const lower = text.toLowerCase();
@@ -1549,6 +1582,32 @@ function gradingStateForPage(page, question=activeQuestion()){
   return {key:"empty", label:"미채점"};
 }
 
+function isQuestionCompletedOnPage(page, question=activeQuestion()){
+  return Boolean(state.records[String(page)]?.answers?.[question.id]?.completed);
+}
+
+function subHasGradingMark(qrec, sub, question=activeQuestion()){
+  if(!qrec) return false;
+  if(qrec.unwrittenSubs?.[sub]) return true;
+  return (question.rubric || [])
+    .filter(item => normalizeSubValue(item.sub || "공통", question) === sub)
+    .some(item => {
+      const score = Number(scoreValue(qrec.scores || {}, item) || 0);
+      const hits = qrec.keywordHits?.[item.id] || {};
+      return score !== 0 || ["accept","reject"].some(type => Array.isArray(hits[type]) && hits[type].length);
+    });
+}
+
+function missingSubLabels(qrec=currentQuestionRecord(), question=activeQuestion()){
+  return subOptions(question).filter(sub => !subHasGradingMark(qrec, sub, question));
+}
+
+function confirmCompletionIfNeeded(){
+  const missing = missingSubLabels();
+  if(!missing.length) return true;
+  return confirm(`아직 표시되지 않은 소문항이 있습니다: ${missing.join(", ")}\n그래도 채점 완료로 표시할까요?`);
+}
+
 function cleanupRecord(key=recordKey()){
   const rec = state.records[key];
   if(!rec?.answers) return;
@@ -1560,6 +1619,44 @@ function cleanupRecord(key=recordKey()){
 
 function cleanupAllRecords(){
   Object.keys(state.records).forEach(cleanupRecord);
+}
+
+function snapshotCurrentQuestion(label="채점 변경"){
+  const key = recordKey();
+  const rec = state.records[key];
+  undoSnapshot = {
+    label,
+    page:state.page,
+    activeQuestion:state.activeQuestion,
+    recordKey:key,
+    hadRecord:Boolean(rec),
+    record:rec ? structuredClone(rec) : null
+  };
+  updateUndoButton();
+}
+
+function updateUndoButton(){
+  if(!els.undoBtn) return;
+  els.undoBtn.disabled = !undoSnapshot;
+  els.undoBtn.textContent = undoSnapshot ? "되돌리기" : "되돌리기";
+  els.undoBtn.title = undoSnapshot ? undoSnapshot.label : "되돌릴 채점 조작 없음";
+}
+
+async function undoLastChange(){
+  if(!undoSnapshot) return;
+  const snapshot = undoSnapshot;
+  undoSnapshot = null;
+  if(snapshot.hadRecord) state.records[snapshot.recordKey] = structuredClone(snapshot.record);
+  else delete state.records[snapshot.recordKey];
+  state.activeQuestion = snapshot.activeQuestion;
+  state.page = snapshot.page;
+  persist();
+  updateQuestionControls();
+  loadRecordIntoForm();
+  updateChrome();
+  updateUndoButton();
+  if(state.pdf) await renderCurrentPage();
+  showToast("마지막 채점 조작을 되돌렸습니다.");
 }
 
 function syncFormToRecord(){
@@ -1575,6 +1672,7 @@ function syncFormToRecord(){
 }
 
 function toggleDiscussionFlag(){
+  snapshotCurrentQuestion("논의 표시 변경");
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   qrec.needsDiscussion = !qrec.needsDiscussion;
@@ -1608,6 +1706,8 @@ function updateCompleteButton(){
 
 function setCompletedFlag(completed){
   if(!state.pdf) return;
+  if(completed && !confirmCompletionIfNeeded()) return false;
+  snapshotCurrentQuestion(completed ? "채점 완료 표시" : "채점 완료 해제");
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   qrec.completed = Boolean(completed);
@@ -1617,6 +1717,7 @@ function setCompletedFlag(completed){
   updateProgress();
   updateResults();
   updateClassControls();
+  return true;
 }
 
 function toggleCompletedFlag(){
@@ -1625,7 +1726,7 @@ function toggleCompletedFlag(){
 
 async function completeAndAdvance(){
   if(!state.pdf) return;
-  setCompletedFlag(true);
+  if(!setCompletedFlag(true)) return;
   if(state.activeClass) await goScoped(1);
   else if(state.page < state.pageCount) await goPage(state.page + 1);
 }
@@ -2763,18 +2864,60 @@ function selectedClassName(){
 
 function scopedPages(){
   const pageLimit = state.pdf ? state.pageCount : Infinity;
+  let pages;
   if(!state.activeClass){
     const count = currentRoster().length || state.pageCount;
-    return Array.from({length:count}, (_, index) => index + 1).filter(page => page <= pageLimit);
+    pages = Array.from({length:count}, (_, index) => index + 1).filter(page => page <= pageLimit);
+  }else{
+    pages = currentRoster()
+      .map((student, index) => ({student, page:index + 1}))
+      .filter(entry => entry.page <= pageLimit && entry.student.className === state.activeClass)
+      .map(entry => entry.page);
   }
-  return currentRoster()
-    .map((student, index) => ({student, page:index + 1}))
-    .filter(entry => entry.page <= pageLimit && entry.student.className === state.activeClass)
-    .map(entry => entry.page);
+  if(state.settings?.incompleteOnly){
+    const filtered = pages.filter(page => !isQuestionCompletedOnPage(page));
+    return filtered.length ? filtered : pages;
+  }
+  return pages;
 }
 
 function firstScopedPage(){
   return scopedPages()[0] || null;
+}
+
+function baseProgressPages(){
+  const rosterLength = currentRoster().length;
+  const recordPages = Object.keys(state.records).map(Number).filter(page => Number.isFinite(page) && page > 0);
+  const count = rosterLength || state.pageCount || Math.max(0, ...recordPages, 0);
+  const pageLimit = state.pdf ? state.pageCount : count;
+  const pages = Array.from({length:count}, (_, index) => index + 1).filter(page => page <= pageLimit);
+  if(!state.activeClass) return pages;
+  return pages.filter(page => studentForPage(page)?.className === state.activeClass);
+}
+
+function nextIncompletePage(){
+  const pages = baseProgressPages().filter(page => !isQuestionCompletedOnPage(page));
+  if(!pages.length) return null;
+  return pages.find(page => page > state.page) || pages[0];
+}
+
+async function goNextIncomplete(){
+  const page = nextIncompletePage();
+  if(!page){
+    showToast("현재 범위의 미완료 답안이 없습니다.");
+    return;
+  }
+  await goPage(page);
+}
+
+async function toggleIncompleteOnly(){
+  state.settings.incompleteOnly = !state.settings?.incompleteOnly;
+  persist();
+  const pages = scopedPages();
+  if(pages.length && !pages.includes(state.page)) state.page = pages[0];
+  updateChrome();
+  loadRecordIntoForm();
+  if(state.pdf) await renderCurrentPage();
 }
 
 function normalizeTargetPage(page){
@@ -2845,17 +2988,6 @@ function updateClassControls(){
   }else{
     els.classStatus.textContent = `전체 반 · ${rosterLength}명`;
   }
-  updateStudentStatusChip(currentPageInScope);
-}
-
-function updateStudentStatusChip(currentPageInScope=scopedPages().includes(state.page)){
-  if(!els.studentStatusLine) return;
-  if(!currentPageInScope){
-    els.studentStatusLine.innerHTML = `<span class="studentStateChip empty">학생 선택 없음</span>`;
-    return;
-  }
-  const status = gradingStateForPage(state.page);
-  els.studentStatusLine.innerHTML = `<span class="studentStateChip ${escapeHtml(status.key)}">${escapeHtml(status.label)}</span>`;
 }
 
 function bindCropDrag(){
@@ -3068,12 +3200,17 @@ els.addQuestionBtn.addEventListener("click", addQuestion);
 els.prevBtn.addEventListener("click", () => goScoped(-1));
 els.nextBtn.addEventListener("click", () => goScoped(1));
 els.pageInput.addEventListener("change", () => goPage(Number(els.pageInput.value)));
+els.incompleteOnlyBtn.addEventListener("click", toggleIncompleteOnly);
+els.nextIncompleteBtn.addEventListener("click", goNextIncomplete);
+els.markAllUnwrittenBtn.addEventListener("click", markAllSubsUnwritten);
+els.undoBtn.addEventListener("click", undoLastChange);
 els.completeNextBtn.addEventListener("click", completeAndAdvance);
 els.mobilePrevBtn.addEventListener("click", () => goScoped(-1));
 els.mobileNextBtn.addEventListener("click", () => goScoped(1));
 els.mobileDiscussionBtn.addEventListener("click", toggleDiscussionFlag);
 els.clearCurrentBtn.addEventListener("click", () => {
-  if(!confirm("현재 페이지의 현재 문항 채점 기록을 삭제할까요?")) return;
+  if(!confirm("현재 답안의 현재 문항 채점 기록을 초기화할까요?")) return;
+  snapshotCurrentQuestion("현재 문항 기록 삭제");
   const rec = currentRecord();
   if(rec?.answers) delete rec.answers[state.activeQuestion];
   persist();
@@ -3379,6 +3516,7 @@ renderRubric();
 updateResults();
 updateDiscussionList();
 updateChrome();
+updateUndoButton();
 promptInitialSetupIfNeeded();
 </script>
 </body>
