@@ -586,6 +586,24 @@ textarea{min-height:72px;resize:vertical}
           <input id="appTitleInput" placeholder="예: 3학년 국어 서술형 채점">
         </label>
         <div class="statusLine">상단 제목, 브라우저 제목, 백업 파일 이름에 사용됩니다.</div>
+        <div class="field" style="margin-top:14px">
+          <span class="label">감점 항목 기본 템플릿</span>
+          <div class="row">
+            <label class="field">
+              <span class="label">제목</span>
+              <input id="deductTemplateNameInput" placeholder="예: 감점 요소">
+            </label>
+            <label class="field">
+              <span class="label">점수</span>
+              <input id="deductTemplateScoreInput" type="number" min="0" step="1" placeholder="1">
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">기본 감점 키워드</span>
+            <textarea id="deductTemplateKeywordsInput" placeholder="한 줄에 하나씩 입력"></textarea>
+          </label>
+          <div class="statusLine">새 감점 항목을 만들거나 빈 항목을 감점용으로 바꿀 때 기본값으로 사용됩니다.</div>
+        </div>
       </section>
       <section class="panel settingsPane hidden" id="settingsQuestionsPane">
         <div class="panelHead">
@@ -647,6 +665,7 @@ const defaultQuestions = [
   {id:"q1", label:"1번 문제", maxScore:0, subScores:{}, exampleAnswer:"", subs:[], crop:{x:.10,y:.52,w:.80,h:.20}, rubric:structuredClone(defaultRubric)},
   {id:"q2", label:"2번 문제", maxScore:0, subScores:{}, exampleAnswer:"", subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
 ];
+const defaultDeductTemplate = {name:"감점 요소", keywords:"", score:1};
 
 const state = {
   appTitle:"OMR 서술형 채점 도구 템플릿",
@@ -666,13 +685,14 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, incompleteOnly:false}
+  settings:{autoAssistEnabled:false, incompleteOnly:false, deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
 const els = {
   app:document.querySelector(".app"), sideResizer:$("sideResizer"),
   appTitleText:$("appTitleText"), appTitleInput:$("appTitleInput"), applyTitleBtn:$("applyTitleBtn"),
+  deductTemplateNameInput:$("deductTemplateNameInput"), deductTemplateKeywordsInput:$("deductTemplateKeywordsInput"), deductTemplateScoreInput:$("deductTemplateScoreInput"),
   pdfInput:$("pdfInput"), changePdfBtn:$("changePdfBtn"), fileMeta:$("fileMeta"), empty:$("empty"),
   pageWrap:$("pageWrap"), cropView:$("cropView"), pdfCanvas:$("pdfCanvas"), cropCanvas:$("cropCanvas"),
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), gradeModeBtn:$("gradeModeBtn"),
@@ -725,6 +745,7 @@ function loadSavedState(){
     state.lastPdfPageCount = Number(saved.lastPdfPageCount || saved.pageCount || 0) || 0;
     state.settings = {...state.settings, ...(saved.settings || {})};
   }catch(err){console.warn(err)}
+  normalizeSettings();
   normalizeQuestions();
   normalizeRecords();
   cleanupAllRecords();
@@ -808,9 +829,45 @@ function applyAppTitle(){
 }
 
 function applySettings(){
+  normalizeSettings();
   const enabled = Boolean(state.settings?.autoAssistEnabled);
   els.autoAssistPanel.classList.toggle("hidden", !enabled);
   if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
+  const template = deductTemplate();
+  if(els.deductTemplateNameInput) els.deductTemplateNameInput.value = template.name;
+  if(els.deductTemplateKeywordsInput) els.deductTemplateKeywordsInput.value = template.keywords;
+  if(els.deductTemplateScoreInput) els.deductTemplateScoreInput.value = template.score;
+}
+
+function normalizeSettings(){
+  const settings = state.settings && typeof state.settings === "object" ? state.settings : {};
+  const savedTemplate = settings.deductTemplate && typeof settings.deductTemplate === "object" ? settings.deductTemplate : {};
+  const score = nonNegativeNumber(savedTemplate.score ?? savedTemplate.deduct ?? defaultDeductTemplate.score);
+  state.settings = {
+    ...settings,
+    autoAssistEnabled:Boolean(settings.autoAssistEnabled),
+    incompleteOnly:Boolean(settings.incompleteOnly),
+    deductTemplate:{
+      name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
+      keywords:normalizeKeywordText(savedTemplate.keywords || savedTemplate.keyword || ""),
+      score:score > 0 ? score : defaultDeductTemplate.score
+    }
+  };
+}
+
+function deductTemplate(){
+  normalizeSettings();
+  return state.settings.deductTemplate;
+}
+
+function updateDeductTemplateFromInputs(){
+  state.settings.deductTemplate = {
+    name:els.deductTemplateNameInput.value.trim() || defaultDeductTemplate.name,
+    keywords:normalizeKeywordText(els.deductTemplateKeywordsInput.value),
+    score:nonNegativeNumber(els.deductTemplateScoreInput.value) || defaultDeductTemplate.score
+  };
+  normalizeSettings();
+  persist();
 }
 
 function normalizeQuestions(){
@@ -2204,6 +2261,7 @@ function importJsonBackup(payload){
   state.settings = {...state.settings, ...(data.settings || {})};
   state.activeQuestion = data.activeQuestion || state.questions[0]?.id || state.activeQuestion;
   state.activeClass = data.activeClass || "";
+  normalizeSettings();
   normalizeQuestions();
   normalizeRecords();
   cleanupAllRecords();
@@ -2288,10 +2346,13 @@ function applyInlineRubricItem(editor){
   const index = question.rubric.findIndex(item => item.id === nextItem.id);
   if(index < 0) return;
   const previousItem = question.rubric[index];
-  question.rubric[index] = nextItem;
+  const itemToSave = shouldApplyDeductTemplate(previousItem, nextItem)
+    ? deductTemplateItem(nextItem.id, nextItem.sub)
+    : nextItem;
+  question.rubric[index] = itemToSave;
   Object.values(state.records).forEach(rec => {
     const qrec = rec.answers?.[state.activeQuestion];
-    if(qrec) reconcileRubricItemRecord(qrec, previousItem, nextItem, keywordAliases);
+    if(qrec) reconcileRubricItemRecord(qrec, previousItem, itemToSave, keywordAliases);
   });
   state.editingRubricId = "";
   persist();
@@ -2321,11 +2382,11 @@ function deleteInlineRubricItem(editor){
 }
 
 function addInlineRubricItem(type="score", sub=subOptions()[0]){
-  const item = {
+  const item = type === "deduct" ? deductTemplateItem(createRubricId(), sub) : {
     id:createRubricId(),
     type,
     sub,
-    name:type === "deduct" ? "감점 요소" : "가점 요소",
+    name:"가점 요소",
     pt:0,
     accept:"",
     acceptScores:{},
@@ -2333,13 +2394,42 @@ function addInlineRubricItem(type="score", sub=subOptions()[0]){
     partialPt:0,
     reject:"",
     rejectScores:{},
-    rejectDeduct:type === "deduct" ? 1 : 0
+    rejectDeduct:0
   };
   activeQuestion().rubric.push(item);
   state.editingRubricId = item.id;
   persist();
   renderRubric();
   updateResults();
+}
+
+function deductTemplateItem(id=createRubricId(), sub=subOptions()[0]){
+  const template = deductTemplate();
+  const keywords = splitKeywords(template.keywords);
+  const score = nonNegativeNumber(template.score) || defaultDeductTemplate.score;
+  return {
+    id,
+    type:"deduct",
+    sub,
+    name:template.name || defaultDeductTemplate.name,
+    pt:0,
+    accept:"",
+    acceptScores:{},
+    partial:"",
+    partialPt:0,
+    reject:keywords.join("\n"),
+    rejectScores:Object.fromEntries(keywords.map(keyword => [keyword, score])),
+    rejectDeduct:score
+  };
+}
+
+function shouldApplyDeductTemplate(previousItem, nextItem){
+  if(nextItem.type !== "deduct") return false;
+  if(previousItem?.type === "deduct") return false;
+  const placeholderNames = ["", "가점 요소", "감점 요소"];
+  const hasCustomName = !placeholderNames.includes(String(nextItem.name || "").trim());
+  if(hasCustomName) return false;
+  return !splitKeywords(nextItem.accept).length && !splitKeywords(nextItem.reject).length;
 }
 
 function readInlineRubricEditor(editor){
@@ -3144,6 +3234,10 @@ els.applyTitleBtn.addEventListener("click", () => {
   state.appTitle = els.appTitleInput.value.trim() || "OMR 서술형 채점 도구 템플릿";
   applyAppTitle();
   persist();
+});
+[els.deductTemplateNameInput, els.deductTemplateKeywordsInput, els.deductTemplateScoreInput].forEach(input => {
+  input.addEventListener("input", updateDeductTemplateFromInputs);
+  input.addEventListener("change", updateDeductTemplateFromInputs);
 });
 els.autoAssistEnabledInput.addEventListener("change", () => {
   state.settings.autoAssistEnabled = Boolean(els.autoAssistEnabledInput.checked);
