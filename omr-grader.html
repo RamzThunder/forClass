@@ -149,8 +149,8 @@ textarea{min-height:72px;resize:vertical}
 .keywordTitle{font-size:11px;font-weight:900;color:var(--muted);margin-bottom:5px}
 .keywordTitle input{width:74px;min-height:30px;margin-left:6px;padding:4px 6px;text-align:center;font-size:12px;font-weight:900}
 .keywordText{font-size:12px;line-height:1.45;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;color:var(--ink)}
-.keywordChips{display:grid;gap:6px}
-.keywordChip{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:8px 9px;text-align:left;font-size:12px;font-weight:750;line-height:1.5;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.keywordChips{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+.keywordChip{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:8px 9px;text-align:left;font-size:12px;font-weight:750;line-height:1.5;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
 .keywordChip.accept.on{background:#1f7a45;border-color:#1f7a45;color:#fff}
 .keywordChip.partial.on{background:#946200;border-color:#946200;color:#fff}
 .keywordChip.reject.on{background:#b2453e;border-color:#b2453e;color:#fff}
