@@ -23,6 +23,8 @@ body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .app{min-height:100vh;display:grid;grid-template-columns:minmax(360px,1fr) 8px var(--side-width)}
+.app.multiWindowMain{grid-template-columns:minmax(360px,1fr)}
+.app.multiWindowMain .sideResizer,.app.multiWindowMain .side{display:none}
 .app.resizing{cursor:col-resize;user-select:none}
 .sideResizer{background:#eef2f7;border-left:1px solid var(--line);border-right:1px solid var(--line);cursor:col-resize;position:relative}
 .sideResizer::before{content:"";position:absolute;inset:0 -5px}
@@ -82,6 +84,14 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .subQuestionRow{display:grid;grid-template-columns:minmax(0,1fr) 110px 34px;gap:6px;align-items:start}
 .stage{min-height:0;overflow:auto;padding:18px}
 .canvasShell{min-height:calc(100vh - 154px);display:flex;align-items:center;justify-content:center;position:relative}
+.examCaptureBtn{position:absolute;top:12px;left:12px;z-index:8;box-shadow:0 8px 22px rgba(23,32,51,.12)}
+.floatingRubricWindowBtn{position:absolute;top:12px;left:104px;z-index:8;box-shadow:0 8px 22px rgba(23,32,51,.12)}
+.app:not(.multiWindowMain) .floatingRubricWindowBtn{display:none}
+.examCapturePanel{position:absolute;top:60px;left:12px;z-index:9;width:min(520px,calc(100% - 24px));max-height:min(72vh,680px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 48px rgba(23,32,51,.20);padding:12px;display:grid;gap:10px}
+.examCaptureHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.examCapturePreview{border:1px solid var(--line);border-radius:8px;background:#f8fafc;min-height:180px;display:grid;place-items:center;overflow:hidden}
+.examCapturePreview img{display:block;max-width:100%;max-height:56vh;object-fit:contain}
+.examCaptureEmpty{padding:24px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center}
 .empty{width:min(680px,100%);background:var(--panel);border:1px dashed #b9c3d3;border-radius:8px;padding:28px;text-align:center;box-shadow:var(--shadow)}
 .empty h2{margin:0 0 8px;font-size:24px}
 .empty p{margin:0 0 18px;color:var(--muted);line-height:1.6}
@@ -116,6 +126,11 @@ textarea{min-height:72px;resize:vertical}
 .subUnwrittenBtn,.completeBtn{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--muted);min-height:30px;padding:4px 8px;font-size:12px;font-weight:900;white-space:nowrap}
 .subUnwrittenBtn.on{background:#9a6512;border-color:#9a6512;color:#fff}
 .completeBtn.on{background:#1f7a45;border-color:#1f7a45;color:#fff}
+.rubricActionBar{margin-top:10px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.rubricActionLeft{display:flex;flex-wrap:wrap;gap:8px}
+.rubricActionRight{display:flex;justify-content:flex-end}
+.rubricActionBar .completeBtn{min-height:40px;padding:8px 11px;font-size:inherit}
+.incompleteFilterNotice{margin:8px 0 0;border:1px solid #c6e3ec;border-radius:8px;background:var(--soft);color:var(--accent);padding:7px 9px;font-size:12px;font-weight:850}
 .scoreNow.negative{color:var(--danger)}
 .scoreMax{font-size:.72em;color:var(--muted);font-weight:850;margin-left:2px}
 .criterion{border:1px solid var(--line);border-radius:8px;padding:0;background:#fff;overflow:hidden}
@@ -404,6 +419,7 @@ textarea{min-height:72px;resize:vertical}
             <textarea class="memoCompact" id="memoInput" placeholder="문항 메모"></textarea>
           </div>
           <div class="statusLine hidden" id="classStatus">명렬을 적용하면 학생 정보로 이동할 수 있습니다.</div>
+          <div class="incompleteFilterNotice hidden" id="incompleteFilterNotice">미완료 필터 적용 중</div>
         </div>
       </div>
       <button class="btn" id="changePdfBtn">PDF 선택</button>
@@ -412,6 +428,24 @@ textarea{min-height:72px;resize:vertical}
     </nav>
     <section class="stage">
       <div class="canvasShell">
+        <button class="btn mini examCaptureBtn" id="examCaptureBtn" type="button">시험문제</button>
+        <button class="btn mini floatingRubricWindowBtn" id="floatingRubricWindowBtn" type="button">루브릭 창</button>
+        <div class="examCapturePanel hidden" id="examCapturePanel">
+          <div class="examCaptureHead">
+            <h2 class="panelTitle">시험문제</h2>
+            <button class="btn mini" id="closeExamCaptureBtn" type="button">닫기</button>
+          </div>
+          <div class="examCapturePreview" id="examCapturePreview">
+            <div class="examCaptureEmpty">시험문제 캡처를 등록하세요.<br>이미지 파일을 선택하거나 클립보드 이미지를 붙여넣을 수 있습니다.</div>
+          </div>
+          <div class="compactBtns">
+            <button class="btn mini primary" id="pasteExamCaptureBtn" type="button">클립보드 등록</button>
+            <button class="btn mini" id="chooseExamCaptureBtn" type="button">이미지 선택</button>
+            <button class="btn mini danger" id="clearExamCaptureBtn" type="button">삭제</button>
+          </div>
+          <div class="statusLine" id="examCaptureStatus">등록한 이미지는 이 브라우저에 저장됩니다.</div>
+          <input class="hidden" type="file" id="examCaptureInput" accept="image/*">
+        </div>
         <div class="spinnerOverlay hidden" id="spinnerOverlay"><div class="spinner"></div></div>
         <div class="empty" id="empty">
           <h2>PDF를 선택하세요</h2>
@@ -448,6 +482,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="panelHead">
         <h2 class="panelTitle">루브릭</h2>
         <div class="compactBtns">
+          <button class="btn mini hidden" id="openRubricWindowBtn" type="button">창 모드로 보기</button>
           <button class="btn mini" id="importHwpxRubricBtn" type="button">HWPX 기준 불러오기</button>
         </div>
       </div>
@@ -456,13 +491,15 @@ textarea{min-height:72px;resize:vertical}
       <div class="rubricAddFooter"><button class="rubricAddBtn" id="addRubricBottomBtn" type="button" title="루브릭 항목 추가">+</button></div>
       <div class="subTotalList" id="subTotalList"></div>
       <div class="total"><span>문항 전체 합계</span><strong id="totalScore">0</strong></div>
-      <div class="compactBtns" style="margin-top:10px">
-        <button class="btn" id="nextIncompleteBtn" type="button" disabled>다음 미완료</button>
-        <button class="btn" id="markAllUnwrittenBtn" type="button" disabled>전체 미작성</button>
-        <button class="btn" id="undoBtn" type="button" disabled>되돌리기</button>
-        <button class="completeBtn" id="completeBtn" type="button" disabled>채점 완료</button>
-        <button class="btn primary" id="completeNextBtn" type="button" disabled>채점 완료 후 다음</button>
-        <button class="btn danger" id="clearCurrentBtn" disabled>초기화</button>
+      <div class="rubricActionBar">
+        <div class="rubricActionLeft">
+          <button class="btn" id="markAllUnwrittenBtn" type="button" disabled>전체 미작성</button>
+          <button class="completeBtn" id="completeBtn" type="button" disabled>채점 완료</button>
+          <button class="btn primary" id="completeNextBtn" type="button" disabled>채점 완료 후 다음</button>
+        </div>
+        <div class="rubricActionRight">
+          <button class="btn danger" id="clearCurrentBtn" disabled>초기화</button>
+        </div>
       </div>
       <div class="statusLine" style="margin-top:10px">
         단축키: <span class="kbd">←</span> <span class="kbd">→</span> 페이지 이동, <span class="kbd">S</span> 채점 완료 후 다음
@@ -630,6 +667,13 @@ textarea{min-height:72px;resize:vertical}
           </span>
           <input id="autoAssistEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
+        <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
+          <span>
+            <span class="label">다중창 모드</span>
+            <span class="statusLine">루브릭을 별도 창으로 띄워 OMR 화면과 나눠 봅니다.</span>
+          </span>
+          <input id="multiWindowEnabledInput" type="checkbox" style="width:auto;min-height:auto">
+        </label>
       </section>
       <section class="panel settingsPane hidden" id="settingsResultsPane">
         <div class="panelHead"><h2 class="panelTitle">결과</h2></div>
@@ -656,6 +700,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dis
 const STORAGE_KEY = "publicOmrEssayGraderState.v1";
 const LEGACY_KEY = "publicOmrEssayGraderState.legacy";
 const SIDEBAR_WIDTH_KEY = "publicOmrEssayGraderSidebarWidth.v1";
+const EXAM_CAPTURE_KEY = "publicOmrEssayGraderExamCapture.v1";
 const defaultRubric = [
   {name:"내용 충실성 충족", pt:4},
   {name:"근거와 설명 충족", pt:3},
@@ -685,7 +730,7 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, incompleteOnly:false, deductTemplate:structuredClone(defaultDeductTemplate)}
+  settings:{autoAssistEnabled:false, incompleteOnly:false, multiWindowEnabled:false, deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
@@ -695,16 +740,21 @@ const els = {
   deductTemplateNameInput:$("deductTemplateNameInput"), deductTemplateKeywordsInput:$("deductTemplateKeywordsInput"), deductTemplateScoreInput:$("deductTemplateScoreInput"),
   pdfInput:$("pdfInput"), changePdfBtn:$("changePdfBtn"), fileMeta:$("fileMeta"), empty:$("empty"),
   pageWrap:$("pageWrap"), cropView:$("cropView"), pdfCanvas:$("pdfCanvas"), cropCanvas:$("cropCanvas"),
+  examCaptureBtn:$("examCaptureBtn"), examCapturePanel:$("examCapturePanel"), closeExamCaptureBtn:$("closeExamCaptureBtn"),
+  floatingRubricWindowBtn:$("floatingRubricWindowBtn"),
+  pasteExamCaptureBtn:$("pasteExamCaptureBtn"), chooseExamCaptureBtn:$("chooseExamCaptureBtn"), clearExamCaptureBtn:$("clearExamCaptureBtn"),
+  examCaptureInput:$("examCaptureInput"), examCapturePreview:$("examCapturePreview"), examCaptureStatus:$("examCaptureStatus"),
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), gradeModeBtn:$("gradeModeBtn"),
   settingsBtn:$("settingsBtn"), settingsModal:$("settingsModal"), closeSettingsBtn:$("closeSettingsBtn"),
   prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), pageInput:$("pageInput"), pageStatus:$("pageStatus"),
   classSelect:$("classSelect"), numberSelect:$("numberSelect"), nameSelect:$("nameSelect"), classStatus:$("classStatus"),
+  incompleteFilterNotice:$("incompleteFilterNotice"),
   questionSelect:$("questionSelect"), questionStatus:$("questionStatus"),
   addQuestionBtn:$("addQuestionBtn"), questionSettingsList:$("questionSettingsList"), initialSetupNotice:$("initialSetupNotice"),
   rosterText:$("rosterText"), applyRosterBtn:$("applyRosterBtn"),
   rosterStatus:$("rosterStatus"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), discussionList:$("discussionList"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
-  incompleteOnlyBtn:$("incompleteOnlyBtn"), nextIncompleteBtn:$("nextIncompleteBtn"), markAllUnwrittenBtn:$("markAllUnwrittenBtn"),
-  undoBtn:$("undoBtn"), completeNextBtn:$("completeNextBtn"), clearCurrentBtn:$("clearCurrentBtn"), completeBtn:$("completeBtn"),
+  incompleteOnlyBtn:$("incompleteOnlyBtn"), markAllUnwrittenBtn:$("markAllUnwrittenBtn"),
+  completeNextBtn:$("completeNextBtn"), clearCurrentBtn:$("clearCurrentBtn"), completeBtn:$("completeBtn"),
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
@@ -716,7 +766,7 @@ const els = {
   addRubricBottomBtn:$("addRubricBottomBtn"), importHwpxRubricBtn:$("importHwpxRubricBtn"), hwpxRubricInput:$("hwpxRubricInput"),
   applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportShareReportBtn:$("exportShareReportBtn"), exportJsonBtn:$("exportJsonBtn"),
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
-  autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"),
+  autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), openRubricWindowBtn:$("openRubricWindowBtn"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
   answerText:$("answerText"), autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus")
@@ -727,6 +777,8 @@ let draggedKeywordChip = null;
 let draggedRubricId = "";
 let renderToken = 0;
 let undoSnapshot = null;
+let rubricPopupWindow = null;
+let rubricWindowActive = false;
 
 function loadSavedState(){
   try{
@@ -755,6 +807,7 @@ function loadSavedState(){
   updateClassControls();
   applyAppTitle();
   applySettings();
+  loadExamCapture();
 }
 
 function isDefaultQuestionLabel(label, index){
@@ -831,12 +884,97 @@ function applyAppTitle(){
 function applySettings(){
   normalizeSettings();
   const enabled = Boolean(state.settings?.autoAssistEnabled);
+  const multiWindowEnabled = Boolean(state.settings?.multiWindowEnabled);
   els.autoAssistPanel.classList.toggle("hidden", !enabled);
   if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
+  if(els.multiWindowEnabledInput) els.multiWindowEnabledInput.checked = multiWindowEnabled;
+  if(els.openRubricWindowBtn) els.openRubricWindowBtn.classList.toggle("hidden", !multiWindowEnabled);
+  if(!multiWindowEnabled){
+    if(rubricPopupWindow && !rubricPopupWindow.closed) rubricPopupWindow.close();
+    setRubricWindowActive(false);
+  }
   const template = deductTemplate();
   if(els.deductTemplateNameInput) els.deductTemplateNameInput.value = template.name;
   if(els.deductTemplateKeywordsInput) els.deductTemplateKeywordsInput.value = template.keywords;
   if(els.deductTemplateScoreInput) els.deductTemplateScoreInput.value = template.score;
+}
+
+function setRubricWindowActive(active){
+  rubricWindowActive = Boolean(active);
+  els.app.classList.toggle("multiWindowMain", rubricWindowActive);
+}
+
+function loadExamCapture(){
+  let dataUrl = "";
+  try{dataUrl = localStorage.getItem(EXAM_CAPTURE_KEY) || "";}catch(err){console.warn(err)}
+  renderExamCapture(dataUrl);
+}
+
+function renderExamCapture(dataUrl){
+  els.examCapturePreview.innerHTML = dataUrl
+    ? `<img src="${escapeHtml(dataUrl)}" alt="시험문제 캡처">`
+    : `<div class="examCaptureEmpty">시험문제 캡처를 등록하세요.<br>이미지 파일을 선택하거나 클립보드 이미지를 붙여넣을 수 있습니다.</div>`;
+  els.clearExamCaptureBtn.disabled = !dataUrl;
+  els.examCaptureStatus.textContent = dataUrl ? "시험문제 캡처가 이 브라우저에 저장되어 있습니다." : "등록한 이미지는 이 브라우저에 저장됩니다.";
+}
+
+async function saveExamCaptureFile(file){
+  if(!file || !file.type?.startsWith("image/")){
+    showToast("이미지 파일을 선택해 주세요.");
+    return;
+  }
+  try{
+    const dataUrl = await imageFileToDataUrl(file);
+    localStorage.setItem(EXAM_CAPTURE_KEY, dataUrl);
+    renderExamCapture(dataUrl);
+    showToast("시험문제 캡처를 저장했습니다.");
+  }catch(err){
+    console.error(err);
+    alert(`시험문제 캡처를 저장할 수 없습니다: ${err.message}`);
+  }
+}
+
+function imageFileToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("이미지를 읽을 수 없습니다."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("이미지를 불러올 수 없습니다."));
+      img.onload = () => {
+        const maxSide = 1800;
+        const ratio = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * ratio));
+        canvas.height = Math.max(1, Math.round(img.height * ratio));
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", .88));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function pasteExamCaptureFromClipboard(){
+  if(!navigator.clipboard?.read){
+    showToast("이 브라우저에서는 클립보드 이미지 읽기를 지원하지 않습니다.");
+    return;
+  }
+  try{
+    const items = await navigator.clipboard.read();
+    for(const item of items){
+      const imageType = item.types.find(type => type.startsWith("image/"));
+      if(!imageType) continue;
+      await saveExamCaptureFile(await item.getType(imageType));
+      return;
+    }
+    showToast("클립보드에 이미지가 없습니다.");
+  }catch(err){
+    console.error(err);
+    showToast("클립보드 이미지를 읽지 못했습니다.");
+  }
 }
 
 function normalizeSettings(){
@@ -847,6 +985,7 @@ function normalizeSettings(){
     ...settings,
     autoAssistEnabled:Boolean(settings.autoAssistEnabled),
     incompleteOnly:Boolean(settings.incompleteOnly),
+    multiWindowEnabled:Boolean(settings.multiWindowEnabled),
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
       keywords:normalizeKeywordText(savedTemplate.keywords || savedTemplate.keyword || ""),
@@ -1155,7 +1294,7 @@ async function openPdf(file){
   if(state.activeClass && !scopedPages().includes(state.page)) state.page = firstScopedPage() || state.page;
   state.lastPdfPage = state.page;
   els.empty.classList.add("hidden");
-  [els.pageInput, els.prevBtn, els.nextBtn, els.nextIncompleteBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
+  [els.pageInput, els.prevBtn, els.nextBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
@@ -1229,14 +1368,15 @@ function updateChrome(){
   els.nextBtn.disabled = !state.pdf || (state.activeClass ? scopedIndex < 0 || scopedIndex >= scoped.length - 1 : state.page >= state.pageCount);
   els.completeBtn.disabled = !state.pdf;
   els.completeNextBtn.disabled = !state.pdf;
-  els.nextIncompleteBtn.disabled = !state.pdf || !nextIncompletePage();
   els.markAllUnwrittenBtn.disabled = !state.pdf;
   els.incompleteOnlyBtn.classList.toggle("primary", Boolean(state.settings?.incompleteOnly));
   els.incompleteOnlyBtn.title = state.settings?.incompleteOnly ? "미완료 필터 끄기" : "미완료만 보기";
   els.incompleteOnlyBtn.setAttribute("aria-label", els.incompleteOnlyBtn.title);
+  els.incompleteFilterNotice.classList.toggle("hidden", !state.settings?.incompleteOnly);
   updateClassControls();
   updateProgress();
   updateMobileScanNav(scoped, scopedIndex);
+  syncRubricPopup();
 }
 
 function pdfRestoreHint(){
@@ -1296,7 +1436,279 @@ function renderRubric(){
   updateTotal();
   updateKeywordSummary();
   resizeKeywordTextareas();
+  syncRubricPopup();
 }
+
+function openRubricPopup(){
+  if(!state.settings?.multiWindowEnabled){
+    showToast("실험실에서 다중창 모드를 먼저 켜주세요.");
+    return;
+  }
+  if(rubricPopupWindow && !rubricPopupWindow.closed){
+    setRubricWindowActive(true);
+    rubricPopupWindow.focus();
+    syncRubricPopup();
+    return;
+  }
+  rubricPopupWindow = window.open("", "omrRubricWindow", "width=620,height=820");
+  if(!rubricPopupWindow){
+    alert("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.");
+    return;
+  }
+  setRubricWindowActive(true);
+  const styleText = document.querySelector("style")?.textContent || "";
+  rubricPopupWindow.document.open();
+  rubricPopupWindow.document.write(`<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>루브릭</title>
+<style>
+${styleText}
+body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.popupWrap{padding:14px;display:grid;gap:10px}
+.popupHead{position:sticky;top:0;z-index:4;background:#fbfcfe;border:1px solid #d9dee8;border-radius:8px;padding:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.popupMeta{color:#647085;font-size:12px;line-height:1.45}
+.popupNav{position:sticky;top:72px;z-index:3;background:#fff;border:1px solid #d9dee8;border-radius:8px;padding:10px;display:grid;gap:8px}
+.popupNavTop{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px;align-items:center}
+.popupNavStudent{display:grid;grid-template-columns:110px 86px minmax(0,1fr) 42px;gap:8px}
+.popupMetaRow{display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:start}
+.popupMemo{min-height:40px;height:40px;resize:vertical;font-size:12px;line-height:1.35;padding:8px 10px}
+.popupNav select{min-width:0}
+.popupActions{position:sticky;bottom:0;background:#fbfcfe;border:1px solid #d9dee8;border-radius:8px;padding:10px}
+.popupRubric{display:grid;gap:9px}
+.criterionEditBtn,.subAddRubricBtn,.inlineRubricEditor{display:none!important}
+.subExampleAnswerInput{pointer-events:none;resize:none}
+.total{position:sticky;bottom:0;background:#fbfcfe}
+</style>
+</head>
+<body>
+<main class="popupWrap">
+  <div class="popupHead">
+    <div>
+      <h1 id="popupTitle" style="margin:0;font-size:18px">루브릭</h1>
+      <div class="popupMeta" id="popupMeta"></div>
+    </div>
+    <button class="btn mini" id="popupCloseBtn" type="button">닫기</button>
+  </div>
+  <div class="popupNav" id="popupNav"></div>
+  <div class="popupRubric" id="popupRubricList"></div>
+  <div id="popupSubTotalList"></div>
+  <div class="total"><span>문항 전체 합계</span><strong id="popupTotalScore">0</strong></div>
+  <div class="popupActions" id="popupActions"></div>
+</main>
+</body>
+</html>`);
+  rubricPopupWindow.document.close();
+  rubricPopupWindow.document.addEventListener("click", evt => {
+    const closeBtn = evt.target.closest("#popupCloseBtn");
+    if(closeBtn){
+      rubricPopupWindow.close();
+      return;
+    }
+    const navBtn = evt.target.closest("[data-popup-nav]");
+    if(navBtn){
+      window.__omrRubricPopupNavigate(navBtn.dataset.popupNav);
+      return;
+    }
+    const actionBtn = evt.target.closest("[data-popup-action]");
+    if(actionBtn){
+      window.__omrRubricPopupAction(actionBtn.dataset.popupAction);
+      return;
+    }
+    const subUnwrittenBtn = evt.target.closest(".subUnwrittenBtn");
+    if(subUnwrittenBtn){
+      window.__omrRubricPopupSubUnwritten(subUnwrittenBtn.dataset.sub);
+      return;
+    }
+    const keywordBtn = evt.target.closest(".keywordChip");
+    if(keywordBtn){
+      window.__omrRubricPopupToggle(keywordBtn.dataset.id, keywordBtn.dataset.type, keywordBtn.dataset.keyword);
+    }
+  });
+  rubricPopupWindow.document.addEventListener("change", evt => {
+    const select = evt.target.closest("[data-popup-select]");
+    if(select) window.__omrRubricPopupSelect(select.dataset.popupSelect, select.value);
+  });
+  rubricPopupWindow.document.addEventListener("input", evt => {
+    const memo = evt.target.closest("[data-popup-memo]");
+    if(memo) window.__omrRubricPopupMemo(memo.value);
+  });
+  rubricPopupWindow.document.addEventListener("keydown", evt => {
+    const active = rubricPopupWindow.document.activeElement;
+    const isTextInput = ["INPUT","TEXTAREA"].includes(active?.tagName || "");
+    if((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === "z" && !isTextInput){
+      evt.preventDefault();
+      window.__omrRubricPopupAction("undo");
+    }
+  });
+  rubricPopupWindow.addEventListener("beforeunload", () => {
+    rubricPopupWindow = null;
+    setRubricWindowActive(false);
+  });
+  syncRubricPopup();
+}
+
+function syncRubricPopup(){
+  if(!rubricPopupWindow || rubricPopupWindow.closed) return;
+  const doc = rubricPopupWindow.document;
+  const list = doc.getElementById("popupRubricList");
+  if(!list) return;
+  const nav = doc.getElementById("popupNav");
+  if(nav) nav.innerHTML = popupRubricNavHtml();
+  list.innerHTML = els.rubricList.innerHTML;
+  const subTotals = doc.getElementById("popupSubTotalList");
+  if(subTotals) subTotals.innerHTML = els.subTotalList.innerHTML;
+  const totalScore = doc.getElementById("popupTotalScore");
+  if(totalScore) totalScore.innerHTML = els.totalScore.innerHTML;
+  const actions = doc.getElementById("popupActions");
+  if(actions) actions.innerHTML = popupRubricActionsHtml();
+  const title = doc.getElementById("popupTitle");
+  if(title) title.textContent = `${activeQuestion().label} 루브릭`;
+  const meta = doc.getElementById("popupMeta");
+  if(meta) meta.textContent = `${currentStudentText()} · ${formatScore(rubricTotal(activeRubric(), currentQuestionRecord()?.scores || {}))}점`;
+}
+
+function popupRubricActionsHtml(){
+  const disabled = !state.pdf ? " disabled" : "";
+  const completed = Boolean(currentQuestionRecord()?.completed);
+  return `
+    <div class="rubricActionBar">
+      <div class="rubricActionLeft">
+        <button class="btn" type="button" data-popup-action="unwritten"${disabled}>전체 미작성</button>
+        <button class="completeBtn${completed ? " on" : ""}" type="button" data-popup-action="complete"${disabled} aria-pressed="${completed ? "true" : "false"}">${completed ? "채점 완료됨" : "채점 완료"}</button>
+        <button class="btn primary" type="button" data-popup-action="completeNext"${disabled}>채점 완료 후 다음</button>
+      </div>
+      <div class="rubricActionRight">
+        <button class="btn danger" type="button" data-popup-action="clear"${disabled}>초기화</button>
+      </div>
+    </div>
+  `;
+}
+
+function popupRubricNavHtml(){
+  const scoped = scopedPages();
+  const scopedIndex = scoped.indexOf(state.page);
+  const prevDisabled = !state.pdf || (state.activeClass ? scopedIndex <= 0 : state.page <= 1);
+  const nextDisabled = !state.pdf || (state.activeClass ? scopedIndex < 0 || scopedIndex >= scoped.length - 1 : state.page >= state.pageCount);
+  const classOptions = [`<option value="">전체 반</option>`]
+    .concat(classNames().map(name => `<option value="${escapeHtml(name)}"${name === state.activeClass ? " selected" : ""}>${escapeHtml(name)}</option>`))
+    .join("");
+  const pages = scopedPages();
+  const currentPageInScope = pages.includes(state.page);
+  const numberOptions = pages.map(page => {
+    const student = studentForPage(page);
+    const rec = state.records[String(page)];
+    const number = rec?.number || student?.number || "";
+    const label = number ? `${number}번` : `${page}쪽`;
+    return `<option value="${page}"${currentPageInScope && page === state.page ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("") || `<option value="">번호 없음</option>`;
+  const nameOptions = pages.map(page => {
+    const student = studentForPage(page);
+    const rec = state.records[String(page)];
+    const name = rec?.name || student?.name || "";
+    const number = rec?.number || student?.number || "";
+    const status = gradingStateForPage(page);
+    const label = `${name || (number ? `${number}번` : `${page}쪽`)} · ${status.label}`;
+    return `<option value="${page}"${currentPageInScope && page === state.page ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("") || `<option value="">이름 없음</option>`;
+  const flagged = Boolean(currentQuestionRecord()?.needsDiscussion);
+  const memo = currentQuestionRecord()?.memo || "";
+  const filterTitle = state.settings?.incompleteOnly ? "미완료 필터 끄기" : "미완료만 보기";
+  return `
+    <div class="popupNavTop">
+      <button class="btn" type="button" data-popup-nav="prev"${prevDisabled ? " disabled" : ""}>‹</button>
+      <div class="popupNavStudent">
+        <select data-popup-select="class" title="반 선택">${classOptions}</select>
+        <select data-popup-select="number" title="번호 선택"${pages.length ? "" : " disabled"}>${numberOptions}</select>
+        <select data-popup-select="name" title="이름 선택"${pages.length ? "" : " disabled"}>${nameOptions}</select>
+        <button class="btn filterToggleBtn${state.settings?.incompleteOnly ? " primary" : ""}" type="button" data-popup-nav="filter" title="${escapeHtml(filterTitle)}" aria-label="${escapeHtml(filterTitle)}"><span class="filterGlyph" aria-hidden="true"></span></button>
+      </div>
+      <button class="btn" type="button" data-popup-nav="next"${nextDisabled ? " disabled" : ""}>›</button>
+    </div>
+    <div class="popupMetaRow">
+      <button class="btn flag discussionIconBtn${flagged ? " on" : ""}" type="button" data-popup-nav="discussion" title="${flagged ? "논의 필요 표시됨" : "논의 필요 표시"}" aria-label="${flagged ? "논의 필요 표시됨" : "논의 필요 표시"}">${flagged ? "★" : "☆"}</button>
+      <textarea class="popupMemo" id="popupMemoInput" data-popup-memo placeholder="문항 메모">${escapeHtml(memo)}</textarea>
+    </div>
+  `;
+}
+
+function currentStudentText(){
+  const student = studentForPage(state.page);
+  const rec = currentRecord();
+  const className = rec?.className || student?.className || selectedClassName();
+  const number = rec?.number || student?.number || "";
+  const name = rec?.name || student?.name || "";
+  return [className, number ? `${number}번` : "", name].filter(Boolean).join(" ") || `${state.page}쪽`;
+}
+
+window.__omrRubricPopupToggle = (itemId, type, keyword) => {
+  toggleKeywordHit(itemId, type, keyword);
+  syncRubricPopup();
+};
+
+window.__omrRubricPopupNavigate = async direction => {
+  if(direction === "prev") await goScoped(-1);
+  if(direction === "next") await goScoped(1);
+  if(direction === "filter") await toggleIncompleteOnly();
+  if(direction === "discussion"){
+    toggleDiscussionFlag();
+    syncRubricPopup();
+  }
+};
+
+window.__omrRubricPopupMemo = value => {
+  if(!state.pdf) return;
+  els.memoInput.value = value;
+  syncFormToRecord();
+  persist();
+  updateResults();
+  updateDiscussionButton();
+  updateDiscussionList();
+  updateClassControls();
+};
+
+window.__omrRubricPopupAction = async action => {
+  if(action === "unwritten") markAllSubsUnwritten();
+  if(action === "complete") toggleCompletedFlag();
+  if(action === "completeNext") await completeAndAdvance();
+  if(action === "clear") clearCurrentQuestion();
+  if(action === "undo"){
+    if(undoSnapshot) await undoLastChange();
+    else showToast("되돌릴 채점 조작이 없습니다.");
+  }
+  syncRubricPopup();
+};
+
+window.__omrRubricPopupSubUnwritten = sub => {
+  toggleSubUnwritten(sub || subOptions()[0]);
+  syncRubricPopup();
+};
+
+window.__omrRubricPopupSelect = async (kind, value) => {
+  if(kind === "class"){
+    state.activeClass = value;
+    if(state.pdf && state.activeClass && !scopedPages().includes(state.page)){
+      state.page = firstScopedPage() || state.page;
+      await renderCurrentPage();
+    }
+    updateClassControls();
+    updateChrome();
+    persist();
+    syncRubricPopup();
+    return;
+  }
+  const page = Number(value);
+  if(!Number.isFinite(page) || page <= 0) return;
+  if(state.pdf) await goPage(page);
+  else{
+    state.page = page;
+    loadRecordIntoForm();
+    updateClassControls();
+    updateChrome();
+  }
+};
 
 function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
   const qrec = currentQuestionRecord();
@@ -1689,10 +2101,6 @@ function snapshotCurrentQuestion(label="채점 변경"){
 }
 
 function updateUndoButton(){
-  if(!els.undoBtn) return;
-  els.undoBtn.disabled = !undoSnapshot;
-  els.undoBtn.textContent = undoSnapshot ? "되돌리기" : "되돌리기";
-  els.undoBtn.title = undoSnapshot ? undoSnapshot.label : "되돌릴 채점 조작 없음";
 }
 
 async function undoLastChange(){
@@ -1748,6 +2156,7 @@ function updateDiscussionButton(){
   els.discussionBtn.textContent = flagged ? "★" : "☆";
   els.discussionBtn.title = flagged ? "논의 필요 표시됨" : "논의 필요 표시";
   els.discussionBtn.setAttribute("aria-label", els.discussionBtn.title);
+  syncRubricPopup();
 }
 
 function updateCompleteButton(){
@@ -1755,6 +2164,7 @@ function updateCompleteButton(){
   els.completeBtn.classList.toggle("on", completed);
   els.completeBtn.textContent = completed ? "채점 완료됨" : "채점 완료";
   els.completeBtn.setAttribute("aria-pressed", completed ? "true" : "false");
+  syncRubricPopup();
 }
 
 function setCompletedFlag(completed){
@@ -1782,6 +2192,16 @@ async function completeAndAdvance(){
   if(!setCompletedFlag(true)) return;
   if(state.activeClass) await goScoped(1);
   else if(state.page < state.pageCount) await goPage(state.page + 1);
+}
+
+function clearCurrentQuestion(){
+  if(!confirm("현재 답안의 현재 문항 채점 기록을 초기화할까요?")) return;
+  snapshotCurrentQuestion("현재 문항 기록 삭제");
+  const rec = currentRecord();
+  if(rec?.answers) delete rec.answers[state.activeQuestion];
+  persist();
+  loadRecordIntoForm();
+  updateChrome();
 }
 
 function saveCurrent(){
@@ -3149,10 +3569,34 @@ els.pdfInput.addEventListener("change", evt => {
   const file = evt.target.files?.[0];
   if(file) openPdf(file).catch(err => alert(`PDF를 열 수 없습니다: ${err.message}`));
 });
+els.examCaptureBtn.addEventListener("click", () => els.examCapturePanel.classList.toggle("hidden"));
+els.closeExamCaptureBtn.addEventListener("click", () => els.examCapturePanel.classList.add("hidden"));
+els.chooseExamCaptureBtn.addEventListener("click", () => els.examCaptureInput.click());
+els.examCaptureInput.addEventListener("change", async evt => {
+  const file = evt.target.files?.[0];
+  if(file) await saveExamCaptureFile(file);
+  evt.target.value = "";
+});
+els.pasteExamCaptureBtn.addEventListener("click", pasteExamCaptureFromClipboard);
+els.clearExamCaptureBtn.addEventListener("click", () => {
+  if(!confirm("저장된 시험문제 캡처를 삭제할까요?")) return;
+  localStorage.removeItem(EXAM_CAPTURE_KEY);
+  renderExamCapture("");
+});
+document.addEventListener("paste", async evt => {
+  if(els.examCapturePanel.classList.contains("hidden")) return;
+  const file = [...(evt.clipboardData?.files || [])].find(entry => entry.type.startsWith("image/"));
+  if(file){
+    evt.preventDefault();
+    await saveExamCaptureFile(file);
+  }
+});
 els.changePdfBtn.addEventListener("click", () => els.pdfInput.click());
 els.calibrateBtn.addEventListener("click", () => setMode("calibrate"));
 els.fullPageBtn.addEventListener("click", toggleFullPage);
 els.gradeModeBtn.addEventListener("click", () => setMode("grade"));
+els.openRubricWindowBtn.addEventListener("click", openRubricPopup);
+els.floatingRubricWindowBtn.addEventListener("click", openRubricPopup);
 els.settingsBtn.addEventListener("click", () => openSettings());
 els.closeSettingsBtn.addEventListener("click", () => els.settingsModal.classList.add("hidden"));
 els.settingsModal.addEventListener("click", evt => {
@@ -3244,6 +3688,11 @@ els.autoAssistEnabledInput.addEventListener("change", () => {
   applySettings();
   persist();
 });
+els.multiWindowEnabledInput.addEventListener("change", () => {
+  state.settings.multiWindowEnabled = Boolean(els.multiWindowEnabledInput.checked);
+  applySettings();
+  persist();
+});
 els.settingsModal.addEventListener("change", evt => {
   const card = evt.target.closest(".questionEditCard");
   if(!card) return;
@@ -3287,22 +3736,12 @@ els.prevBtn.addEventListener("click", () => goScoped(-1));
 els.nextBtn.addEventListener("click", () => goScoped(1));
 els.pageInput.addEventListener("change", () => goPage(Number(els.pageInput.value)));
 els.incompleteOnlyBtn.addEventListener("click", toggleIncompleteOnly);
-els.nextIncompleteBtn.addEventListener("click", goNextIncomplete);
 els.markAllUnwrittenBtn.addEventListener("click", markAllSubsUnwritten);
-els.undoBtn.addEventListener("click", undoLastChange);
 els.completeNextBtn.addEventListener("click", completeAndAdvance);
 els.mobilePrevBtn.addEventListener("click", () => goScoped(-1));
 els.mobileNextBtn.addEventListener("click", () => goScoped(1));
 els.mobileDiscussionBtn.addEventListener("click", toggleDiscussionFlag);
-els.clearCurrentBtn.addEventListener("click", () => {
-  if(!confirm("현재 답안의 현재 문항 채점 기록을 초기화할까요?")) return;
-  snapshotCurrentQuestion("현재 문항 기록 삭제");
-  const rec = currentRecord();
-  if(rec?.answers) delete rec.answers[state.activeQuestion];
-  persist();
-  loadRecordIntoForm();
-  updateChrome();
-});
+els.clearCurrentBtn.addEventListener("click", clearCurrentQuestion);
 els.discussionBtn.addEventListener("click", toggleDiscussionFlag);
 els.completeBtn.addEventListener("click", toggleCompletedFlag);
 els.rubricList.addEventListener("click", evt => {
@@ -3583,7 +4022,14 @@ window.addEventListener("resize", () => {
   positionOverlay();
 });
 window.addEventListener("keydown", evt => {
-  if(["INPUT","TEXTAREA"].includes(document.activeElement.tagName)) return;
+  const isTextInput = ["INPUT","TEXTAREA"].includes(document.activeElement.tagName);
+  if((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === "z" && !isTextInput){
+    evt.preventDefault();
+    if(undoSnapshot) undoLastChange();
+    else showToast("되돌릴 채점 조작이 없습니다.");
+    return;
+  }
+  if(isTextInput) return;
   if(evt.key === "ArrowLeft") goScoped(-1);
   if(evt.key === "ArrowRight") goScoped(1);
   if(evt.key.toLowerCase() === "s") els.completeNextBtn.click();
