@@ -119,7 +119,6 @@ textarea{min-height:72px;resize:vertical}
 .rubricList{display:grid;gap:9px}
 .rubricList.locked{opacity:.68}
 .rubricList.locked .criterion,.rubricList.locked .subRubricTitle{background:#f4f6f8}
-.rubricLockedNotice{border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:var(--muted);padding:8px 10px;font-size:12px;font-weight:850}
 .subRubricGroup{display:grid;gap:7px}
 .subRubricTitle{position:sticky;top:0;z-index:1;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:900;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px}
 .subRubricGroup.unwritten .subRubricTitle{border-color:#d5a13b;background:#fffaf0}
@@ -1617,12 +1616,6 @@ function renderRubric(){
   const locked = isRubricLocked();
   els.rubricList.classList.toggle("locked", locked);
   els.rubricList.innerHTML = "";
-  if(locked){
-    const notice = document.createElement("div");
-    notice.className = "rubricLockedNotice";
-    notice.textContent = "채점 완료된 답안입니다. 수정하려면 채점 완료됨 버튼을 다시 눌러 잠금을 해제하세요.";
-    els.rubricList.appendChild(notice);
-  }
   subOptions().forEach(sub => {
     const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
     renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
