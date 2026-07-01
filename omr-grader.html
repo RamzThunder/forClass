@@ -1856,7 +1856,11 @@ body.popupCompleted .popupLockBanner{display:block}
     rubricPopupWindow = null;
     setRubricWindowActive(false);
   });
-  bindRubricDragHandlers(rubricPopupWindow.document.getElementById("popupRubricList"), {afterChange:syncRubricPopup});
+  bindRubricDragHandlers(rubricPopupWindow.document.getElementById("popupRubricList"), {
+    afterChange:type => {
+      if(type !== "keyword") syncRubricPopup();
+    }
+  });
   syncRubricPopup();
 }
 
@@ -3609,7 +3613,7 @@ function bindRubricDragHandlers(list, options={}){
       zone.classList.remove("dragOver");
       moveKeywordChip(draggedKeywordChip, zone);
       draggedKeywordChip = null;
-      afterChange();
+      afterChange("keyword");
       return;
     }
     const criterion = evt.target.closest(".criterion");
@@ -3619,7 +3623,7 @@ function bindRubricDragHandlers(list, options={}){
       const placeAfter = evt.clientY > rect.top + rect.height / 2;
       moveRubricItem(draggedRubricId, criterion.dataset.id, placeAfter);
       draggedRubricId = "";
-      afterChange();
+      afterChange("rubric");
       return;
     }
     const subTitle = evt.target.closest(".subRubricTitle");
@@ -3628,7 +3632,7 @@ function bindRubricDragHandlers(list, options={}){
       subTitle.classList.remove("dragOver");
       moveRubricItemToSubEnd(draggedRubricId, subTitle.dataset.sub || subOptions()[0]);
       draggedRubricId = "";
-      afterChange();
+      afterChange("rubric");
     }
   });
 }
