@@ -820,6 +820,7 @@ let draggedKeywordChip = null;
 let draggedRubricId = "";
 let renderToken = 0;
 let undoSnapshot = null;
+const memoSaveTimers = new Map();
 let rubricPopupWindow = null;
 let rubricWindowActive = false;
 
@@ -1987,12 +1988,7 @@ window.__omrRubricPopupNavigate = async direction => {
 window.__omrRubricPopupMemo = value => {
   if(!state.pdf) return;
   els.memoInput.value = value;
-  syncFormToRecord();
-  persist();
-  updateResults();
-  updateDiscussionButton();
-  updateDiscussionList();
-  updateClassControls();
+  scheduleMemoSave(value);
 };
 
 window.__omrRubricPopupAction = async action => {
@@ -2533,6 +2529,27 @@ function syncFormToRecord(){
   rec.name = student?.name || rec.name || "";
   rec.answers[state.activeQuestion].memo = els.memoInput.value.trim();
   cleanupRecord(recordKey());
+}
+
+function scheduleMemoSave(value=els.memoInput.value){
+  if(!state.pdf) return;
+  ensureQuestionRecord();
+  const key = recordKey();
+  const questionId = state.activeQuestion;
+  const trimmed = String(value || "").trim();
+  state.records[key].answers[questionId].memo = trimmed;
+  const timerKey = `${key}|||${questionId}`;
+  clearTimeout(memoSaveTimers.get(timerKey));
+  memoSaveTimers.set(timerKey, setTimeout(() => {
+    const qrec = state.records[key]?.answers?.[questionId];
+    if(qrec) qrec.memo = trimmed;
+    cleanupRecord(key);
+    persist();
+    updateResults();
+    updateDiscussionList();
+    updateClassControls();
+    memoSaveTimers.delete(timerKey);
+  }, 250));
 }
 
 function toggleDiscussionFlag(){
@@ -4643,12 +4660,7 @@ els.rubricList.addEventListener("keydown", evt => {
 bindRubricDragHandlers(els.rubricList);
 els.memoInput.addEventListener("input", () => {
   if(!state.pdf) return;
-  syncFormToRecord();
-  persist();
-  updateResults();
-  updateDiscussionButton();
-  updateDiscussionList();
-  updateClassControls();
+  scheduleMemoSave();
 });
 els.discussionList.addEventListener("click", evt => {
   const btn = evt.target.closest(".discussionGoBtn");
