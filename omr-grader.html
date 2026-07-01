@@ -2166,8 +2166,14 @@ function clearSubScores(qrec, sub){
   activeRubric()
     .filter(item => normalizeSubValue(item.sub || "공통") === sub)
     .forEach(item => {
-      if(qrec.keywordHits) delete qrec.keywordHits[item.id];
-      if(qrec.scores) qrec.scores[item.id] = 0;
+      const itemHits = {accept:[], partial:[], reject:[]};
+      if(splitKeywords(item.accept).includes("미작성")) itemHits.accept.push("미작성");
+      if(splitKeywords(item.reject).includes("미작성")) itemHits.reject.push("미작성");
+      const hasHits = itemHits.accept.length || itemHits.reject.length;
+      if(!qrec.keywordHits) qrec.keywordHits = {};
+      if(hasHits) qrec.keywordHits[item.id] = itemHits;
+      else delete qrec.keywordHits[item.id];
+      if(qrec.scores) qrec.scores[item.id] = hasHits ? scoreFromKeywordHits(item, itemHits) : 0;
     });
 }
 
