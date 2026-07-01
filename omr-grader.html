@@ -86,6 +86,7 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .subQuestionRow{display:grid;grid-template-columns:minmax(0,1fr) 110px 34px;gap:6px;align-items:start}
 .stage{min-height:0;overflow:auto;padding:18px}
 .canvasShell{min-height:calc(100vh - 154px);display:flex;align-items:center;justify-content:center;position:relative}
+.viewerKeywordPanel{margin:12px 0 0}
 .examCaptureBtn{position:absolute;top:12px;left:12px;z-index:8;box-shadow:0 8px 22px rgba(23,32,51,.12)}
 .floatingRubricWindowBtn{position:absolute;top:12px;left:104px;z-index:8;box-shadow:0 8px 22px rgba(23,32,51,.12)}
 .app:not(.multiWindowMain) .floatingRubricWindowBtn{display:none}
@@ -477,6 +478,13 @@ textarea{min-height:72px;resize:vertical}
           <canvas id="cropCanvas"></canvas>
         </div>
       </div>
+      <section class="panel viewerKeywordPanel">
+        <div class="panelHead">
+          <h2 class="panelTitle">키워드별 학생</h2>
+          <button class="btn mini" id="openKeywordModalBtn" type="button">보기</button>
+        </div>
+        <div class="statusLine" id="keywordSummary">루브릭에 키워드를 입력하면 학생 목록을 모아볼 수 있습니다.</div>
+      </section>
     </section>
   </main>
 
@@ -528,14 +536,6 @@ textarea{min-height:72px;resize:vertical}
         <h2 class="panelTitle">논의 필요 학생</h2>
       </div>
       <div class="discussionList" id="discussionList"></div>
-    </section>
-
-    <section class="panel">
-      <div class="panelHead">
-        <h2 class="panelTitle">키워드별 학생</h2>
-        <button class="btn mini" id="openKeywordModalBtn" type="button">보기</button>
-      </div>
-      <div class="statusLine" id="keywordSummary">루브릭에 키워드를 입력하면 학생 목록을 모아볼 수 있습니다.</div>
     </section>
 
     <section class="panel hidden" id="rubricEditorPanel">
@@ -1305,6 +1305,12 @@ function sidebarWidth(){
 function toggleFullPage(){
   if(!state.pdf || state.mode === "calibrate") return;
   state.fullPage = !state.fullPage;
+  setMode("grade");
+}
+
+function enterGradeMode(){
+  if(!state.pdf) return;
+  state.fullPage = false;
   setMode("grade");
 }
 
@@ -4351,7 +4357,7 @@ els.calibrateBtn.addEventListener("click", () => setMode("calibrate"));
 els.fullPageBtn.addEventListener("click", toggleFullPage);
 els.studentCropBtn.addEventListener("click", toggleStudentCropMode);
 els.clearStudentCropBtn.addEventListener("click", clearStudentCropOverride);
-els.gradeModeBtn.addEventListener("click", () => setMode("grade"));
+els.gradeModeBtn.addEventListener("click", enterGradeMode);
 els.openRubricWindowBtn.addEventListener("click", openRubricPopup);
 els.floatingRubricWindowBtn.addEventListener("click", openRubricPopup);
 els.settingsBtn.addEventListener("click", () => openSettings());
