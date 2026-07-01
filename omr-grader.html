@@ -527,7 +527,7 @@ textarea{min-height:72px;resize:vertical}
         </div>
       </div>
       <div class="statusLine" style="margin-top:10px">
-        단축키: <span class="kbd">←</span> <span class="kbd">→</span> 페이지 이동, <span class="kbd">S</span> 채점 완료 후 다음
+        단축키: <span class="kbd">←</span> <span class="kbd">→</span> 답안 이동, <span class="kbd">S</span> 채점 완료/해제
       </div>
     </section>
 
@@ -692,6 +692,13 @@ textarea{min-height:72px;resize:vertical}
           </span>
           <input id="multiWindowEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
+        <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
+          <span>
+            <span class="label">한 손 채점</span>
+            <span class="statusLine">물리 키 위치 기준 A/D를 이전/다음 답안 이동으로 사용합니다.</span>
+          </span>
+          <input id="oneHandGradingInput" type="checkbox" style="width:auto;min-height:auto">
+        </label>
         <label class="field">
           <span class="label">학생당 PDF 페이지 수</span>
           <input id="pagesPerStudentInput" type="number" min="1" step="1" value="1">
@@ -766,7 +773,7 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, incompleteOnly:false, multiWindowEnabled:false, pagesPerStudent:1, deductTemplate:structuredClone(defaultDeductTemplate)}
+  settings:{autoAssistEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, pagesPerStudent:1, deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
@@ -802,7 +809,7 @@ const els = {
   addRubricBottomBtn:$("addRubricBottomBtn"), importHwpxRubricBtn:$("importHwpxRubricBtn"), hwpxRubricInput:$("hwpxRubricInput"),
   applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportShareReportBtn:$("exportShareReportBtn"), exportJsonBtn:$("exportJsonBtn"),
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
-  autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), openRubricWindowBtn:$("openRubricWindowBtn"),
+  autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"), openRubricWindowBtn:$("openRubricWindowBtn"),
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
@@ -928,6 +935,7 @@ function applySettings(){
   els.autoAssistPanel.classList.toggle("hidden", !enabled);
   if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
   if(els.multiWindowEnabledInput) els.multiWindowEnabledInput.checked = multiWindowEnabled;
+  if(els.oneHandGradingInput) els.oneHandGradingInput.checked = Boolean(state.settings?.oneHandGradingEnabled);
   if(els.openRubricWindowBtn) els.openRubricWindowBtn.classList.toggle("hidden", !multiWindowEnabled);
   if(els.pagesPerStudentInput) els.pagesPerStudentInput.value = pagesPerStudent();
   if(!multiWindowEnabled){
@@ -1043,6 +1051,7 @@ function normalizeSettings(){
     autoAssistEnabled:Boolean(settings.autoAssistEnabled),
     incompleteOnly:Boolean(settings.incompleteOnly),
     multiWindowEnabled:Boolean(settings.multiWindowEnabled),
+    oneHandGradingEnabled:Boolean(settings.oneHandGradingEnabled),
     pagesPerStudent:Math.max(1, Math.floor(nonNegativeNumber(settings.pagesPerStudent) || 1)),
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
@@ -1838,8 +1847,6 @@ body.popupCompleted .popupLockBanner{display:block}
     if(textarea) resizeKeywordTextarea(textarea);
   });
   rubricPopupWindow.document.addEventListener("keydown", evt => {
-    const active = rubricPopupWindow.document.activeElement;
-    const isTextInput = ["INPUT","TEXTAREA"].includes(active?.tagName || "");
     if((evt.ctrlKey || evt.metaKey) && evt.key === "Enter"){
       const editor = evt.target.closest(".inlineRubricEditor");
       if(editor){
@@ -1849,26 +1856,7 @@ body.popupCompleted .popupLockBanner{display:block}
         return;
       }
     }
-    if((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === "z" && !isTextInput){
-      evt.preventDefault();
-      window.__omrRubricPopupAction("undo");
-      return;
-    }
-    if(isTextInput) return;
-    if(evt.key === "ArrowLeft"){
-      evt.preventDefault();
-      window.__omrRubricPopupNavigate("prev");
-      return;
-    }
-    if(evt.key === "ArrowRight"){
-      evt.preventDefault();
-      window.__omrRubricPopupNavigate("next");
-      return;
-    }
-    if(evt.key.toLowerCase() === "s"){
-      evt.preventDefault();
-      window.__omrRubricPopupAction("completeNext");
-    }
+    handleGradingShortcut(evt);
   });
   rubricPopupWindow.addEventListener("beforeunload", () => {
     rubricPopupWindow = null;
@@ -2895,6 +2883,34 @@ function clearKeywordFilter(){
   state.keywordFilter = null;
   updateChrome();
   showToast("키워드 필터를 해제했습니다.");
+}
+
+async function handleGradingShortcut(evt){
+  const active = evt.target || document.activeElement;
+  const isTextInput = ["INPUT","TEXTAREA","SELECT"].includes(active?.tagName || "");
+  if((evt.ctrlKey || evt.metaKey) && evt.code === "KeyZ" && !isTextInput){
+    evt.preventDefault();
+    if(undoSnapshot) await undoLastChange();
+    else showToast("되돌릴 채점 조작이 없습니다.");
+    return true;
+  }
+  if(isTextInput) return false;
+  if(evt.key === "ArrowLeft" || (state.settings?.oneHandGradingEnabled && evt.code === "KeyA")){
+    evt.preventDefault();
+    await goScoped(-1);
+    return true;
+  }
+  if(evt.key === "ArrowRight" || (state.settings?.oneHandGradingEnabled && evt.code === "KeyD")){
+    evt.preventDefault();
+    await goScoped(1);
+    return true;
+  }
+  if(evt.code === "KeyS"){
+    evt.preventDefault();
+    toggleCompletedFlag();
+    return true;
+  }
+  return false;
 }
 
 function refreshRosterMappingAfterMissingChange(){
@@ -4471,6 +4487,11 @@ els.multiWindowEnabledInput.addEventListener("change", () => {
   applySettings();
   persist();
 });
+els.oneHandGradingInput.addEventListener("change", () => {
+  state.settings.oneHandGradingEnabled = Boolean(els.oneHandGradingInput.checked);
+  applySettings();
+  persist();
+});
 els.pagesPerStudentInput.addEventListener("change", () => {
   state.settings.pagesPerStudent = Math.max(1, Math.floor(nonNegativeNumber(els.pagesPerStudentInput.value) || 1));
   applySettings();
@@ -4747,17 +4768,7 @@ window.addEventListener("resize", () => {
   positionOverlay();
 });
 window.addEventListener("keydown", evt => {
-  const isTextInput = ["INPUT","TEXTAREA"].includes(document.activeElement.tagName);
-  if((evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === "z" && !isTextInput){
-    evt.preventDefault();
-    if(undoSnapshot) undoLastChange();
-    else showToast("되돌릴 채점 조작이 없습니다.");
-    return;
-  }
-  if(isTextInput) return;
-  if(evt.key === "ArrowLeft") goScoped(-1);
-  if(evt.key === "ArrowRight") goScoped(1);
-  if(evt.key.toLowerCase() === "s") els.completeNextBtn.click();
+  handleGradingShortcut(evt);
 });
 
 els.autoDetectBtn.addEventListener("click", () => autoDetectKeywords());
