@@ -67,7 +67,9 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .filterGlyph{position:relative;display:block;width:16px;height:16px;color:currentColor}
 .filterGlyph::before{content:"";position:absolute;left:2px;top:3px;width:12px;height:11px;background:currentColor;clip-path:polygon(0 0,100% 0,64% 48%,64% 100%,36% 100%,36% 48%)}
 .currentAnswerAccess{display:grid;grid-template-columns:minmax(360px,1fr) minmax(280px,.85fr);gap:8px;align-items:start}
-.answerMetaRow{display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:start}
+.answerMetaRow{display:grid;grid-template-columns:42px auto minmax(0,1fr);gap:8px;align-items:start}
+.missingOmrBtn{min-height:40px;white-space:nowrap}
+.missingOmrBtn.on{background:#9a6512;border-color:#9a6512;color:#fff}
 .memoCompact{min-height:40px;height:40px;resize:vertical;font-size:12px;line-height:1.35;padding:8px 10px}
 .discussionIconBtn{width:42px;min-width:42px;padding:0;font-size:18px;line-height:1}
 .infoText{min-height:38px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--ink);padding:8px 10px;font-weight:800;display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -426,6 +428,7 @@ textarea{min-height:72px;resize:vertical}
           </div>
           <div class="answerMetaRow">
             <button class="btn flag discussionIconBtn" id="discussionBtn" type="button" title="논의 필요 표시" aria-label="논의 필요 표시">☆</button>
+            <button class="btn mini missingOmrBtn" id="missingOmrBtn" type="button">OMR 없음</button>
             <textarea class="memoCompact" id="memoInput" placeholder="문항 메모"></textarea>
           </div>
           <div class="statusLine hidden" id="classStatus">명렬을 적용하면 학생 정보로 이동할 수 있습니다.</div>
@@ -671,6 +674,7 @@ textarea{min-height:72px;resize:vertical}
         <div class="statusLine" style="margin-bottom:8px">한 줄에 한 명씩 입력합니다. 예: 1반,12,학생이름</div>
         <textarea id="rosterText" placeholder="1반,1,학생1&#10;1반,2,학생2&#10;1반,3,학생3" style="min-height:260px"></textarea>
         <div class="statusLine" id="rosterStatus">명렬 없음</div>
+        <div class="statusLine" id="missingRosterList"></div>
       </section>
       <section class="panel settingsPane hidden" id="settingsLabPane">
         <div class="panelHead"><h2 class="panelTitle">실험실</h2></div>
@@ -757,6 +761,7 @@ const state = {
   activeClass:"",
   keywordFilter:null,
   editingRubricId:"",
+  missingRosterKeys:[],
   studentCropMode:false,
   questions:structuredClone(defaultQuestions),
   roster:[],
@@ -782,8 +787,8 @@ const els = {
   incompleteFilterNotice:$("incompleteFilterNotice"), keywordFilterNotice:$("keywordFilterNotice"), keywordFilterText:$("keywordFilterText"), clearKeywordFilterBtn:$("clearKeywordFilterBtn"),
   questionSelect:$("questionSelect"), questionStatus:$("questionStatus"),
   addQuestionBtn:$("addQuestionBtn"), questionSettingsList:$("questionSettingsList"), initialSetupNotice:$("initialSetupNotice"),
-  rosterText:$("rosterText"), applyRosterBtn:$("applyRosterBtn"),
-  rosterStatus:$("rosterStatus"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), discussionList:$("discussionList"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
+  rosterText:$("rosterText"), applyRosterBtn:$("applyRosterBtn"), missingRosterList:$("missingRosterList"),
+  rosterStatus:$("rosterStatus"), memoInput:$("memoInput"), discussionBtn:$("discussionBtn"), missingOmrBtn:$("missingOmrBtn"), discussionList:$("discussionList"), rubricList:$("rubricList"), subTotalList:$("subTotalList"), totalScore:$("totalScore"),
   incompleteOnlyBtn:$("incompleteOnlyBtn"), markAllUnwrittenBtn:$("markAllUnwrittenBtn"),
   completeNextBtn:$("completeNextBtn"), clearCurrentBtn:$("clearCurrentBtn"), completeBtn:$("completeBtn"),
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
@@ -820,6 +825,7 @@ function loadSavedState(){
     if(saved.crop) state.questions[0].crop = saved.crop;
     if(Array.isArray(saved.rubric)) state.questions[0].rubric = saved.rubric;
     if(Array.isArray(saved.roster)) state.roster = saved.roster;
+    if(Array.isArray(saved.missingRosterKeys)) state.missingRosterKeys = saved.missingRosterKeys;
     if(saved.records) state.records = saved.records;
     state.appTitle = saved.appTitle || saved.title || state.appTitle;
     state.activeQuestion = saved.activeQuestion || state.activeQuestion;
@@ -833,6 +839,7 @@ function loadSavedState(){
   normalizeQuestions();
   normalizeRecords();
   cleanupAllRecords();
+  applyRosterToRecords();
   els.rosterText.value = state.roster.map(formatRosterLine).join("\n");
   updateQuestionControls();
   updateRosterStatus();
@@ -900,6 +907,7 @@ function persist(){
     lastPdfPageCount:state.pageCount || state.lastPdfPageCount || 0,
     questions:state.questions,
     roster:state.roster,
+    missingRosterKeys:state.missingRosterKeys,
     records:state.records,
     settings:state.settings
   }));
@@ -1482,6 +1490,7 @@ function updateChrome(){
   updateKeywordFilterNotice();
   updateStudentCropButtons();
   updateClassControls();
+  updateMissingOmrButton();
   updateProgress();
   updateMobileScanNav(scoped, scopedIndex);
   syncRubricPopup();
@@ -1926,7 +1935,7 @@ function popupRubricNavHtml(){
   const numberOptions = pages.map(page => {
     const student = studentForPage(page);
     const rec = state.records[recordKey(page)];
-    const number = rec?.number || student?.number || "";
+    const number = student?.number || rec?.number || "";
     const label = number ? `${number}번` : `${studentIndexForPage(page)}번 학생`;
     return `<option value="${page}"${currentPageInScope && page === currentBasePage ? " selected" : ""}>${escapeHtml(label)}</option>`;
   }).join("") || `<option value="">번호 없음</option>`;
@@ -1936,8 +1945,8 @@ function popupRubricNavHtml(){
   const nameOptions = pages.map(page => {
     const student = studentForPage(page);
     const rec = state.records[recordKey(page)];
-    const name = rec?.name || student?.name || "";
-    const number = rec?.number || student?.number || "";
+    const name = student?.name || rec?.name || "";
+    const number = student?.number || rec?.number || "";
     const status = gradingStateForPage(page);
     const label = `${name || (number ? `${number}번` : `${studentIndexForPage(page)}번 학생`)} · ${status.label}`;
     return `<option value="${page}"${currentPageInScope && page === currentBasePage ? " selected" : ""}>${escapeHtml(label)}</option>`;
@@ -2532,9 +2541,9 @@ function syncFormToRecord(){
   const student = studentForPage(state.page);
   rec.page = state.page;
   rec.studentIndex = studentIndexForPage(state.page);
-  rec.className = rec.className || student?.className || "";
-  rec.number = rec.number || student?.number || "";
-  rec.name = rec.name || student?.name || "";
+  rec.className = student?.className || rec.className || "";
+  rec.number = student?.number || rec.number || "";
+  rec.name = student?.name || rec.name || "";
   rec.answers[state.activeQuestion].memo = els.memoInput.value.trim();
   cleanupRecord(recordKey());
 }
@@ -2564,6 +2573,34 @@ function updateDiscussionButton(){
   els.discussionBtn.title = flagged ? "논의 필요 표시됨" : "논의 필요 표시";
   els.discussionBtn.setAttribute("aria-label", els.discussionBtn.title);
   syncRubricPopup();
+}
+
+function updateMissingOmrButton(){
+  const student = studentForPage(state.page);
+  const active = Boolean(student && isRosterStudentMissing(student));
+  els.missingOmrBtn.disabled = !student;
+  els.missingOmrBtn.classList.toggle("on", active);
+  els.missingOmrBtn.textContent = active ? "OMR 없음 해제" : "OMR 없음";
+}
+
+async function toggleMissingOmrForCurrent(){
+  const student = studentForPage(state.page);
+  if(!student){
+    showToast("현재 연결된 명렬 학생이 없습니다.");
+    return;
+  }
+  const key = rosterStudentKey(student);
+  const missing = missingRosterKeySet();
+  if(missing.has(key)){
+    missing.delete(key);
+    showToast(`${student.number ? `${student.number}번 ` : ""}${student.name || "학생"}의 OMR 없음 표시를 해제했습니다.`);
+  }else{
+    missing.add(key);
+    showToast(`${student.number ? `${student.number}번 ` : ""}${student.name || "학생"}을 OMR 없음으로 표시했습니다.`);
+  }
+  state.missingRosterKeys = [...missing];
+  refreshRosterMappingAfterMissingChange();
+  if(state.pdf) await renderCurrentPage();
 }
 
 function updateCompleteButton(){
@@ -2840,15 +2877,28 @@ function clearKeywordFilter(){
   showToast("키워드 필터를 해제했습니다.");
 }
 
+function refreshRosterMappingAfterMissingChange(){
+  applyRosterToRecords();
+  persist();
+  updateRosterStatus();
+  updateClassControls();
+  updateMissingOmrButton();
+  updateProgress();
+  updateResults();
+  updateKeywordSummary();
+  updateDiscussionList();
+  syncRubricPopup();
+}
+
 function keywordStudents(itemId, type, keyword){
   return keywordStudentRecords(itemId, type, keyword).map(studentLabelForRecord);
 }
 
 function studentLabelForRecord(rec){
-  const rosterStudent = rec.studentIndex ? currentRoster()[Number(rec.studentIndex) - 1] : studentForPage(Number(rec.page));
-  const className = rec.className || rosterStudent?.className || "";
-  const number = rec.number || rosterStudent?.number || "";
-  const name = rec.name || rosterStudent?.name || "";
+  const rosterStudent = rec.studentIndex ? rosterEntryForOmrIndex(Number(rec.studentIndex))?.student : studentForPage(Number(rec.page));
+  const className = rosterStudent?.className || rec.className || "";
+  const number = rosterStudent?.number || rec.number || "";
+  const name = rosterStudent?.name || rec.name || "";
   const studentText = [className, number ? `${number}번` : "", name].filter(Boolean).join(" ");
   return studentText || `${rec.page}쪽`;
 }
@@ -3890,12 +3940,12 @@ function parseRoster(text){
 }
 
 function applyRosterToRecords(){
-  state.roster.forEach((student, index) => {
-    const key = String(index + 1);
-    if(!state.records[key]) return;
-    state.records[key].className ||= student.className;
-    state.records[key].number ||= student.number;
-    state.records[key].name ||= student.name;
+  Object.entries(state.records).forEach(([key, rec]) => {
+    const student = rosterEntryForOmrIndex(Number(key))?.student;
+    if(!student) return;
+    rec.className = student.className;
+    rec.number = student.number;
+    rec.name = student.name;
   });
 }
 
@@ -3909,13 +3959,73 @@ function currentRoster(){
     .map(rec => ({className:rec.className || "", number:rec.number || "", name:rec.name || ""}));
 }
 
-function studentForPage(page){return currentRoster()[studentIndexForPage(page) - 1] || null}
+function rosterStudentKey(student){
+  return [student?.className || "", student?.number || "", student?.name || ""].join("|||");
+}
+
+function missingRosterKeySet(){
+  return new Set(Array.isArray(state.missingRosterKeys) ? state.missingRosterKeys : []);
+}
+
+function isRosterStudentMissing(student){
+  return missingRosterKeySet().has(rosterStudentKey(student));
+}
+
+function visibleRosterEntries(){
+  const missing = missingRosterKeySet();
+  return currentRoster()
+    .map((student, index) => ({student, rosterIndex:index + 1}))
+    .filter(entry => !missing.has(rosterStudentKey(entry.student)));
+}
+
+function rosterEntryForOmrIndex(omrIndex){
+  return visibleRosterEntries()[Math.max(1, Number(omrIndex) || 1) - 1] || null;
+}
+
+function rosterIndexForOmrIndex(omrIndex){
+  return rosterEntryForOmrIndex(omrIndex)?.rosterIndex || Math.max(1, Number(omrIndex) || 1);
+}
+
+function omrIndexForRosterIndex(rosterIndex){
+  const entryIndex = visibleRosterEntries().findIndex(entry => entry.rosterIndex === Number(rosterIndex));
+  return entryIndex >= 0 ? entryIndex + 1 : null;
+}
+
+function studentForPage(page){
+  const roster = currentRoster();
+  if(!roster.length) return null;
+  return rosterEntryForOmrIndex(studentIndexForPage(page))?.student || null;
+}
 function formatRosterLine(student){return [student.className, student.number, student.name].filter(Boolean).join(",")}
 function updateRosterStatus(){
+  pruneMissingRosterKeys();
   const classCount = classNames().length;
   const suffix = classCount ? ` · ${classCount}개 반` : "";
   const rosterLength = currentRoster().length;
-  els.rosterStatus.textContent = rosterLength ? `${rosterLength}명 입력됨${suffix}` : "명렬 없음";
+  const missingCount = missingRosterKeySet().size;
+  els.rosterStatus.textContent = rosterLength ? `${rosterLength}명 입력됨${suffix}${missingCount ? ` · OMR 없음 ${missingCount}명` : ""}` : "명렬 없음";
+  renderMissingRosterList();
+}
+
+function renderMissingRosterList(){
+  if(!els.missingRosterList) return;
+  const missing = missingRosterKeySet();
+  const rows = currentRoster()
+    .filter(student => missing.has(rosterStudentKey(student)))
+    .map(student => `
+      <button class="btn mini missingRosterClearBtn" type="button" data-key="${escapeHtml(rosterStudentKey(student))}">
+        ${escapeHtml([student.className, student.number ? `${student.number}번` : "", student.name].filter(Boolean).join(" ") || "학생")} 해제
+      </button>
+    `);
+  els.missingRosterList.innerHTML = rows.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">OMR 없음: ${rows.join("")}</div>`
+    : "";
+}
+
+function pruneMissingRosterKeys(){
+  const valid = new Set(currentRoster().map(rosterStudentKey));
+  state.missingRosterKeys = (Array.isArray(state.missingRosterKeys) ? state.missingRosterKeys : [])
+    .filter(key => valid.has(key));
 }
 
 function classNames(){
@@ -3931,12 +4041,12 @@ function scopedPages(){
   const pageLimit = state.pdf ? state.pageCount : Infinity;
   let pages;
   if(!state.activeClass){
-    const count = currentRoster().length || Math.ceil((state.pageCount || 0) / pagesPerStudent());
+    const count = visibleRosterEntries().length || Math.ceil((state.pageCount || 0) / pagesPerStudent());
     pages = Array.from({length:count}, (_, index) => firstPageForStudentIndex(index + 1))
       .filter(page => page <= pageLimit);
   }else{
-    pages = currentRoster()
-      .map((student, index) => ({student, page:firstPageForStudentIndex(index + 1)}))
+    pages = visibleRosterEntries()
+      .map((entry, index) => ({student:entry.student, page:firstPageForStudentIndex(index + 1)}))
       .filter(entry => entry.page <= pageLimit && entry.student.className === state.activeClass)
       .map(entry => entry.page);
   }
@@ -3956,7 +4066,7 @@ function firstScopedPage(){
 }
 
 function baseProgressPages(){
-  const rosterLength = currentRoster().length;
+  const rosterLength = visibleRosterEntries().length;
   const recordPages = Object.keys(state.records).map(Number).filter(page => Number.isFinite(page) && page > 0);
   const studentCount = rosterLength || Math.ceil((state.pageCount || Math.max(0, ...recordPages, 0)) / pagesPerStudent());
   const pages = Array.from({length:studentCount}, (_, index) => firstPageForStudentIndex(index + 1))
@@ -3994,7 +4104,7 @@ async function toggleIncompleteOnly(){
 function normalizeTargetPage(page){
   const numericPage = Number(page);
   const safePage = Number.isFinite(numericPage) ? numericPage : state.page;
-  const maxPage = state.pdf ? state.pageCount : Math.max(currentRoster().length, state.page, 1);
+  const maxPage = state.pdf ? state.pageCount : Math.max(visibleRosterEntries().length || currentRoster().length, state.page, 1);
   const clampedPage = Math.max(1, Math.min(maxPage, safePage));
   if(!state.activeClass) return clampedPage;
   const pages = scopedPages();
@@ -4024,14 +4134,14 @@ function updateClassControls(){
   const numberOptions = pages.map(page => {
     const student = studentForPage(page);
     const rec = state.records[recordKey(page)];
-    const number = rec?.number || student?.number || "";
+    const number = student?.number || rec?.number || "";
     return `<option value="${page}">${escapeHtml(number ? `${number}번` : `${studentIndexForPage(page)}번 학생`)}</option>`;
   }).join("");
   const nameOptions = pages.map(page => {
     const student = studentForPage(page);
     const rec = state.records[recordKey(page)];
-    const name = rec?.name || student?.name || "";
-    const number = rec?.number || student?.number || "";
+    const name = student?.name || rec?.name || "";
+    const number = student?.number || rec?.number || "";
     const status = gradingStateForPage(page);
     const label = `${name || (number ? `${number}번` : `${studentIndexForPage(page)}번 학생`)} · ${status.label}`;
     return `<option value="${page}">${escapeHtml(label)}</option>`;
@@ -4053,14 +4163,16 @@ function updateClassControls(){
   updatePageSideControls();
 
   const rosterLength = currentRoster().length;
+  const visibleCount = visibleRosterEntries().length;
   if(!rosterLength){
     els.classStatus.textContent = "명렬을 적용하면 학생 정보로 이동할 수 있습니다.";
   }else if(state.activeClass){
     const position = currentPageInScope ? `${pages.indexOf(currentBasePage) + 1}/${pages.length}` : `0/${pages.length}`;
-    const studentCount = currentRoster().filter(student => student.className === state.activeClass).length;
-    els.classStatus.textContent = `${state.activeClass} · ${studentCount}명 · PDF ${position}`;
+    const studentCount = visibleRosterEntries().filter(entry => entry.student.className === state.activeClass).length;
+    els.classStatus.textContent = `${state.activeClass} · OMR ${studentCount}명 · PDF ${position}`;
   }else{
-    els.classStatus.textContent = `전체 반 · ${rosterLength}명 · 학생당 ${pagesPerStudent()}쪽`;
+    const missingCount = missingRosterKeySet().size;
+    els.classStatus.textContent = `전체 반 · OMR ${visibleCount}명${missingCount ? ` · 없음 ${missingCount}명` : ""} · 학생당 ${pagesPerStudent()}쪽`;
   }
 }
 
@@ -4282,6 +4394,15 @@ els.settingsModal.addEventListener("click", evt => {
     selectSettingsPane(tab.dataset.pane);
     return;
   }
+  const missingClearBtn = evt.target.closest(".missingRosterClearBtn");
+  if(missingClearBtn){
+    const missing = missingRosterKeySet();
+    missing.delete(missingClearBtn.dataset.key || "");
+    state.missingRosterKeys = [...missing];
+    refreshRosterMappingAfterMissingChange();
+    if(state.pdf) renderCurrentPage();
+    return;
+  }
   const card = evt.target.closest(".questionEditCard");
   if(!card) return;
   const question = state.questions.find(q => q.id === card.dataset.id);
@@ -4390,6 +4511,7 @@ els.mobileNextBtn.addEventListener("click", () => goScoped(1));
 els.mobileDiscussionBtn.addEventListener("click", toggleDiscussionFlag);
 els.clearCurrentBtn.addEventListener("click", clearCurrentQuestion);
 els.discussionBtn.addEventListener("click", toggleDiscussionFlag);
+els.missingOmrBtn.addEventListener("click", toggleMissingOmrForCurrent);
 els.completeBtn.addEventListener("click", toggleCompletedFlag);
 els.rubricList.addEventListener("click", evt => {
   if(state.editingRubricId){
