@@ -3484,8 +3484,8 @@ function addKeywordToZone(zone){
     pt:1,
     rejectDeduct:1
   };
-  list.insertAdjacentHTML("afterbegin", keywordEditChipHtml(item, zone.dataset.type, "새 키워드"));
-  const textarea = list.firstElementChild.querySelector(".keywordEditInput");
+  list.insertAdjacentHTML("beforeend", keywordEditChipHtml(item, zone.dataset.type, "새 키워드"));
+  const textarea = list.lastElementChild.querySelector(".keywordEditInput");
   resizeKeywordTextarea(textarea);
   textarea.focus();
   textarea.select();
