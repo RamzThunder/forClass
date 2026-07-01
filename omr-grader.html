@@ -3594,7 +3594,7 @@ function rubricSubTotals(rubric, scores, question=activeQuestion()){
   });
   const totals = {};
   subOptions(question).forEach(sub => {
-    totals[sub] = rawTotals[sub] || 0;
+    totals[sub] = Math.max(0, rawTotals[sub] || 0);
   });
   return totals;
 }
