@@ -2446,6 +2446,21 @@ function allSubsCompleted(qrec=currentQuestionRecord(), question=activeQuestion(
   return subs.every(sub => Boolean(qrec?.completedSubs?.[sub]));
 }
 
+function itemHasSelection(qrec, item){
+  const hits = qrec?.keywordHits?.[item.id] || {};
+  return ["accept","reject"].some(type => Array.isArray(hits[type]) && hits[type].length);
+}
+
+function scoreRubricItems(question=activeQuestion(), sub=null){
+  return (question.rubric || []).filter(item => item.type !== "deduct" && (sub === null || normalizeSubValue(item.sub || "공통", question) === sub));
+}
+
+function hasScoreRubricSelection(qrec, question=activeQuestion(), sub=null){
+  const items = scoreRubricItems(question, sub);
+  if(!items.length) return true;
+  return items.some(item => itemHasSelection(qrec, item));
+}
+
 function markAllSubsCompleted(qrec=currentQuestionRecord(), question=activeQuestion()){
   if(!qrec) return;
   qrec.completedSubs = qrec.completedSubs || {};
