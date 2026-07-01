@@ -2689,8 +2689,22 @@ async function goScoped(delta){
   if(!pages.length) return;
   const currentBasePage = firstPageForStudentIndex(studentIndexForPage(state.page));
   const currentIndex = pages.indexOf(currentBasePage);
-  const fallbackIndex = delta > 0 ? -1 : pages.length;
-  const nextIndex = clamp(currentIndex >= 0 ? currentIndex + delta : fallbackIndex + delta, 0, pages.length - 1);
+  let nextIndex;
+  if(currentIndex >= 0){
+    nextIndex = clamp(currentIndex + delta, 0, pages.length - 1);
+  }else if(delta > 0){
+    const nextPageIndex = pages.findIndex(page => page > currentBasePage);
+    nextIndex = nextPageIndex >= 0 ? nextPageIndex : pages.length - 1;
+  }else{
+    let previousPageIndex = -1;
+    for(let index = pages.length - 1; index >= 0; index--){
+      if(pages[index] < currentBasePage){
+        previousPageIndex = index;
+        break;
+      }
+    }
+    nextIndex = previousPageIndex >= 0 ? previousPageIndex : 0;
+  }
   await goPage(pageWithCurrentSide(pages[nextIndex]));
 }
 
