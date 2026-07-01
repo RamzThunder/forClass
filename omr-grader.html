@@ -2510,8 +2510,25 @@ function cleanupRecord(key=recordKey()){
   if(!recordHasData(rec)) delete state.records[key];
 }
 
+function enforceCompletionScoreRule(){
+  let unsetCount = 0;
+  Object.values(state.records).forEach(rec => {
+    state.questions.forEach(question => {
+      const qrec = rec.answers?.[question.id];
+      if(qrec?.completed && !hasScoreRubricSelection(qrec, question)){
+        qrec.completed = false;
+        clearAllSubsCompleted(qrec, question);
+        unsetCount++;
+      }
+    });
+  });
+  return unsetCount;
+}
+
 function cleanupAllRecords(){
+  const unsetCount = enforceCompletionScoreRule();
   Object.keys(state.records).forEach(cleanupRecord);
+  if(unsetCount > 0) showToast(`가점용 루브릭에 표시된 항목이 없어 ${unsetCount}건의 채점 완료가 해제되었습니다.`);
 }
 
 function snapshotCurrentQuestion(label="채점 변경"){
