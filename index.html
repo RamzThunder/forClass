@@ -245,15 +245,29 @@ footer .wrap{
 <div class="shell">
   <main>
     <section class="hero">
-      <span class="heroBadge">GitHub Pages용</span>
       <h1 class="heroTitle">평가 도구 모음</h1>
       <p class="heroSub">필요한 채점 도구를 선택하세요. 입력 자료는 각 기기의 브라우저 저장소와 내려받은 백업 파일에 보관됩니다.</p>
     </section>
 
     <section class="toolButtons" aria-label="평가 도구 목록">
+      <a class="toolBtn available" href="omr-grader.html">
+        <div class="toolBtnHead">
+          <span class="toolBtnTitle">OMR 서술형 채점 도구</span>
+          <span class="toolBtnState ready">사용 가능</span>
+        </div>
+        <div class="toolBtnPanel">
+          <div class="toolBtnPanelInner">
+            <p class="toolBtnDesc">PDF 답안 영역을 보며 문항별 점수와 메모를 기록하는 공개용 템플릿입니다.</p>
+            <div class="platforms">
+              <span class="platform">Windows 11</span>
+              <span class="platform">macOS</span>
+            </div>
+          </div>
+        </div>
+      </a>
+
       <a class="toolBtn available" href="argument-writing-grader.html">
         <div class="toolBtnHead">
-          <span class="toolBtnMark">W</span>
           <span class="toolBtnTitle">글쓰기 채점표</span>
           <span class="toolBtnState ready">사용 가능</span>
         </div>
@@ -269,26 +283,8 @@ footer .wrap{
         </div>
       </a>
 
-      <a class="toolBtn available" href="omr-grader.html">
-        <div class="toolBtnHead">
-          <span class="toolBtnMark">O</span>
-          <span class="toolBtnTitle">OMR 서술형 채점 도구</span>
-          <span class="toolBtnState ready">사용 가능</span>
-        </div>
-        <div class="toolBtnPanel">
-          <div class="toolBtnPanelInner">
-            <p class="toolBtnDesc">PDF 답안 영역을 보며 문항별 점수와 메모를 기록하는 공개용 템플릿입니다.</p>
-            <div class="platforms">
-              <span class="platform">Windows 11</span>
-              <span class="platform">macOS</span>
-            </div>
-          </div>
-        </div>
-      </a>
-
       <a class="toolBtn available" href="logical-speaking-grader.html">
         <div class="toolBtnHead">
-          <span class="toolBtnMark">S</span>
           <span class="toolBtnTitle">말하기 채점표</span>
           <span class="toolBtnState ready">사용 가능</span>
         </div>
@@ -303,27 +299,7 @@ footer .wrap{
           </div>
         </div>
       </a>
-
-      <div class="toolBtn disabled" tabindex="0">
-        <div class="toolBtnHead">
-          <span class="toolBtnMark">C</span>
-          <span class="toolBtnTitle">점수 확인</span>
-          <span class="toolBtnState">준비 중</span>
-        </div>
-        <div class="toolBtnPanel">
-          <div class="toolBtnPanelInner">
-            <p class="toolBtnDesc">학생 확인용 점수 조회 화면을 연결할 자리입니다. 준비되는 대로 열립니다.</p>
-            <div class="platforms">
-              <span class="platform soon">지원 예정</span>
-            </div>
-          </div>
-        </div>
-      </div>
     </section>
-
-    <div class="notice">
-      <p>공개 저장소에는 도구 파일만 올리고, 학생 명단과 채점 결과는 도구 안에서 직접 입력하거나 백업 JSON으로 관리하세요.</p>
-    </div>
   </main>
 
   <footer>
