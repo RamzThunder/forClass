@@ -257,6 +257,17 @@ textarea{min-height:72px;resize:vertical}
 .progressFill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
 .progressLabel{font-size:11px;color:var(--muted);font-weight:800;margin-top:2px}
 .autoDetectStatus{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
+.autoDetectStatus.error{color:var(--danger);font-weight:900}
+.sourceCheckGrid{display:grid;gap:8px;margin-top:10px}
+.sourceCheckActions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.sourceHighlightWrap{position:relative;min-height:112px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
+.sourceHighlightWrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14)}
+.sourceHighlightBackdrop,.sourceHighlightInput{margin:0;border:0;border-radius:0;background:transparent;width:100%;min-height:112px;padding:8px 10px;font:inherit;font-size:inherit;line-height:1.45;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.sourceHighlightBackdrop{position:absolute;inset:0;color:var(--ink);pointer-events:none;overflow:auto}
+.sourceHighlightBackdrop mark{background:#fff2a8;color:inherit;border-radius:3px;padding:0 1px}
+.sourceHighlightInput{position:relative;z-index:1;color:transparent;caret-color:var(--ink);resize:vertical;overflow:auto}
+.sourceHighlightInput::selection{background:rgba(23,107,135,.22);color:transparent}
+.sourceHighlightInput::placeholder{color:var(--muted)}
 .mobileScanNav{display:none}
 .mobileNavBtn,.mobileNavFlag{
   border:1px solid var(--line);
@@ -499,6 +510,18 @@ textarea{min-height:72px;resize:vertical}
       </div>
       <div class="statusLine" style="margin-bottom:6px">학생 답안을 붙여넣으면 루브릭 키워드를 자동으로 탐지합니다. 탐지 후 결과를 직접 확인·수정하세요.</div>
       <textarea id="answerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
+      <div class="sourceCheckGrid">
+        <label class="field" style="margin-bottom:0">
+          <span class="label">등록 본문</span>
+          <div class="sourceHighlightWrap">
+            <div class="sourceHighlightBackdrop" id="sourceHighlight" aria-hidden="true"></div>
+            <textarea class="sourceHighlightInput" id="sourceText" placeholder="조건에 활용해야 하는 본문을 붙여넣으세요"></textarea>
+          </div>
+        </label>
+        <div class="sourceCheckActions">
+          <button class="btn mini" id="sourceCheckBtn" type="button">본문 단어 확인</button>
+        </div>
+      </div>
       <div class="autoDetectStatus" id="autoDetectStatus"></div>
     </section>
 
@@ -746,8 +769,8 @@ const defaultRubric = [
   {name:"표현과 형식 충족", pt:3}
 ];
 const defaultQuestions = [
-  {id:"q1", label:"1번 문제", maxScore:0, subScores:{}, exampleAnswer:"", subs:[], crop:{x:.10,y:.52,w:.80,h:.20}, rubric:structuredClone(defaultRubric)},
-  {id:"q2", label:"2번 문제", maxScore:0, subScores:{}, exampleAnswer:"", subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
+  {id:"q1", label:"1번 문제", maxScore:0, subScores:{}, exampleAnswer:"", sourceText:"", subs:[], crop:{x:.10,y:.52,w:.80,h:.20}, rubric:structuredClone(defaultRubric)},
+  {id:"q2", label:"2번 문제", maxScore:0, subScores:{}, exampleAnswer:"", sourceText:"", subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
 ];
 const defaultDeductTemplate = {name:"감점 요소", keywords:"", score:1};
 
@@ -812,7 +835,8 @@ const els = {
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
-  answerText:$("answerText"), autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus")
+  answerText:$("answerText"), sourceText:$("sourceText"), sourceHighlight:$("sourceHighlight"),
+  autoDetectBtn:$("autoDetectBtn"), sourceCheckBtn:$("sourceCheckBtn"), autoDetectStatus:$("autoDetectStatus")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
   mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
 };
@@ -823,6 +847,7 @@ let undoSnapshot = null;
 const memoSaveTimers = new Map();
 let rubricPopupWindow = null;
 let rubricWindowActive = false;
+let sourceHighlightRanges = [];
 
 function loadSavedState(){
   try{
@@ -1086,6 +1111,7 @@ function normalizeQuestions(){
       maxScore:nonNegativeNumber(saved.maxScore ?? saved.totalScore ?? fallback.maxScore ?? 0),
       subScores:normalizeSubScores(saved.subScores || saved.subMaxScores || {}),
       exampleAnswer:String(saved.exampleAnswer || saved.answer || ""),
+      sourceText:String(saved.sourceText || saved.passageText || ""),
       subs:normalizeQuestionSubs(saved),
       crop:{...fallback.crop, ...(saved.crop || {})},
       rubric:normalizeRubric(Array.isArray(saved.rubric) ? saved.rubric : structuredClone(fallback.rubric))
@@ -1165,6 +1191,10 @@ function normalizeRecords(){
 
 function activeQuestion(){return state.questions.find(q => q.id === state.activeQuestion) || state.questions[0]}
 function activeRubric(){return activeQuestion().rubric}
+function syncSourceTextToQuestion(sourceEl=els.sourceText){
+  const question = activeQuestion();
+  if(question && sourceEl) question.sourceText = sourceEl.value.trim();
+}
 function cropKey(questionId=state.activeQuestion, page=state.page){return `${questionId}__${pageSideLabel(page) || "page1"}`}
 function studentCropForCurrent(){
   return currentRecord()?.cropOverrides?.[cropKey()];
@@ -1324,6 +1354,7 @@ function enterGradeMode(){
 }
 
 async function setQuestion(id){
+  syncSourceTextToQuestion();
   saveCurrent();
   state.activeQuestion = id;
   state.keywordFilter = null;
@@ -1352,6 +1383,7 @@ function addQuestion(){
     id:createRubricId().replace(/^r_/, "q_"),
     label:`${index}번 문제`,
     exampleAnswer:"",
+    sourceText:"",
     maxScore:0,
     subScores:{},
     subs:[],
@@ -1598,6 +1630,9 @@ function loadRecordIntoForm(){
   const qrec = currentQuestionRecord();
   state.studentCropMode = false;
   els.memoInput.value = qrec?.memo || "";
+  sourceHighlightRanges = [];
+  if(els.sourceText) els.sourceText.value = activeQuestion().sourceText || "";
+  updateSourceHighlight();
   updateDiscussionButton();
   updateCompleteButton();
   els.answerText.value = "";
@@ -1705,6 +1740,18 @@ body.popupCompleted .popupLockBanner{display:block}
       </div>
     </div>
     <textarea id="popupAnswerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
+    <div class="sourceCheckGrid">
+      <label class="field" style="margin-bottom:0">
+        <span class="label">등록 본문</span>
+        <div class="sourceHighlightWrap">
+          <div class="sourceHighlightBackdrop" id="popupSourceHighlight" aria-hidden="true"></div>
+          <textarea class="sourceHighlightInput" id="popupSourceText" placeholder="조건에 활용해야 하는 본문을 붙여넣으세요"></textarea>
+        </div>
+      </label>
+      <div class="sourceCheckActions">
+        <button class="btn mini" id="popupSourceCheckBtn" type="button">본문 단어 확인</button>
+      </div>
+    </div>
     <div class="autoDetectStatus" id="popupAutoDetectStatus"></div>
   </section>
   <div class="popupRubric" id="popupRubricList"></div>
@@ -1737,6 +1784,19 @@ body.popupCompleted .popupLockBanner{display:block}
       const status = rubricPopupWindow.document.getElementById("popupAutoDetectStatus");
       els.answerText.value = text;
       autoDetectKeywords(text, status);
+      syncRubricPopup();
+      return;
+    }
+    const popupSourceCheckBtn = evt.target.closest("#popupSourceCheckBtn");
+    if(popupSourceCheckBtn){
+      const doc = rubricPopupWindow.document;
+      const popupAnswer = doc.getElementById("popupAnswerText");
+      const popupSource = doc.getElementById("popupSourceText");
+      const popupHighlight = doc.getElementById("popupSourceHighlight");
+      const status = doc.getElementById("popupAutoDetectStatus");
+      if(popupAnswer) els.answerText.value = popupAnswer.value;
+      if(popupSource) els.sourceText.value = popupSource.value;
+      checkSourceTextKeywords({answerEl:popupAnswer, sourceEl:popupSource, highlightEl:popupHighlight, statusEl:status});
       syncRubricPopup();
       return;
     }
@@ -1830,6 +1890,16 @@ body.popupCompleted .popupLockBanner{display:block}
       els.answerText.value = popupAnswer.value;
       return;
     }
+    const popupSource = evt.target.closest("#popupSourceText");
+    if(popupSource){
+      els.sourceText.value = popupSource.value;
+      syncSourceTextToQuestion(popupSource);
+      sourceHighlightRanges = [];
+      updateSourceHighlight([], popupSource, rubricPopupWindow.document.getElementById("popupSourceHighlight"));
+      updateSourceHighlight();
+      persist();
+      return;
+    }
     const exampleInput = evt.target.closest(".subExampleAnswerInput");
     if(exampleInput){
       resizeKeywordTextarea(exampleInput);
@@ -1840,6 +1910,10 @@ body.popupCompleted .popupLockBanner{display:block}
     const textarea = evt.target.closest(".keywordEditInput");
     if(textarea) resizeKeywordTextarea(textarea);
   });
+  rubricPopupWindow.document.addEventListener("scroll", evt => {
+    const popupSource = evt.target.closest?.("#popupSourceText");
+    if(popupSource) updateSourceHighlight(sourceHighlightRanges, popupSource, rubricPopupWindow.document.getElementById("popupSourceHighlight"));
+  }, true);
   rubricPopupWindow.document.addEventListener("keydown", evt => {
     if((evt.ctrlKey || evt.metaKey) && evt.key === "Enter"){
       const editor = evt.target.closest(".inlineRubricEditor");
@@ -1877,8 +1951,14 @@ function syncRubricPopup(){
   if(autoPanel) autoPanel.classList.toggle("hidden", !state.settings?.autoAssistEnabled);
   const popupAnswer = doc.getElementById("popupAnswerText");
   if(popupAnswer && doc.activeElement !== popupAnswer) popupAnswer.value = els.answerText.value || "";
+  const popupSource = doc.getElementById("popupSourceText");
+  const popupHighlight = doc.getElementById("popupSourceHighlight");
+  if(popupSource && doc.activeElement !== popupSource) popupSource.value = activeQuestion().sourceText || "";
+  updateSourceHighlight(sourceHighlightRanges, popupSource, popupHighlight);
   const popupAutoDetectBtn = doc.getElementById("popupAutoDetectBtn");
   if(popupAutoDetectBtn) popupAutoDetectBtn.disabled = !state.pdf || isRubricLocked();
+  const popupSourceCheckBtn = doc.getElementById("popupSourceCheckBtn");
+  if(popupSourceCheckBtn) popupSourceCheckBtn.disabled = isRubricLocked();
   list.innerHTML = els.rubricList.innerHTML;
   const subTotals = doc.getElementById("popupSubTotalList");
   if(subTotals) subTotals.innerHTML = els.subTotalList.innerHTML;
@@ -2256,6 +2336,86 @@ function splitKeywords(text){
   return String(text || "").split(/\n+/).map(line => line.trim()).filter(Boolean);
 }
 
+function compactTextWithMap(text){
+  const compact = [];
+  const map = [];
+  [...String(text || "")].forEach((char, index) => {
+    if(/\s/u.test(char)) return;
+    compact.push(char.toLowerCase());
+    map.push(index);
+  });
+  return {text:compact.join(""), map};
+}
+
+function sourceMatchRange(text, phrase){
+  const haystack = compactTextWithMap(text);
+  const needle = compactTextWithMap(phrase).text;
+  if(!needle) return null;
+  const start = haystack.text.indexOf(needle);
+  if(start < 0) return null;
+  return {start:haystack.map[start], end:haystack.map[start + needle.length - 1] + 1};
+}
+
+function sourceMatchRanges(text, phrase){
+  const haystack = compactTextWithMap(text);
+  const needle = compactTextWithMap(phrase).text;
+  if(!needle) return [];
+  const ranges = [];
+  let fromIndex = 0;
+  while(fromIndex <= haystack.text.length){
+    const start = haystack.text.indexOf(needle, fromIndex);
+    if(start < 0) break;
+    ranges.push({start:haystack.map[start], end:haystack.map[start + needle.length - 1] + 1});
+    fromIndex = start + Math.max(1, needle.length);
+  }
+  return ranges;
+}
+
+function textContainsPhrase(text, phrase){
+  return Boolean(sourceMatchRange(text, phrase));
+}
+
+function mergeRanges(ranges){
+  return [...ranges]
+    .filter(range => range && Number.isFinite(range.start) && Number.isFinite(range.end) && range.end > range.start)
+    .sort((a, b) => a.start - b.start || a.end - b.end)
+    .reduce((merged, range) => {
+      const last = merged[merged.length - 1];
+      if(last && range.start <= last.end){
+        last.end = Math.max(last.end, range.end);
+      }else{
+        merged.push({...range});
+      }
+      return merged;
+    }, []);
+}
+
+function highlightedTextHtml(text, ranges=[]){
+  const merged = mergeRanges(ranges);
+  let html = "";
+  let index = 0;
+  merged.forEach(range => {
+    html += escapeHtml(text.slice(index, range.start));
+    html += `<mark>${escapeHtml(text.slice(range.start, range.end))}</mark>`;
+    index = range.end;
+  });
+  html += escapeHtml(text.slice(index));
+  return html || escapeHtml(text);
+}
+
+function updateSourceHighlight(ranges=sourceHighlightRanges, sourceEl=els.sourceText, highlightEl=els.sourceHighlight){
+  if(!sourceEl || !highlightEl) return;
+  highlightEl.innerHTML = highlightedTextHtml(sourceEl.value, ranges);
+  highlightEl.scrollTop = sourceEl.scrollTop;
+  highlightEl.scrollLeft = sourceEl.scrollLeft;
+}
+
+function setAutoAssistStatus(message, isError=false, statusEl=els.autoDetectStatus){
+  if(!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.toggle("error", Boolean(isError));
+}
+
 function keywordButtonsHtml(item, type, keywords, keywordHits){
   if(!keywords.length) return `<div class="keywordEmpty">기준 문구 없음</div>`;
   const selected = keywordHits?.[item.id]?.[type] || [];
@@ -2357,16 +2517,15 @@ function updateProgress(){
 
 function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDetectStatus){
   if(!guardRubricUnlocked()){
-    if(statusEl) statusEl.textContent = "채점 완료된 답안입니다. 수정하려면 채점 완료를 해제하세요.";
+    setAutoAssistStatus("채점 완료된 답안입니다. 수정하려면 채점 완료를 해제하세요.", true, statusEl);
     return;
   }
   const text = String(textValue || "").trim();
-  if(!text){if(statusEl) statusEl.textContent = "답안 텍스트를 먼저 입력하세요.";return;}
-  if(!state.pdf){if(statusEl) statusEl.textContent = "PDF를 먼저 불러오세요.";return;}
+  if(!text){setAutoAssistStatus("답안 텍스트를 먼저 입력하세요.", true, statusEl);return;}
+  if(!state.pdf){setAutoAssistStatus("PDF를 먼저 불러오세요.", true, statusEl);return;}
   snapshotCurrentQuestion("키워드 자동 탐지");
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
-  const lower = text.toLowerCase();
   let matches = 0;
   activeRubric().forEach(item => {
     const prev = qrec.keywordHits[item.id] || {};
@@ -2375,7 +2534,7 @@ function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDet
     ["accept","reject"].forEach(type => {
       splitKeywords(item[type]).forEach(keyword => {
         if(!keyword || next[type].includes(keyword)) return;
-        if(lower.includes(keyword.toLowerCase())){next[type].push(keyword);matches++;changed = true;}
+        if(textContainsPhrase(text, keyword)){next[type].push(keyword);matches++;changed = true;}
       });
     });
     if(changed){
@@ -2388,9 +2547,87 @@ function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDet
       }
     }
   });
-  if(!matches){if(statusEl) statusEl.textContent = "매칭되는 키워드가 없습니다. 답안 텍스트를 확인하세요.";return;}
+  if(!matches){setAutoAssistStatus("매칭되는 키워드가 없습니다. 답안 텍스트를 확인하세요.", false, statusEl);return;}
   persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();
-  if(statusEl) statusEl.textContent = `${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`;
+  setAutoAssistStatus(`${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`, false, statusEl);
+}
+
+function checkSourceTextKeywords({
+  answerEl=els.answerText,
+  sourceEl=els.sourceText,
+  highlightEl=els.sourceHighlight,
+  statusEl=els.autoDetectStatus
+}={}){
+  if(!guardRubricUnlocked()){
+    setAutoAssistStatus("채점 완료된 답안입니다. 수정하려면 채점 완료를 해제하세요.", true, statusEl);
+    return;
+  }
+  const answerText = String(answerEl?.value || "").trim();
+  const sourceText = String(sourceEl?.value || "").trim();
+  if(!answerText){
+    setAutoAssistStatus("답안 텍스트를 먼저 입력하세요.", true, statusEl);
+    return;
+  }
+  if(!sourceText){
+    sourceHighlightRanges = [];
+    updateSourceHighlight([], sourceEl, highlightEl);
+    setAutoAssistStatus("등록 본문을 먼저 입력하세요.", true, statusEl);
+    return;
+  }
+  syncSourceTextToQuestion(sourceEl);
+  const sourceRanges = [];
+  const missingFromSource = [];
+  const sourceOnly = [];
+  let selectedCount = 0;
+  snapshotCurrentQuestion("본문 단어 확인");
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  activeRubric().forEach(item => {
+    if(item.type === "deduct") return;
+    const prev = qrec.keywordHits[item.id] || {};
+    const next = {accept:[...(prev.accept||[])], partial:[], reject:[...(prev.reject||[])]};
+    let changed = false;
+    splitKeywords(item.accept).forEach(keyword => {
+      const inAnswer = textContainsPhrase(answerText, keyword);
+      const ranges = sourceMatchRanges(sourceText, keyword);
+      const inSource = ranges.length > 0;
+      if(inAnswer && inSource){
+        sourceRanges.push(...ranges);
+        if(!next.accept.includes(keyword)){
+          next.accept.push(keyword);
+          changed = true;
+          selectedCount++;
+        }
+      }else if(inAnswer && !inSource){
+        missingFromSource.push(keyword);
+      }else if(!inAnswer && inSource){
+        sourceOnly.push(keyword);
+      }
+    });
+    if(changed){
+      const sub = normalizeSubValue(item.sub || "공통");
+      if(qrec.unwrittenSubs?.[sub]) delete qrec.unwrittenSubs[sub];
+      qrec.keywordHits[item.id] = next;
+      qrec.scores[item.id] = scoreFromKeywordHits(item, next);
+    }
+  });
+  sourceHighlightRanges = sourceRanges;
+  updateSourceHighlight(sourceRanges, sourceEl, highlightEl);
+  persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();
+  if(missingFromSource.length){
+    setAutoAssistStatus(`본문에 단어 없음: ${uniqueLines(missingFromSource).join(", ")}`, true, statusEl);
+    return;
+  }
+  if(sourceRanges.length){
+    const suffix = selectedCount ? ` ${selectedCount}개 키워드를 체크했습니다.` : " 이미 체크된 키워드입니다.";
+    setAutoAssistStatus(`본문에서 단어를 확인했습니다.${suffix}`, false, statusEl);
+    return;
+  }
+  if(sourceOnly.length){
+    setAutoAssistStatus(`본문에는 있지만 답안에 없는 단어: ${uniqueLines(sourceOnly).slice(0, 6).join(", ")}`, false, statusEl);
+    return;
+  }
+  setAutoAssistStatus("루브릭 인정 문구와 일치하는 단어가 없습니다.", false, statusEl);
 }
 
 function savedRecordCount(){
@@ -2663,6 +2900,7 @@ function updateCompleteButton(){
   els.clearCurrentBtn.disabled = !state.pdf || completed;
   if(els.addRubricBottomBtn) els.addRubricBottomBtn.disabled = !state.pdf || completed;
   if(els.autoDetectBtn) els.autoDetectBtn.disabled = !state.pdf || completed;
+  if(els.sourceCheckBtn) els.sourceCheckBtn.disabled = completed;
   syncRubricPopup();
 }
 
@@ -2714,6 +2952,7 @@ function clearCurrentQuestion(){
 }
 
 function saveCurrent(){
+  syncSourceTextToQuestion();
   if(!state.pdf) return;
   syncFormToRecord();
   persist();
@@ -4833,6 +5072,16 @@ window.addEventListener("keydown", evt => {
 });
 
 els.autoDetectBtn.addEventListener("click", () => autoDetectKeywords());
+els.sourceCheckBtn.addEventListener("click", () => checkSourceTextKeywords());
+els.sourceText.addEventListener("input", () => {
+  syncSourceTextToQuestion();
+  sourceHighlightRanges = [];
+  updateSourceHighlight();
+  setAutoAssistStatus("", false);
+  persist();
+  syncRubricPopup();
+});
+els.sourceText.addEventListener("scroll", () => updateSourceHighlight());
 loadSidebarWidth();
 loadSavedState();
 bindCropDrag();
