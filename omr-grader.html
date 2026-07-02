@@ -259,6 +259,9 @@ textarea{min-height:72px;resize:vertical}
 .autoDetectStatus{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
 .autoDetectStatus.error{color:var(--danger);font-weight:900}
 .sourceCheckGrid{display:grid;gap:8px;margin-top:10px}
+.sourceCheckRow{display:flex;align-items:flex-start;gap:8px;margin-top:10px}
+.sourceCheckRow textarea{flex:1;min-height:36px;max-height:80px;resize:vertical;font-size:13px}
+.questionSourceSection{display:grid;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
 .sourceCheckActions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
 .sourceHighlightWrap{position:relative;min-height:112px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
 .subSourceWrap{position:relative;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;margin:4px 0 8px}
@@ -515,17 +518,9 @@ textarea{min-height:72px;resize:vertical}
       </div>
       <div class="statusLine" style="margin-bottom:6px">학생 답안을 붙여넣으면 루브릭 키워드를 자동으로 탐지합니다. 탐지 후 결과를 직접 확인·수정하세요.</div>
       <textarea id="answerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
-      <div class="sourceCheckGrid" id="sourceCheckGrid">
-        <label class="field" style="margin-bottom:0">
-          <span class="label">등록 본문 (소문항 없을 때)</span>
-          <div class="sourceHighlightWrap">
-            <div class="sourceHighlightBackdrop" id="sourceHighlight" aria-hidden="true"></div>
-            <textarea class="sourceHighlightInput" id="sourceText" placeholder="조건에 활용해야 하는 본문을 붙여넣으세요"></textarea>
-          </div>
-        </label>
-        <div class="sourceCheckActions">
-          <button class="btn mini" id="sourceCheckBtn" type="button">본문 단어 확인</button>
-        </div>
+      <div class="sourceCheckRow hidden" id="sourceCheckGrid">
+        <textarea id="sourceCheckInput" placeholder="답안을 입력하고 본문 확인" rows="2"></textarea>
+        <button class="btn" id="sourceCheckBtn" type="button">본문 확인</button>
       </div>
       <div class="autoDetectStatus" id="autoDetectStatus"></div>
     </section>
@@ -864,8 +859,9 @@ const els = {
   mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
-  answerText:$("answerText"), sourceText:$("sourceText"), sourceHighlight:$("sourceHighlight"), sourceCheckGrid:$("sourceCheckGrid"),
-  autoDetectBtn:$("autoDetectBtn"), sourceCheckBtn:$("sourceCheckBtn"), autoDetectStatus:$("autoDetectStatus")
+  answerText:$("answerText"), sourceCheckGrid:$("sourceCheckGrid"), sourceCheckInput:$("sourceCheckInput"),
+  autoDetectBtn:$("autoDetectBtn"), sourceCheckBtn:$("sourceCheckBtn"), autoDetectStatus:$("autoDetectStatus"),
+  sourceHighlightModal:$("sourceHighlightModal"), sourceHighlightModalBody:$("sourceHighlightModalBody"), closeSourceHighlightModalBtn:$("closeSourceHighlightModalBtn")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
   mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
 };
@@ -1221,7 +1217,7 @@ function normalizeRecords(){
 
 function activeQuestion(){return state.questions.find(q => q.id === state.activeQuestion) || state.questions[0]}
 function activeRubric(){return activeQuestion().rubric}
-function syncSourceTextToQuestion(sourceEl=els.sourceText){
+function syncSourceTextToQuestion(sourceEl=null){
   const question = activeQuestion();
   if(question && sourceEl) question.sourceText = sourceEl.value.trim();
 }
@@ -1454,6 +1450,19 @@ function renderQuestionSettings(){
         `).join("")}
       </div>
       <button class="btn mini addSubQuestionBtn" type="button">소문항 추가</button>
+      <div class="questionSourceSection">
+        ${question.subs?.length > 0
+          ? question.subs.map(sub => `
+            <label class="field">
+              <span class="label">${escapeHtml(sub)} 본문</span>
+              <textarea class="questionSubSourceInput" data-id="${escapeHtml(question.id)}" data-sub="${escapeHtml(sub)}" rows="3" placeholder="${escapeHtml(sub)} 본문 단어 확인에 사용할 본문">${escapeHtml((question.subSourceTexts || {})[sub] || "")}</textarea>
+            </label>`).join("")
+          : `<label class="field">
+              <span class="label">본문</span>
+              <textarea class="questionSourceInput" data-id="${escapeHtml(question.id)}" rows="3" placeholder="본문 단어 확인에 사용할 본문">${escapeHtml(question.sourceText || "")}</textarea>
+            </label>`
+        }
+      </div>
     </div>
   `).join("");
 }
@@ -1665,11 +1674,10 @@ function loadRecordIntoForm(){
   state.studentCropMode = false;
   els.memoInput.value = qrec?.memo || "";
   sourceHighlightRanges = [];
-  if(els.sourceText) els.sourceText.value = activeQuestion().sourceText || "";
-  updateSourceHighlight();
   updateDiscussionButton();
   updateCompleteButton();
   els.answerText.value = "";
+  if(els.sourceCheckInput) els.sourceCheckInput.value = "";
   els.autoDetectStatus.textContent = "";
   renderRubric();
   updateResults();
@@ -1679,6 +1687,16 @@ function loadRecordIntoForm(){
 }
 
 function renderRubric(){
+  if(state.editingRubricId){
+    const activeEditor = els.rubricList.querySelector(".inlineRubricEditor");
+    if(activeEditor){
+      const nextItem = readInlineRubricEditor(activeEditor);
+      if(nextItem){
+        const idx = activeQuestion().rubric.findIndex(r => r.id === state.editingRubricId);
+        if(idx >= 0) activeQuestion().rubric[idx] = nextItem;
+      }
+    }
+  }
   const qrec = currentQuestionRecord();
   const scores = qrec?.scores || {};
   const keywordHits = qrec?.keywordHits || {};
@@ -1686,8 +1704,12 @@ function renderRubric(){
   const locked = isRubricLocked();
   els.rubricList.classList.toggle("locked", locked);
   els.rubricList.innerHTML = "";
-  const hasSubs = (activeQuestion().subs?.length || 0) > 0;
-  if(els.sourceCheckGrid) els.sourceCheckGrid.classList.toggle("hidden", hasSubs);
+  const question = activeQuestion();
+  const hasSubs = (question.subs?.length || 0) > 0;
+  const hasAnySource = hasSubs
+    ? Object.keys(question.subSourceTexts || {}).some(k => question.subSourceTexts[k])
+    : Boolean(question.sourceText);
+  if(els.sourceCheckGrid) els.sourceCheckGrid.classList.toggle("hidden", !hasAnySource);
   subOptions().forEach(sub => {
     const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
     renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
@@ -1831,7 +1853,6 @@ body.popupCompleted .popupLockBanner{display:block}
       const popupHighlight = doc.getElementById("popupSourceHighlight");
       const status = doc.getElementById("popupAutoDetectStatus");
       if(popupAnswer) els.answerText.value = popupAnswer.value;
-      if(popupSource) els.sourceText.value = popupSource.value;
       checkSourceTextKeywords({answerEl:popupAnswer, sourceEl:popupSource, highlightEl:popupHighlight, statusEl:status});
       syncRubricPopup();
       return;
@@ -1928,11 +1949,9 @@ body.popupCompleted .popupLockBanner{display:block}
     }
     const popupSource = evt.target.closest("#popupSourceText");
     if(popupSource){
-      els.sourceText.value = popupSource.value;
       syncSourceTextToQuestion(popupSource);
       sourceHighlightRanges = [];
       updateSourceHighlight([], popupSource, rubricPopupWindow.document.getElementById("popupSourceHighlight"));
-      updateSourceHighlight();
       persist();
       return;
     }
@@ -2193,13 +2212,6 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
     `;
   }
   groupEl.appendChild(title);
-  if(activeQuestion().subs?.length > 0 && !isCommonDeduct){
-    const sourceText = (activeQuestion().subSourceTexts || {})[sub] || "";
-    const srcRow = document.createElement("div");
-    srcRow.className = "subSourceWrap";
-    srcRow.innerHTML = `<div class="sourceHighlightBackdrop subSourceBackdrop" data-sub="${escapeHtml(sub)}" aria-hidden="true"></div><textarea class="sourceHighlightInput subSourceInput" data-sub="${escapeHtml(sub)}" placeholder="${escapeHtml(sub)} 본문 (본문 단어 확인에 사용)">${escapeHtml(sourceText)}</textarea>`;
-    groupEl.appendChild(srcRow);
-  }
   els.rubricList.appendChild(groupEl);
   items.forEach(item => {
     const wrap = document.createElement("div");
@@ -2473,7 +2485,7 @@ function highlightedTextHtml(text, ranges=[]){
   return html || escapeHtml(text);
 }
 
-function updateSourceHighlight(ranges=sourceHighlightRanges, sourceEl=els.sourceText, highlightEl=els.sourceHighlight){
+function updateSourceHighlight(ranges=sourceHighlightRanges, sourceEl=null, highlightEl=null){
   if(!sourceEl || !highlightEl) return;
   highlightEl.innerHTML = highlightedTextHtml(sourceEl.value, ranges);
   highlightEl.scrollTop = sourceEl.scrollTop;
@@ -2652,62 +2664,84 @@ function runSourceCheckOnText(answerText, sourceText, sourceEl, highlightEl){
 }
 
 function checkSourceTextKeywords({
-  answerEl=els.answerText,
-  sourceEl=els.sourceText,
-  highlightEl=els.sourceHighlight,
+  answerEl=els.sourceCheckInput,
+  sourceEl=null,
+  highlightEl=null,
   statusEl=els.autoDetectStatus
 }={}){
   const answerText = String(answerEl?.value || "").trim();
   if(!answerText){
-    setAutoAssistStatus("답안 텍스트를 먼저 입력하세요.", true, statusEl);
+    showToast("답안 텍스트를 먼저 입력하세요.");
     return;
   }
 
-  const hasSubs = (activeQuestion().subs?.length || 0) > 0;
+  const question = activeQuestion();
+  const hasSubs = (question.subs?.length || 0) > 0;
 
-  if(hasSubs){
-    const answerBySub = splitAnswerBySub(answerText);
-    const resultParts = [];
-    let hasAnySource = false;
-    subOptions().forEach(sub => {
-      const subSource = (activeQuestion().subSourceTexts || {})[sub] || "";
-      if(!subSource) return;
-      hasAnySource = true;
-      const subAnswer = answerBySub[sub] || answerText;
-      const subSourceEl = els.rubricList.querySelector(`.subSourceInput[data-sub="${CSS.escape(sub)}"]`);
-      const subHighlightEl = els.rubricList.querySelector(`.subSourceBackdrop[data-sub="${CSS.escape(sub)}"]`);
-      const {foundInSource, missingFromSource} = runSourceCheckOnText(subAnswer, subSource, subSourceEl, subHighlightEl);
-      const foundPart = foundInSource.length ? `있음: ${foundInSource.join(", ")}` : "";
-      const missingPart = missingFromSource.length ? `없음: ${missingFromSource.join(", ")}` : "";
-      const parts = [foundPart, missingPart].filter(Boolean).join(" / ");
-      if(parts) resultParts.push(`${sub} → ${parts}`);
-    });
-    if(!hasAnySource){
-      setAutoAssistStatus("소문항 본문을 먼저 루브릭 위 입력창에 입력하세요.", true, statusEl);
+  // popup 전용: sourceEl/highlightEl이 명시적으로 전달된 경우 (팝업 창)
+  if(sourceEl){
+    const sourceText = String(sourceEl.value || "").trim();
+    if(!sourceText){ showToast("등록 본문을 먼저 입력하세요."); return; }
+    const {tokens, sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(answerText, sourceText, sourceEl, highlightEl);
+    sourceHighlightRanges = sourceRanges;
+    if(!tokens.length){ showToast("답안에서 확인할 단어를 찾을 수 없습니다."); return; }
+    if(!foundInSource.length){
+      showToast(`본문에 없음: ${missingFromSource.join(", ")}`);
     } else {
-      setAutoAssistStatus(resultParts.join(" | ") || "확인할 단어가 없습니다.", resultParts.some(p => p.includes("없음:")), statusEl);
+      openSourceHighlightModal([{label:null, sourceText, ranges:sourceRanges, foundInSource, missingFromSource}]);
     }
     return;
   }
 
-  // 소문항 없을 때: 기존 단일 본문 방식
-  const sourceText = String(sourceEl?.value || "").trim();
-  if(!sourceText){
-    sourceHighlightRanges = [];
-    updateSourceHighlight([], sourceEl, highlightEl);
-    setAutoAssistStatus("등록 본문을 먼저 입력하세요.", true, statusEl);
+  if(hasSubs){
+    const answerBySub = splitAnswerBySub(answerText);
+    const groups = [];
+    (question.subs || []).forEach(sub => {
+      const subSource = (question.subSourceTexts || {})[sub] || "";
+      if(!subSource) return;
+      const subAnswer = answerBySub[sub] || answerText;
+      const {sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(subAnswer, subSource);
+      groups.push({label:sub, sourceText:subSource, ranges:sourceRanges, foundInSource, missingFromSource});
+    });
+    if(!groups.length){ showToast("설정창에서 소문항 본문을 먼저 입력하세요."); return; }
+    const allMissing = groups.every(g => !g.foundInSource.length);
+    if(allMissing){
+      const missing = groups.flatMap(g => g.missingFromSource.map(w => `${g.label}: ${w}`));
+      showToast(`본문에 없음: ${missing.join(", ")}`);
+    } else {
+      openSourceHighlightModal(groups);
+    }
     return;
   }
-  syncSourceTextToQuestion(sourceEl);
-  const {tokens, sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(answerText, sourceText, sourceEl, highlightEl);
-  sourceHighlightRanges = sourceRanges;
-  if(!tokens.length){
-    setAutoAssistStatus("답안에서 확인할 단어를 찾을 수 없습니다.", true, statusEl);
-    return;
+
+  const sourceText = (question.sourceText || "").trim();
+  if(!sourceText){ showToast("설정창에서 본문을 먼저 입력하세요."); return; }
+  const {tokens, sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(answerText, sourceText);
+  if(!tokens.length){ showToast("답안에서 확인할 단어를 찾을 수 없습니다."); return; }
+  if(!foundInSource.length){
+    showToast(`본문에 없음: ${missingFromSource.join(", ")}`);
+  } else {
+    openSourceHighlightModal([{label:null, sourceText, ranges:sourceRanges, foundInSource, missingFromSource}]);
   }
-  const foundPart = foundInSource.length ? `본문에 있음: ${foundInSource.join(", ")}` : "";
-  const missingPart = missingFromSource.length ? `본문에 없음: ${missingFromSource.join(", ")}` : "";
-  setAutoAssistStatus([foundPart, missingPart].filter(Boolean).join(" / "), missingFromSource.length > 0, statusEl);
+}
+
+function openSourceHighlightModal(groups){
+  if(!els.sourceHighlightModal) return;
+  els.sourceHighlightModalBody.innerHTML = groups.map(({label, sourceText, ranges, foundInSource, missingFromSource}) => {
+    const highlighted = highlightedTextHtml(sourceText, ranges);
+    const foundNote = foundInSource.length ? `<span style="color:var(--accent)">본문에 있음: ${escapeHtml(foundInSource.join(", "))}</span>` : "";
+    const missingNote = missingFromSource.length ? `<span style="color:var(--danger)">본문에 없음: ${escapeHtml(missingFromSource.join(", "))}</span>` : "";
+    const notes = [foundNote, missingNote].filter(Boolean).join(" &nbsp;/&nbsp; ");
+    return `<div>
+      ${label ? `<div style="font-size:12px;font-weight:850;margin-bottom:4px">${escapeHtml(label)}</div>` : ""}
+      <div style="font-size:12px;margin-bottom:6px">${notes}</div>
+      <div class="sourceHighlightWrap" style="min-height:80px;max-height:240px;overflow:auto">
+        <div class="sourceHighlightBackdrop" style="pointer-events:none" aria-hidden="true">${highlighted}</div>
+        <textarea class="sourceHighlightInput" readonly style="color:transparent;caret-color:transparent;resize:none;height:100%;min-height:80px">${escapeHtml(sourceText)}</textarea>
+      </div>
+    </div>`;
+  }).join("");
+  els.sourceHighlightModal.classList.remove("hidden");
 }
 
 function savedRecordCount(){
@@ -5008,6 +5042,24 @@ els.settingsModal.addEventListener("change", evt => {
     if(sub && value > 0) question.subScores[sub] = value;
     else if(sub) delete question.subScores[sub];
   }
+  const questionSourceInput = evt.target.closest(".questionSourceInput");
+  if(questionSourceInput){
+    question.sourceText = questionSourceInput.value;
+    persist();
+    renderRubric();
+    return;
+  }
+  const questionSubSourceInput = evt.target.closest(".questionSubSourceInput");
+  if(questionSubSourceInput){
+    if(!question.subSourceTexts) question.subSourceTexts = {};
+    const sub = questionSubSourceInput.dataset.sub;
+    const val = questionSubSourceInput.value;
+    if(val.trim()) question.subSourceTexts[sub] = val;
+    else delete question.subSourceTexts[sub];
+    persist();
+    renderRubric();
+    return;
+  }
   persistQuestionSettings();
   loadExamCapture();
 });
@@ -5103,12 +5155,6 @@ els.rubricList.addEventListener("input", evt => {
   if(exampleInput){
     resizeKeywordTextarea(exampleInput);
     setExampleAnswerForSub(exampleInput.dataset.sub, exampleInput.value);
-    persist();
-    return;
-  }
-  const subSourceInput = evt.target.closest(".subSourceInput");
-  if(subSourceInput){
-    setSourceTextForSub(subSourceInput.dataset.sub, subSourceInput.value);
     persist();
     return;
   }
@@ -5248,15 +5294,10 @@ window.addEventListener("keydown", evt => {
 
 els.autoDetectBtn.addEventListener("click", () => autoDetectKeywords());
 els.sourceCheckBtn.addEventListener("click", () => checkSourceTextKeywords());
-els.sourceText.addEventListener("input", () => {
-  syncSourceTextToQuestion();
-  sourceHighlightRanges = [];
-  updateSourceHighlight();
-  setAutoAssistStatus("", false);
-  persist();
-  syncRubricPopup();
+els.closeSourceHighlightModalBtn.addEventListener("click", () => els.sourceHighlightModal.classList.add("hidden"));
+els.sourceHighlightModal.addEventListener("click", evt => {
+  if(evt.target === els.sourceHighlightModal) els.sourceHighlightModal.classList.add("hidden");
 });
-els.sourceText.addEventListener("scroll", () => updateSourceHighlight());
 loadSidebarWidth();
 loadSavedState();
 bindCropDrag();
@@ -5268,5 +5309,15 @@ updateChrome();
 updateUndoButton();
 promptInitialSetupIfNeeded();
 </script>
+
+<div class="modalBackdrop hidden" id="sourceHighlightModal" role="dialog" aria-modal="true" aria-labelledby="sourceHighlightModalTitle">
+  <div class="modal" style="width:min(680px,100%)">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="sourceHighlightModalTitle">본문 확인</h2>
+      <button class="btn mini" id="closeSourceHighlightModalBtn" type="button">닫기</button>
+    </div>
+    <div id="sourceHighlightModalBody" style="padding:14px;display:grid;gap:14px"></div>
+  </div>
+</div>
 </body>
 </html>
