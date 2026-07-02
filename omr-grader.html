@@ -49,11 +49,16 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .btn.danger{color:var(--danger);border-color:#e9c7c4;background:#fff7f6}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .mini{min-height:32px;padding:6px 9px;font-size:12px}
-.navstrip{border-bottom:1px solid var(--line);background:#fff;padding:8px 16px;display:grid;grid-template-columns:minmax(360px,1fr) auto;gap:12px;align-items:end}
+.navstrip{border-bottom:1px solid var(--line);background:#fff;padding:8px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
 .navGroup{display:grid;gap:5px}
 .navLabel{color:var(--muted);font-size:11px;font-weight:850}
-.answerNavRow{display:grid;grid-template-columns:42px minmax(0,1fr) 42px;gap:8px;align-items:center}
-.navStudent{display:grid;grid-template-columns:110px 86px 86px minmax(170px,360px) 42px;gap:8px;justify-content:start}
+.answerNavRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+.answerNavRow > .btn{flex:0 0 42px}
+.navStudent{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0;flex:1 1 320px}
+.navStudent select{flex:1 1 86px;min-width:86px}
+.navStudent #classSelect{flex-basis:110px}
+.navStudent #nameSelect{flex-basis:170px}
+.navStudent .filterToggleBtn{flex:0 0 42px}
 .studentStateChip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);padding:2px 8px;font-size:11px;font-weight:850;white-space:nowrap}
 .studentStateChip::before{content:"";width:7px;height:7px;border-radius:50%;background:#a8b1c0}
 .studentStateChip.done{border-color:#cbded2;background:#f7fbf8;color:#286044}
@@ -66,8 +71,10 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .filterToggleBtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .filterGlyph{position:relative;display:block;width:16px;height:16px;color:currentColor}
 .filterGlyph::before{content:"";position:absolute;left:2px;top:3px;width:12px;height:11px;background:currentColor;clip-path:polygon(0 0,100% 0,64% 48%,64% 100%,36% 100%,36% 48%)}
-.currentAnswerAccess{display:grid;grid-template-columns:minmax(360px,1fr) minmax(280px,.85fr);gap:8px;align-items:start}
-.answerMetaRow{display:grid;grid-template-columns:42px auto minmax(0,1fr);gap:8px;align-items:start}
+.currentAnswerAccess{display:flex;flex-wrap:wrap;gap:8px;align-items:start;min-width:0}
+.answerNavRow{flex:2 1 430px}
+.answerMetaRow{display:flex;flex-wrap:wrap;gap:8px;align-items:start;min-width:280px;flex:1 1 320px}
+.answerMetaRow .memoCompact{flex:1 1 180px;min-width:180px}
 .missingOmrBtn{min-height:40px;white-space:nowrap}
 .missingOmrBtn.on{background:#9a6512;border-color:#9a6512;color:#fff}
 .memoCompact{min-height:40px;height:40px;resize:vertical;font-size:12px;line-height:1.35;padding:8px 10px}
@@ -84,9 +91,17 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .questionEditTop{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:8px;align-items:start}
 .subQuestionList{display:grid;gap:6px}
 .subQuestionRow{display:grid;grid-template-columns:minmax(0,1fr) 110px 34px;gap:6px;align-items:start}
-.stage{min-height:0;overflow:auto;padding:18px}
-.canvasShell{min-height:calc(100vh - 154px);display:flex;align-items:center;justify-content:center;position:relative}
-.viewerKeywordPanel{margin:12px 0 0}
+.stage{min-height:0;overflow:hidden;padding:14px;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:12px}
+.canvasShell{min-height:0;display:flex;align-items:center;justify-content:center;position:relative;overflow:auto;padding:12px}
+.viewerKeywordPanel{margin:0;max-height:22vh;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.viewerKeywordPanel .panelHead{margin-bottom:8px}
+#keywordSummary{max-height:calc(22vh - 54px);overflow:auto}
+.answerZoomControls{position:absolute;right:12px;bottom:12px;z-index:8;display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px;box-shadow:0 8px 22px rgba(23,32,51,.12)}
+.answerZoomText{min-width:46px;text-align:center;color:var(--muted);font-size:12px;font-weight:900}
+body:not(.pdfLoaded) .answerZoomControls{display:none}
+.app.multiWindowMain .viewer{height:100vh;overflow:hidden}
+.app.multiWindowMain .stage{height:100%}
+.app.multiWindowMain .canvasShell{min-height:0;height:100%;padding:12px}
 .examCaptureBtn{position:absolute;top:12px;left:12px;z-index:8;box-shadow:0 8px 22px rgba(23,32,51,.12)}
 .floatingRubricWindowBtn{position:absolute;top:12px;left:104px;z-index:8;box-shadow:0 8px 22px rgba(23,32,51,.12)}
 .app:not(.multiWindowMain) .floatingRubricWindowBtn{display:none}
@@ -98,11 +113,13 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .empty{width:min(680px,100%);background:var(--panel);border:1px dashed #b9c3d3;border-radius:8px;padding:28px;text-align:center;box-shadow:var(--shadow)}
 .empty h2{margin:0 0 8px;font-size:24px}
 .empty p{margin:0 0 18px;color:var(--muted);line-height:1.6}
-.pageWrap{position:relative;width:max-content;max-width:100%}
+.pageWrap,.cropView{width:max-content;max-width:none}
+.pageWrap{position:relative}
+.pageWrap,.cropView{margin:auto}
 canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:var(--shadow)}
 .cropOverlay{position:absolute;border:3px solid #e23d32;background:rgba(226,61,50,.08);outline:9999px solid rgba(10,16,26,.50);cursor:move;touch-action:none}
 .cropOverlay::after{content:"";position:absolute;right:-16px;bottom:-16px;width:32px;height:32px;border-radius:50%;background:#e23d32;border:3px solid #fff;cursor:nwse-resize;box-shadow:0 4px 12px rgba(10,16,26,.25)}
-.cropView canvas{width:min(100%,1100px);max-height:calc(100vh - 118px);object-fit:contain}
+.pageWrap canvas,.cropView canvas{max-width:none;max-height:none;object-fit:contain}
 .side{min-width:0;height:100vh;overflow:auto;background:#fbfcfe;padding:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
 .panelHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -480,9 +497,15 @@ textarea{min-height:72px;resize:vertical}
       <div class="statusLine hidden" id="pageStatus">대기 중</div>
     </nav>
     <section class="stage">
-      <div class="canvasShell">
+      <div class="canvasShell" id="canvasShell">
         <button class="btn mini examCaptureBtn" id="examCaptureBtn" type="button">시험문제</button>
         <button class="btn mini floatingRubricWindowBtn" id="floatingRubricWindowBtn" type="button">루브릭 창</button>
+        <div class="answerZoomControls" id="answerZoomControls" aria-label="답안 확대/축소">
+          <button class="btn mini" id="answerZoomOutBtn" type="button" title="축소">−</button>
+          <span class="answerZoomText" id="answerZoomText">100%</span>
+          <button class="btn mini" id="answerZoomInBtn" type="button" title="확대">+</button>
+          <button class="btn mini" id="answerZoomResetBtn" type="button" title="화면에 맞춤">맞춤</button>
+        </div>
         <div class="examCapturePanel hidden" id="examCapturePanel">
           <div class="examCaptureHead">
             <h2 class="panelTitle">시험문제</h2>
@@ -662,10 +685,41 @@ textarea{min-height:72px;resize:vertical}
   </div>
 </div>
 
+<div class="modalBackdrop hidden" id="mergeJsonModal" role="dialog" aria-modal="true" aria-labelledby="mergeJsonTitle">
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="mergeJsonTitle">JSON 병합</h2>
+      <button class="btn mini" id="closeMergeJsonBtn" type="button">닫기</button>
+    </div>
+    <div class="modalBody" style="display:block">
+      <section class="panel">
+        <div class="statusLine" style="margin-bottom:10px">여러 사람이 나눠 채점한 JSON 백업을 현재 작업에 합칩니다. 다른 문항이나 다른 학생 기록은 자동으로 추가되고, 같은 학생의 같은 문항 기록이 겹칠 때만 아래 충돌 기준을 적용합니다.</div>
+        <div class="field">
+          <span class="label">병합할 JSON 백업</span>
+          <input id="mergeJsonInput" type="file" accept="application/json" multiple>
+        </div>
+        <div class="field">
+          <span class="label">충돌 시 처리</span>
+          <select id="mergeJsonConflictSelect">
+            <option value="keep">현재 채점 유지</option>
+            <option value="replace">가져온 JSON으로 덮어쓰기</option>
+          </select>
+        </div>
+        <div class="compactBtns">
+          <button class="btn primary" id="mergeJsonBtn" type="button">JSON 병합</button>
+          <button class="btn" id="exportMergedJsonBtn" type="button">병합본 내보내기</button>
+          <button class="btn" id="cancelMergeJsonBtn" type="button">취소</button>
+        </div>
+        <div class="statusLine" id="mergeJsonStatus" style="margin-top:8px">병합할 JSON 파일을 선택하세요.</div>
+      </section>
+    </div>
+  </div>
+</div>
+
 <div class="modalBackdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="modal">
     <div class="modalHead">
-      <h2 class="panelTitle" id="settingsTitle">설정과 결과</h2>
+      <h2 class="panelTitle" id="settingsTitle">설정</h2>
       <button class="btn mini" id="closeSettingsBtn" type="button">닫기</button>
     </div>
     <div class="modalBody" style="display:block">
@@ -796,6 +850,7 @@ textarea{min-height:72px;resize:vertical}
           <button class="btn" id="exportShareReportBtn">채점 내용 공유용 내보내기</button>
           <button class="btn" id="exportJsonBtn">JSON 전체 백업</button>
           <button class="btn" id="importJsonBtn">JSON 불러오기</button>
+          <button class="btn" id="openMergeJsonBtn" type="button">JSON 병합</button>
           <input class="hidden" type="file" id="jsonInput" accept="application/json">
         </div>
         <div style="max-height:430px;overflow:auto;margin-top:10px">
@@ -841,6 +896,7 @@ const state = {
   mode:"grade",
   fullPage:false,
   scale:2,
+  answerZoom:1,
   activeQuestion:"q1",
   activeClass:"",
   keywordFilter:null,
@@ -861,9 +917,10 @@ const els = {
   appTitleText:$("appTitleText"), appTitleInput:$("appTitleInput"), applyTitleBtn:$("applyTitleBtn"),
   deductTemplateNameInput:$("deductTemplateNameInput"), deductTemplateKeywordsInput:$("deductTemplateKeywordsInput"), deductTemplateScoreInput:$("deductTemplateScoreInput"),
   pdfInput:$("pdfInput"), changePdfBtn:$("changePdfBtn"), fileMeta:$("fileMeta"), empty:$("empty"),
-  pageWrap:$("pageWrap"), cropView:$("cropView"), pdfCanvas:$("pdfCanvas"), cropCanvas:$("cropCanvas"),
+  pageWrap:$("pageWrap"), cropView:$("cropView"), canvasShell:$("canvasShell"), pdfCanvas:$("pdfCanvas"), cropCanvas:$("cropCanvas"),
   examCaptureBtn:$("examCaptureBtn"), examCapturePanel:$("examCapturePanel"), closeExamCaptureBtn:$("closeExamCaptureBtn"),
   floatingRubricWindowBtn:$("floatingRubricWindowBtn"),
+  answerZoomControls:$("answerZoomControls"), answerZoomOutBtn:$("answerZoomOutBtn"), answerZoomInBtn:$("answerZoomInBtn"), answerZoomResetBtn:$("answerZoomResetBtn"), answerZoomText:$("answerZoomText"),
   pasteExamCaptureBtn:$("pasteExamCaptureBtn"), chooseExamCaptureBtn:$("chooseExamCaptureBtn"), clearExamCaptureBtn:$("clearExamCaptureBtn"),
   examCaptureInput:$("examCaptureInput"), examCapturePreview:$("examCapturePreview"), examCaptureStatus:$("examCaptureStatus"),
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), studentCropBtn:$("studentCropBtn"), clearStudentCropBtn:$("clearStudentCropBtn"), gradeModeBtn:$("gradeModeBtn"),
@@ -883,6 +940,7 @@ const els = {
   shareExportModal:$("shareExportModal"), closeShareExportBtn:$("closeShareExportBtn"), cancelShareExportBtn:$("cancelShareExportBtn"),
   createShareReportBtn:$("createShareReportBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
   shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"),
+  mergeJsonModal:$("mergeJsonModal"), openMergeJsonBtn:$("openMergeJsonBtn"), closeMergeJsonBtn:$("closeMergeJsonBtn"), cancelMergeJsonBtn:$("cancelMergeJsonBtn"),
   rubricEditorPanel:$("rubricEditorPanel"), rubricEditorRows:$("rubricEditorRows"),
   rubricText:$("rubricText"), addRubricItemBtn:$("addRubricItemBtn"), loadRubricTextBtn:$("loadRubricTextBtn"),
   addRubricBottomBtn:$("addRubricBottomBtn"), importHwpxRubricBtn:$("importHwpxRubricBtn"), hwpxRubricInput:$("hwpxRubricInput"),
@@ -893,6 +951,7 @@ const els = {
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), jpgPdfFolderInput:$("jpgPdfFolderInput"), jpgPdfSelectedStatus:$("jpgPdfSelectedStatus"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
   rosterFileInput:$("rosterFileInput"),
   mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
+  mergeJsonInput:$("mergeJsonInput"), mergeJsonConflictSelect:$("mergeJsonConflictSelect"), mergeJsonBtn:$("mergeJsonBtn"), exportMergedJsonBtn:$("exportMergedJsonBtn"), mergeJsonStatus:$("mergeJsonStatus"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
   answerText:$("answerText"),
@@ -1043,6 +1102,7 @@ function applySettings(){
 function setRubricWindowActive(active){
   rubricWindowActive = Boolean(active);
   els.app.classList.toggle("multiWindowMain", rubricWindowActive);
+  requestAnimationFrame(updateAnswerZoomStyles);
 }
 
 function loadExamCapture(){
@@ -1369,7 +1429,10 @@ function setMode(mode){
   const fullPageLabel = state.fullPage ? "답안 영역 보기" : "전체 답안 보기";
   els.fullPageBtn.title = fullPageLabel;
   els.fullPageBtn.setAttribute("aria-label", fullPageLabel);
-  renderCurrentPage();
+  if(state.pdf && els.pdfCanvas.width && state.mode === "grade" && !state.fullPage) drawCrop();
+  positionOverlay();
+  updateAnswerZoomStyles();
+  requestAnimationFrame(updateAnswerZoomStyles);
 }
 
 function loadSidebarWidth(){
@@ -1384,6 +1447,7 @@ function setSidebarWidth(width, shouldPersist=true){
   document.documentElement.style.setProperty("--side-width", `${nextWidth}px`);
   if(shouldPersist) localStorage.setItem(SIDEBAR_WIDTH_KEY, String(Math.round(nextWidth)));
   requestAnimationFrame(positionOverlay);
+  requestAnimationFrame(updateAnswerZoomStyles);
 }
 
 function bindSidebarResize(){
@@ -1546,6 +1610,7 @@ async function openPdf(file){
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
+  await renderCurrentPage();
   persist();
 }
 
@@ -1566,14 +1631,14 @@ async function renderCurrentPage(){
   els.spinnerOverlay.classList.add("hidden");
   positionOverlay();
   if(state.mode === "grade" && !state.fullPage) drawCrop();
+  updateAnswerZoomStyles();
 }
 
 function positionOverlay(){
   if(!state.pdf) return;
   const canvas = els.pdfCanvas;
-  const box = canvas.getBoundingClientRect();
-  const sx = box.width / canvas.width;
-  const sy = box.height / canvas.height;
+  const sx = (canvas.offsetWidth || canvas.getBoundingClientRect().width) / canvas.width;
+  const sy = (canvas.offsetHeight || canvas.getBoundingClientRect().height) / canvas.height;
   const c = activeCrop();
   Object.assign(els.cropOverlay.style, {
     left:`${c.x * canvas.width * sx}px`,
@@ -1597,6 +1662,75 @@ function drawCrop(){
   ctx.fillStyle = "#fff";
   ctx.fillRect(0,0,target.width,target.height);
   ctx.drawImage(source, sx, sy, sw, sh, 0, 0, target.width, target.height);
+  updateAnswerZoomStyles();
+}
+
+function visibleAnswerWrap(){
+  if(!els.cropView.classList.contains("hidden")) return els.cropView;
+  if(!els.pageWrap.classList.contains("hidden")) return els.pageWrap;
+  return null;
+}
+
+function visibleAnswerCanvas(){
+  if(!els.cropView.classList.contains("hidden")) return els.cropCanvas;
+  if(!els.pageWrap.classList.contains("hidden")) return els.pdfCanvas;
+  return null;
+}
+
+function fitAnswerCanvasSize(canvas){
+  if(!canvas?.width || !canvas?.height) return {width:0, height:0};
+  if(!els.canvasShell) return {width:0, height:0};
+  const shellBox = els.canvasShell.getBoundingClientRect();
+  const maxWidth = Math.max(240, Math.min(shellBox.width - 36, 1280));
+  const maxHeight = Math.max(180, shellBox.height - 36);
+  const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height, 1);
+  return {
+    width:Math.max(1, Math.round(canvas.width * ratio)),
+    height:Math.max(1, Math.round(canvas.height * ratio))
+  };
+}
+
+function centerAnswerScroll(){
+  const shell = els.canvasShell;
+  if(!shell) return;
+  shell.scrollLeft = Math.max(0, (shell.scrollWidth - shell.clientWidth) / 2);
+  shell.scrollTop = Math.max(0, (shell.scrollHeight - shell.clientHeight) / 2);
+}
+
+function updateAnswerZoomStyles(){
+  const wrap = visibleAnswerWrap();
+  const canvas = visibleAnswerCanvas();
+  const zoom = Math.max(.5, Math.min(2.5, Number(state.answerZoom) || 1));
+  state.answerZoom = zoom;
+  if(els.answerZoomText) els.answerZoomText.textContent = `${Math.round(zoom * 100)}%`;
+  if(els.answerZoomOutBtn) els.answerZoomOutBtn.disabled = zoom <= .5;
+  if(els.answerZoomInBtn) els.answerZoomInBtn.disabled = zoom >= 2.5;
+  [els.pageWrap, els.cropView].forEach(target => {
+    if(!target) return;
+    target.style.width = "";
+    target.style.height = "";
+  });
+  [els.pdfCanvas, els.cropCanvas].forEach(target => {
+    if(!target) return;
+    target.style.width = "";
+    target.style.height = "";
+  });
+  if(!wrap || !canvas) return;
+  const fitted = fitAnswerCanvasSize(canvas);
+  if(!fitted.width || !fitted.height) return;
+  const width = Math.round(fitted.width * zoom);
+  const height = Math.round(fitted.height * zoom);
+  wrap.style.width = `${width}px`;
+  wrap.style.height = `${height}px`;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  if(!els.cropOverlay.classList.contains("hidden")) positionOverlay();
+  requestAnimationFrame(centerAnswerScroll);
+}
+
+function setAnswerZoom(nextZoom){
+  state.answerZoom = Math.max(.5, Math.min(2.5, Number(nextZoom) || 1));
+  updateAnswerZoomStyles();
 }
 
 function updateChrome(){
@@ -3835,6 +3969,205 @@ function importJsonBackup(payload){
   if(state.pdf) renderCurrentPage();
 }
 
+function jsonBackupData(payload){
+  const data = payload?.data && typeof payload.data === "object" ? payload.data : payload;
+  if(!data || typeof data !== "object") throw new Error("백업 데이터가 비어 있습니다.");
+  if(!data.records || typeof data.records !== "object") throw new Error("채점 기록을 찾을 수 없습니다.");
+  return data;
+}
+
+function normalizedBackupQuestions(data){
+  const source = Array.isArray(data.questions) && data.questions.length ? data.questions : null;
+  if(source) return source.map((saved, index) => {
+    const fallback = defaultQuestions[index] || defaultQuestions[0];
+    return {
+      id:saved.id || `q_import_${Date.now().toString(36)}_${index}`,
+      label:saved.label || fallback.label,
+      maxScore:nonNegativeNumber(saved.maxScore ?? saved.totalScore ?? fallback.maxScore ?? 0),
+      subScores:normalizeSubScores(saved.subScores || saved.subMaxScores || {}),
+      exampleAnswer:String(saved.exampleAnswer || saved.answer || ""),
+      sourceText:String(saved.sourceText || saved.passageText || ""),
+      subSourceTexts:typeof saved.subSourceTexts === "object" && saved.subSourceTexts !== null ? {...saved.subSourceTexts} : {},
+      subs:normalizeQuestionSubs(saved),
+      crop:{...fallback.crop, ...(saved.crop || {})},
+      rubric:normalizeRubric(Array.isArray(saved.rubric) ? saved.rubric : structuredClone(fallback.rubric))
+    };
+  });
+  if(Array.isArray(data.rubric) || data.crop){
+    const question = structuredClone(defaultQuestions[0]);
+    if(data.crop) question.crop = {...question.crop, ...data.crop};
+    if(Array.isArray(data.rubric)) question.rubric = normalizeRubric(data.rubric);
+    return [question];
+  }
+  return [];
+}
+
+function normalizedBackupRecords(data){
+  return Object.fromEntries(Object.entries(data.records || {}).map(([key, rec]) => {
+    const next = structuredClone(rec || {});
+    next.page = Number(next.page || key) || Number(key) || 1;
+    next.studentIndex = Number(next.studentIndex || key) || studentIndexForPage(next.page);
+    if(!next.answers){
+      next.answers = {};
+      if(next.scores) next.answers.q1 = {scores:next.scores, memo:next.memo || ""};
+      delete next.scores;
+      delete next.memo;
+    }
+    if(!next.cropOverrides || typeof next.cropOverrides !== "object") next.cropOverrides = {};
+    return [String(key), next];
+  }));
+}
+
+function recordIdentity(rec){
+  const className = String(rec?.className || "").trim();
+  const number = String(rec?.number || "").trim();
+  const name = String(rec?.name || "").trim();
+  if(className || number || name) return [className, number, name].join("\u0001");
+  return "";
+}
+
+function recordIdentityMap(){
+  const map = new Map();
+  Object.entries(state.records || {}).forEach(([key, rec]) => {
+    const identity = recordIdentity(rec);
+    if(identity && !map.has(identity)) map.set(identity, key);
+  });
+  return map;
+}
+
+function mergeQuestionDefinitions(importQuestions){
+  let added = 0;
+  const existing = new Set(state.questions.map(question => question.id));
+  importQuestions.forEach(question => {
+    if(existing.has(question.id)) return;
+    state.questions.push(structuredClone(question));
+    existing.add(question.id);
+    added++;
+  });
+  return added;
+}
+
+function mergeRecordMetadata(target, source, conflictMode){
+  ["className","number","name"].forEach(field => {
+    if(!target[field] && source[field]) target[field] = source[field];
+  });
+  if(!target.page && source.page) target.page = source.page;
+  if(!target.studentIndex && source.studentIndex) target.studentIndex = source.studentIndex;
+  target.cropOverrides = target.cropOverrides || {};
+  Object.entries(source.cropOverrides || {}).forEach(([key, crop]) => {
+    if(!target.cropOverrides[key] || conflictMode === "replace") target.cropOverrides[key] = structuredClone(crop);
+  });
+}
+
+function mergeQrecHasData(qrec){
+  if(!qrec) return false;
+  if(qrec.completed || qrec.needsDiscussion) return true;
+  if(String(qrec.memo || "").trim()) return true;
+  if(Object.values(qrec.unwrittenSubs || {}).some(Boolean)) return true;
+  if(Object.values(qrec.completedSubs || {}).some(Boolean)) return true;
+  if(Object.values(qrec.scores || {}).some(value => Number(value) !== 0)) return true;
+  return Object.values(qrec.keywordHits || {}).some(hit =>
+    ["accept","reject"].some(type => Array.isArray(hit?.[type]) && hit[type].length)
+  );
+}
+
+function mergeJsonBackup(payload, conflictMode="keep"){
+  const data = jsonBackupData(payload);
+  const importQuestions = normalizedBackupQuestions(data);
+  const importRecords = normalizedBackupRecords(data);
+  const stats = {files:1, questionsAdded:0, recordsAdded:0, answersAdded:0, conflictsKept:0, conflictsReplaced:0};
+  stats.questionsAdded += mergeQuestionDefinitions(importQuestions);
+  const identityMap = recordIdentityMap();
+  Object.entries(importRecords).forEach(([sourceKey, sourceRec]) => {
+    const identity = recordIdentity(sourceRec);
+    let targetKey = identity ? identityMap.get(identity) : "";
+    if(!targetKey && !identity && state.records[sourceKey]) targetKey = sourceKey;
+    if(!targetKey){
+      targetKey = sourceKey;
+      if(state.records[targetKey]){
+        let suffix = 2;
+        while(state.records[`${sourceKey}_${suffix}`]) suffix++;
+        targetKey = `${sourceKey}_${suffix}`;
+      }
+      state.records[targetKey] = structuredClone(sourceRec);
+      if(identity) identityMap.set(identity, targetKey);
+      stats.recordsAdded++;
+      stats.answersAdded += Object.values(sourceRec.answers || {}).filter(mergeQrecHasData).length;
+      return;
+    }
+    const targetRec = state.records[targetKey];
+    mergeRecordMetadata(targetRec, sourceRec, conflictMode);
+    targetRec.answers = targetRec.answers || {};
+    Object.entries(sourceRec.answers || {}).forEach(([questionId, sourceQrec]) => {
+      if(!mergeQrecHasData(sourceQrec)) return;
+      const targetHasData = mergeQrecHasData(targetRec.answers[questionId]);
+      if(!targetHasData){
+        targetRec.answers[questionId] = structuredClone(sourceQrec);
+        stats.answersAdded++;
+        return;
+      }
+      if(conflictMode === "replace"){
+        targetRec.answers[questionId] = structuredClone(sourceQrec);
+        stats.conflictsReplaced++;
+      }else{
+        stats.conflictsKept++;
+      }
+    });
+  });
+  normalizeQuestions();
+  normalizeRecords();
+  cleanupAllRecords();
+  applyRosterToRecords();
+  if(!state.questions.some(q => q.id === state.activeQuestion)) state.activeQuestion = state.questions[0]?.id || state.activeQuestion;
+  persist();
+  updateQuestionControls();
+  updateRosterStatus();
+  updateClassControls();
+  loadRecordIntoForm();
+  renderRubric();
+  updateResults();
+  updateKeywordSummary();
+  updateProgress();
+  if(state.pdf) renderCurrentPage();
+  return stats;
+}
+
+function mergeStatsText(stats){
+  const conflictText = stats.conflictsReplaced
+    ? `충돌 ${stats.conflictsReplaced}건 덮어쓰기`
+    : `충돌 ${stats.conflictsKept}건 현재 유지`;
+  return `${stats.files}개 파일 병합 완료 · 문항 ${stats.questionsAdded}개 추가 · 학생 ${stats.recordsAdded}명 추가 · 채점 ${stats.answersAdded}건 추가 · ${conflictText}`;
+}
+
+async function mergeSelectedJsonBackups(){
+  const files = [...(els.mergeJsonInput.files || [])].filter(file => file.name.toLowerCase().endsWith(".json"));
+  if(!files.length){
+    showToast("병합할 JSON 파일을 선택해 주세요.");
+    return;
+  }
+  const conflictMode = els.mergeJsonConflictSelect?.value === "replace" ? "replace" : "keep";
+  if(!confirm(`선택한 ${files.length}개 JSON을 현재 작업에 병합할까요?\n충돌 시: ${conflictMode === "replace" ? "가져온 JSON으로 덮어쓰기" : "현재 채점 유지"}`)) return;
+  const totals = {files:0, questionsAdded:0, recordsAdded:0, answersAdded:0, conflictsKept:0, conflictsReplaced:0};
+  els.mergeJsonBtn.disabled = true;
+  els.mergeJsonStatus.textContent = "JSON 병합 중…";
+  try{
+    for(const file of files){
+      const payload = JSON.parse(await file.text());
+      const stats = mergeJsonBackup(payload, conflictMode);
+      Object.keys(totals).forEach(key => totals[key] += stats[key] || 0);
+    }
+    els.mergeJsonStatus.textContent = mergeStatsText(totals);
+    showToast("JSON 병합을 완료했습니다.");
+  }catch(err){
+    console.error(err);
+    els.mergeJsonStatus.textContent = "JSON 병합 실패";
+    alert(`JSON을 병합할 수 없습니다: ${err.message}`);
+  }finally{
+    els.mergeJsonBtn.disabled = false;
+    els.mergeJsonInput.value = "";
+  }
+}
+
 function applyRubricText(){
   const items = readRubricEditorRows();
   if(!items.length){
@@ -5085,6 +5418,15 @@ els.shareExportModal.addEventListener("click", evt => {
   if(evt.target === els.shareExportModal) els.shareExportModal.classList.add("hidden");
 });
 els.createShareReportBtn.addEventListener("click", createShareReport);
+els.openMergeJsonBtn.addEventListener("click", () => {
+  els.mergeJsonStatus.textContent = "병합할 JSON 파일을 선택하세요.";
+  els.mergeJsonModal.classList.remove("hidden");
+});
+els.closeMergeJsonBtn.addEventListener("click", () => els.mergeJsonModal.classList.add("hidden"));
+els.cancelMergeJsonBtn.addEventListener("click", () => els.mergeJsonModal.classList.add("hidden"));
+els.mergeJsonModal.addEventListener("click", evt => {
+  if(evt.target === els.mergeJsonModal) els.mergeJsonModal.classList.add("hidden");
+});
 els.questionSelect.addEventListener("change", () => setQuestion(els.questionSelect.value));
 els.settingsModal.addEventListener("click", evt => {
   const tab = evt.target.closest(".settingsTab");
@@ -5188,6 +5530,11 @@ els.convertJpgPdfBtn.addEventListener("click", convertJpgsToPdf);
 els.jpgPdfInput.addEventListener("change", updateJpgSelection);
 els.jpgPdfFolderInput.addEventListener("change", updateJpgSelection);
 els.mergePdfBtn.addEventListener("click", mergePdfsAndDownload);
+els.mergeJsonBtn.addEventListener("click", mergeSelectedJsonBackups);
+els.exportMergedJsonBtn.addEventListener("click", exportJson);
+els.answerZoomOutBtn.addEventListener("click", () => setAnswerZoom(state.answerZoom - .1));
+els.answerZoomInBtn.addEventListener("click", () => setAnswerZoom(state.answerZoom + .1));
+els.answerZoomResetBtn.addEventListener("click", () => setAnswerZoom(1));
 els.rosterFileInput.addEventListener("change", async () => {
   const file = els.rosterFileInput.files?.[0];
   if(!file) return;
@@ -5494,6 +5841,7 @@ els.jsonInput.addEventListener("change", async evt => {
 window.addEventListener("resize", () => {
   setSidebarWidth(sidebarWidth(), false);
   positionOverlay();
+  updateAnswerZoomStyles();
 });
 window.addEventListener("keydown", evt => {
   handleGradingShortcut(evt);
