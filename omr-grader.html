@@ -261,6 +261,9 @@ textarea{min-height:72px;resize:vertical}
 .sourceCheckGrid{display:grid;gap:8px;margin-top:10px}
 .sourceCheckActions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
 .sourceHighlightWrap{position:relative;min-height:112px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
+.subSourceWrap{position:relative;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;margin:4px 0 8px}
+.subSourceWrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14)}
+.subSourceWrap .sourceHighlightBackdrop,.subSourceWrap .sourceHighlightInput{min-height:44px;max-height:160px;font-size:12px;padding:6px 10px}
 .sourceHighlightWrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14)}
 .sourceHighlightBackdrop,.sourceHighlightInput{margin:0;border:0;border-radius:0;background:transparent;width:100%;min-height:112px;padding:8px 10px;font:inherit;font-size:inherit;line-height:1.45;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
 .sourceHighlightBackdrop{position:absolute;inset:0;color:var(--ink);pointer-events:none;overflow:auto}
@@ -510,9 +513,9 @@ textarea{min-height:72px;resize:vertical}
       </div>
       <div class="statusLine" style="margin-bottom:6px">학생 답안을 붙여넣으면 루브릭 키워드를 자동으로 탐지합니다. 탐지 후 결과를 직접 확인·수정하세요.</div>
       <textarea id="answerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
-      <div class="sourceCheckGrid">
+      <div class="sourceCheckGrid" id="sourceCheckGrid">
         <label class="field" style="margin-bottom:0">
-          <span class="label">등록 본문</span>
+          <span class="label">등록 본문 (소문항 없을 때)</span>
           <div class="sourceHighlightWrap">
             <div class="sourceHighlightBackdrop" id="sourceHighlight" aria-hidden="true"></div>
             <textarea class="sourceHighlightInput" id="sourceText" placeholder="조건에 활용해야 하는 본문을 붙여넣으세요"></textarea>
@@ -791,8 +794,8 @@ const defaultRubric = [
   {name:"표현과 형식 충족", pt:3}
 ];
 const defaultQuestions = [
-  {id:"q1", label:"1번 문제", maxScore:0, subScores:{}, exampleAnswer:"", sourceText:"", subs:[], crop:{x:.10,y:.52,w:.80,h:.20}, rubric:structuredClone(defaultRubric)},
-  {id:"q2", label:"2번 문제", maxScore:0, subScores:{}, exampleAnswer:"", sourceText:"", subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
+  {id:"q1", label:"1번 문제", maxScore:0, subScores:{}, exampleAnswer:"", sourceText:"", subSourceTexts:{}, subs:[], crop:{x:.10,y:.52,w:.80,h:.20}, rubric:structuredClone(defaultRubric)},
+  {id:"q2", label:"2번 문제", maxScore:0, subScores:{}, exampleAnswer:"", sourceText:"", subSourceTexts:{}, subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
 ];
 const defaultDeductTemplate = {name:"감점 요소", keywords:"", score:1};
 
@@ -859,7 +862,7 @@ const els = {
   mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
-  answerText:$("answerText"), sourceText:$("sourceText"), sourceHighlight:$("sourceHighlight"),
+  answerText:$("answerText"), sourceText:$("sourceText"), sourceHighlight:$("sourceHighlight"), sourceCheckGrid:$("sourceCheckGrid"),
   autoDetectBtn:$("autoDetectBtn"), sourceCheckBtn:$("sourceCheckBtn"), autoDetectStatus:$("autoDetectStatus")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
   mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
@@ -1136,6 +1139,7 @@ function normalizeQuestions(){
       subScores:normalizeSubScores(saved.subScores || saved.subMaxScores || {}),
       exampleAnswer:String(saved.exampleAnswer || saved.answer || ""),
       sourceText:String(saved.sourceText || saved.passageText || ""),
+      subSourceTexts:typeof saved.subSourceTexts === "object" && saved.subSourceTexts !== null ? {...saved.subSourceTexts} : {},
       subs:normalizeQuestionSubs(saved),
       crop:{...fallback.crop, ...(saved.crop || {})},
       rubric:normalizeRubric(Array.isArray(saved.rubric) ? saved.rubric : structuredClone(fallback.rubric))
@@ -1408,6 +1412,7 @@ function addQuestion(){
     label:`${index}번 문제`,
     exampleAnswer:"",
     sourceText:"",
+    subSourceTexts:{},
     maxScore:0,
     subScores:{},
     subs:[],
@@ -1676,6 +1681,8 @@ function renderRubric(){
   const locked = isRubricLocked();
   els.rubricList.classList.toggle("locked", locked);
   els.rubricList.innerHTML = "";
+  const hasSubs = (activeQuestion().subs?.length || 0) > 0;
+  if(els.sourceCheckGrid) els.sourceCheckGrid.classList.toggle("hidden", hasSubs);
   subOptions().forEach(sub => {
     const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
     renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
@@ -2166,6 +2173,13 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
     </span>
   `;
   groupEl.appendChild(title);
+  if(activeQuestion().subs?.length > 0){
+    const sourceText = (activeQuestion().subSourceTexts || {})[sub] || "";
+    const srcRow = document.createElement("div");
+    srcRow.className = "subSourceWrap";
+    srcRow.innerHTML = `<div class="sourceHighlightBackdrop subSourceBackdrop" data-sub="${escapeHtml(sub)}" aria-hidden="true"></div><textarea class="sourceHighlightInput subSourceInput" data-sub="${escapeHtml(sub)}" placeholder="${escapeHtml(sub)} 본문 (본문 단어 확인에 사용)">${escapeHtml(sourceText)}</textarea>`;
+    groupEl.appendChild(srcRow);
+  }
   els.rubricList.appendChild(groupEl);
   items.forEach(item => {
     const wrap = document.createElement("div");
@@ -2237,6 +2251,18 @@ function setExampleAnswerForSub(sub, value, question=activeQuestion()){
     .map(option => answers[option] ? `${option} ${answers[option]}` : "")
     .filter(Boolean)
     .join("\n");
+}
+
+function sourceTextForSub(sub, question=activeQuestion()){
+  if(sub === "공통") return question.sourceText || "";
+  return (question.subSourceTexts || {})[sub] || "";
+}
+function setSourceTextForSub(sub, value, question=activeQuestion()){
+  const text = String(value || "");
+  if(sub === "공통"){ question.sourceText = text; return; }
+  if(!question.subSourceTexts) question.subSourceTexts = {};
+  if(text) question.subSourceTexts[sub] = text;
+  else delete question.subSourceTexts[sub];
 }
 
 function toggleKeywordHit(itemId, type, keyword){
@@ -2583,6 +2609,20 @@ function extractAnswerTokens(text){
   return [...new Set(raw)];
 }
 
+function runSourceCheckOnText(answerText, sourceText, sourceEl, highlightEl){
+  const tokens = extractAnswerTokens(answerText);
+  const sourceRanges = [];
+  const foundInSource = [];
+  const missingFromSource = [];
+  tokens.forEach(token => {
+    const ranges = sourceMatchRanges(sourceText, token);
+    if(ranges.length > 0){ sourceRanges.push(...ranges); foundInSource.push(token); }
+    else { missingFromSource.push(token); }
+  });
+  if(sourceEl && highlightEl) updateSourceHighlight(sourceRanges, sourceEl, highlightEl);
+  return {tokens, sourceRanges, foundInSource, missingFromSource};
+}
+
 function checkSourceTextKeywords({
   answerEl=els.answerText,
   sourceEl=els.sourceText,
@@ -2590,11 +2630,40 @@ function checkSourceTextKeywords({
   statusEl=els.autoDetectStatus
 }={}){
   const answerText = String(answerEl?.value || "").trim();
-  const sourceText = String(sourceEl?.value || "").trim();
   if(!answerText){
     setAutoAssistStatus("답안 텍스트를 먼저 입력하세요.", true, statusEl);
     return;
   }
+
+  const hasSubs = (activeQuestion().subs?.length || 0) > 0;
+
+  if(hasSubs){
+    const answerBySub = splitAnswerBySub(answerText);
+    const resultParts = [];
+    let hasAnySource = false;
+    subOptions().forEach(sub => {
+      const subSource = (activeQuestion().subSourceTexts || {})[sub] || "";
+      if(!subSource) return;
+      hasAnySource = true;
+      const subAnswer = answerBySub[sub] || answerText;
+      const subSourceEl = els.rubricList.querySelector(`.subSourceInput[data-sub="${CSS.escape(sub)}"]`);
+      const subHighlightEl = els.rubricList.querySelector(`.subSourceBackdrop[data-sub="${CSS.escape(sub)}"]`);
+      const {foundInSource, missingFromSource} = runSourceCheckOnText(subAnswer, subSource, subSourceEl, subHighlightEl);
+      const foundPart = foundInSource.length ? `있음: ${foundInSource.join(", ")}` : "";
+      const missingPart = missingFromSource.length ? `없음: ${missingFromSource.join(", ")}` : "";
+      const parts = [foundPart, missingPart].filter(Boolean).join(" / ");
+      if(parts) resultParts.push(`${sub} → ${parts}`);
+    });
+    if(!hasAnySource){
+      setAutoAssistStatus("소문항 본문을 먼저 루브릭 위 입력창에 입력하세요.", true, statusEl);
+    } else {
+      setAutoAssistStatus(resultParts.join(" | ") || "확인할 단어가 없습니다.", resultParts.some(p => p.includes("없음:")), statusEl);
+    }
+    return;
+  }
+
+  // 소문항 없을 때: 기존 단일 본문 방식
+  const sourceText = String(sourceEl?.value || "").trim();
   if(!sourceText){
     sourceHighlightRanges = [];
     updateSourceHighlight([], sourceEl, highlightEl);
@@ -2602,29 +2671,15 @@ function checkSourceTextKeywords({
     return;
   }
   syncSourceTextToQuestion(sourceEl);
-  const tokens = extractAnswerTokens(answerText);
-  const sourceRanges = [];
-  const foundInSource = [];
-  const missingFromSource = [];
-  tokens.forEach(token => {
-    const ranges = sourceMatchRanges(sourceText, token);
-    if(ranges.length > 0){
-      sourceRanges.push(...ranges);
-      foundInSource.push(token);
-    } else {
-      missingFromSource.push(token);
-    }
-  });
+  const {tokens, sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(answerText, sourceText, sourceEl, highlightEl);
   sourceHighlightRanges = sourceRanges;
-  updateSourceHighlight(sourceRanges, sourceEl, highlightEl);
   if(!tokens.length){
     setAutoAssistStatus("답안에서 확인할 단어를 찾을 수 없습니다.", true, statusEl);
     return;
   }
   const foundPart = foundInSource.length ? `본문에 있음: ${foundInSource.join(", ")}` : "";
   const missingPart = missingFromSource.length ? `본문에 없음: ${missingFromSource.join(", ")}` : "";
-  const msg = [foundPart, missingPart].filter(Boolean).join(" / ");
-  setAutoAssistStatus(msg, missingFromSource.length > 0, statusEl);
+  setAutoAssistStatus([foundPart, missingPart].filter(Boolean).join(" / "), missingFromSource.length > 0, statusEl);
 }
 
 function savedRecordCount(){
@@ -5012,6 +5067,12 @@ els.rubricList.addEventListener("input", evt => {
   if(exampleInput){
     resizeKeywordTextarea(exampleInput);
     setExampleAnswerForSub(exampleInput.dataset.sub, exampleInput.value);
+    persist();
+    return;
+  }
+  const subSourceInput = evt.target.closest(".subSourceInput");
+  if(subSourceInput){
+    setSourceTextForSub(subSourceInput.dataset.sub, subSourceInput.value);
     persist();
     return;
   }
