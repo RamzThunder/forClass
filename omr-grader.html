@@ -2576,16 +2576,19 @@ function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDet
   setAutoAssistStatus(`${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`, false, statusEl);
 }
 
+function extractAnswerTokens(text){
+  const raw = text.split(/[\s,\.!?()\[\]「」『』《》""''·:;\/\\~\-\n]+/)
+    .map(t => t.replace(/^[^가-힣a-zA-Z0-9]+|[^가-힣a-zA-Z0-9]+$/g, ""))
+    .filter(t => t.length >= 2);
+  return [...new Set(raw)];
+}
+
 function checkSourceTextKeywords({
   answerEl=els.answerText,
   sourceEl=els.sourceText,
   highlightEl=els.sourceHighlight,
   statusEl=els.autoDetectStatus
 }={}){
-  if(!guardRubricUnlocked()){
-    setAutoAssistStatus("채점 완료된 답안입니다. 수정하려면 채점 완료를 해제하세요.", true, statusEl);
-    return;
-  }
   const answerText = String(answerEl?.value || "").trim();
   const sourceText = String(sourceEl?.value || "").trim();
   if(!answerText){
@@ -2599,59 +2602,29 @@ function checkSourceTextKeywords({
     return;
   }
   syncSourceTextToQuestion(sourceEl);
+  const tokens = extractAnswerTokens(answerText);
   const sourceRanges = [];
+  const foundInSource = [];
   const missingFromSource = [];
-  const sourceOnly = [];
-  let selectedCount = 0;
-  snapshotCurrentQuestion("본문 단어 확인");
-  ensureQuestionRecord();
-  const qrec = state.records[recordKey()].answers[state.activeQuestion];
-  activeRubric().forEach(item => {
-    if(item.type === "deduct") return;
-    const prev = qrec.keywordHits[item.id] || {};
-    const next = {accept:[...(prev.accept||[])], partial:[], reject:[...(prev.reject||[])]};
-    let changed = false;
-    splitKeywords(item.accept).forEach(keyword => {
-      const inAnswer = textContainsPhrase(answerText, keyword);
-      const ranges = sourceMatchRanges(sourceText, keyword);
-      const inSource = ranges.length > 0;
-      if(inAnswer && inSource){
-        sourceRanges.push(...ranges);
-        if(!next.accept.includes(keyword)){
-          next.accept.push(keyword);
-          changed = true;
-          selectedCount++;
-        }
-      }else if(inAnswer && !inSource){
-        missingFromSource.push(keyword);
-      }else if(!inAnswer && inSource){
-        sourceOnly.push(keyword);
-      }
-    });
-    if(changed){
-      const sub = normalizeSubValue(item.sub || "공통");
-      if(qrec.unwrittenSubs?.[sub]) delete qrec.unwrittenSubs[sub];
-      qrec.keywordHits[item.id] = next;
-      qrec.scores[item.id] = scoreFromKeywordHits(item, next);
+  tokens.forEach(token => {
+    const ranges = sourceMatchRanges(sourceText, token);
+    if(ranges.length > 0){
+      sourceRanges.push(...ranges);
+      foundInSource.push(token);
+    } else {
+      missingFromSource.push(token);
     }
   });
   sourceHighlightRanges = sourceRanges;
   updateSourceHighlight(sourceRanges, sourceEl, highlightEl);
-  persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();
-  if(missingFromSource.length){
-    setAutoAssistStatus(`본문에 단어 없음: ${uniqueLines(missingFromSource).join(", ")}`, true, statusEl);
+  if(!tokens.length){
+    setAutoAssistStatus("답안에서 확인할 단어를 찾을 수 없습니다.", true, statusEl);
     return;
   }
-  if(sourceRanges.length){
-    const suffix = selectedCount ? ` ${selectedCount}개 키워드를 체크했습니다.` : " 이미 체크된 키워드입니다.";
-    setAutoAssistStatus(`본문에서 단어를 확인했습니다.${suffix}`, false, statusEl);
-    return;
-  }
-  if(sourceOnly.length){
-    setAutoAssistStatus(`본문에는 있지만 답안에 없는 단어: ${uniqueLines(sourceOnly).slice(0, 6).join(", ")}`, false, statusEl);
-    return;
-  }
-  setAutoAssistStatus("루브릭 인정 문구와 일치하는 단어가 없습니다.", false, statusEl);
+  const foundPart = foundInSource.length ? `본문에 있음: ${foundInSource.join(", ")}` : "";
+  const missingPart = missingFromSource.length ? `본문에 없음: ${missingFromSource.join(", ")}` : "";
+  const msg = [foundPart, missingPart].filter(Boolean).join(" / ");
+  setAutoAssistStatus(msg, missingFromSource.length > 0, statusEl);
 }
 
 function savedRecordCount(){
