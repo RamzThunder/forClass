@@ -242,6 +242,14 @@ textarea{min-height:72px;resize:vertical}
 .modalHead{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .modalBody{padding:14px;display:grid;grid-template-columns:minmax(260px,.8fr) minmax(360px,1.2fr);gap:14px}
 .modalBody .panel{margin-bottom:0}
+.sourceModal{width:min(880px,calc(100vw - 32px));height:min(86vh,860px);display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+.sourceModalBody{min-height:0;padding:16px;display:grid;gap:14px;overflow:auto}
+.sourceResult{display:grid;gap:8px;min-height:0}
+.sourceResultHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sourceResultLabel{font-size:14px;font-weight:950}
+.sourceResultNotes{font-size:13px;line-height:1.45}
+.sourceResultBox{height:min(62vh,640px);min-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px 16px;font-size:15px;line-height:1.65;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.sourceResultBox mark{background:#fff2a8;color:inherit;border-radius:3px;padding:0 1px}
 .shareOptionBody{display:block}
 .shareRequiredList{margin:8px 0 14px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--muted);font-size:12px;line-height:1.6}
 .checkField{display:flex;align-items:center;gap:10px;margin:10px 0;font-weight:800}
@@ -258,11 +266,10 @@ textarea{min-height:72px;resize:vertical}
 .progressLabel{font-size:11px;color:var(--muted);font-weight:800;margin-top:2px}
 .autoDetectStatus{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
 .autoDetectStatus.error{color:var(--danger);font-weight:900}
-.sourceCheckGrid{display:grid;gap:8px;margin-top:10px}
-.sourceCheckRow{display:flex;align-items:flex-start;gap:8px;margin-top:10px}
-.sourceCheckRow textarea{flex:1;min-height:36px;max-height:80px;resize:vertical;font-size:13px}
+.subSourceCheckRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;margin-top:-2px}
+.subSourceCheckRow textarea{min-height:48px;max-height:120px;resize:vertical;font-size:13px}
+.subSourceCheckRow .btn{min-height:48px;font-weight:900}
 .questionSourceSection{display:grid;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
-.sourceCheckActions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
 .sourceHighlightWrap{position:relative;min-height:112px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
 .subSourceWrap{position:relative;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;margin:4px 0 8px}
 .subSourceWrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14)}
@@ -361,6 +368,8 @@ textarea{min-height:72px;resize:vertical}
   .stage{padding:12px}
   .modalBackdrop{padding:10px}
   .modal{max-height:92vh}
+  .sourceModal{width:calc(100vw - 20px);height:92vh}
+  .sourceResultBox{height:68vh;min-height:320px;font-size:14px}
   .modalBody{grid-template-columns:1fr}
   .keywordGrid,.rubricKeywordRow,.keywordEditBoard{grid-template-columns:1fr}
   .btn,input,textarea,select{font-size:16px}
@@ -518,10 +527,6 @@ textarea{min-height:72px;resize:vertical}
       </div>
       <div class="statusLine" style="margin-bottom:6px">학생 답안을 붙여넣으면 루브릭 키워드를 자동으로 탐지합니다. 탐지 후 결과를 직접 확인·수정하세요.</div>
       <textarea id="answerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
-      <div class="sourceCheckRow hidden" id="sourceCheckGrid">
-        <textarea id="sourceCheckInput" placeholder="답안을 입력하고 본문 확인" rows="2"></textarea>
-        <button class="btn" id="sourceCheckBtn" type="button">본문 확인</button>
-      </div>
       <div class="autoDetectStatus" id="autoDetectStatus"></div>
     </section>
 
@@ -812,6 +817,7 @@ const state = {
   activeClass:"",
   keywordFilter:null,
   editingRubricId:"",
+  sourceCheckAnswers:{},
   missingRosterKeys:[],
   studentCropMode:false,
   questions:structuredClone(defaultQuestions),
@@ -859,8 +865,8 @@ const els = {
   mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
-  answerText:$("answerText"), sourceCheckGrid:$("sourceCheckGrid"), sourceCheckInput:$("sourceCheckInput"),
-  autoDetectBtn:$("autoDetectBtn"), sourceCheckBtn:$("sourceCheckBtn"), autoDetectStatus:$("autoDetectStatus"),
+  answerText:$("answerText"),
+  autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus"),
   sourceHighlightModal:$("sourceHighlightModal"), sourceHighlightModalBody:$("sourceHighlightModalBody"), closeSourceHighlightModalBtn:$("closeSourceHighlightModalBtn")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
   mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
@@ -1677,7 +1683,7 @@ function loadRecordIntoForm(){
   updateDiscussionButton();
   updateCompleteButton();
   els.answerText.value = "";
-  if(els.sourceCheckInput) els.sourceCheckInput.value = "";
+  state.sourceCheckAnswers = {};
   els.autoDetectStatus.textContent = "";
   renderRubric();
   updateResults();
@@ -1705,18 +1711,13 @@ function renderRubric(){
   els.rubricList.classList.toggle("locked", locked);
   els.rubricList.innerHTML = "";
   const question = activeQuestion();
-  const hasSubs = (question.subs?.length || 0) > 0;
-  const hasAnySource = hasSubs
-    ? Object.keys(question.subSourceTexts || {}).some(k => question.subSourceTexts[k])
-    : Boolean(question.sourceText);
-  if(els.sourceCheckGrid) els.sourceCheckGrid.classList.toggle("hidden", !hasAnySource);
   subOptions().forEach(sub => {
     const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
     renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
   });
-  els.rubricList.querySelectorAll(".keywordChip,.subCompleteBtn,.subUnwrittenBtn,.criterionEditBtn,.keywordAddBtn,.keywordRemoveBtn,.inlineRubricApplyBtn,.inlineRubricDeleteBtn,.rubricTypeInput,.keywordScoreInput")
+  els.rubricList.querySelectorAll(".keywordChip,.subCompleteBtn,.subUnwrittenBtn,.criterionEditBtn,.keywordAddBtn,.keywordRemoveBtn,.inlineRubricApplyBtn,.inlineRubricDeleteBtn,.rubricTypeInput,.keywordScoreInput,.subSourceCheckBtn")
     .forEach(control => { control.disabled = locked; });
-  els.rubricList.querySelectorAll(".subExampleAnswerInput,.keywordEditInput,.rubricNameInput,.rubricAcceptInput,.rubricRejectInput")
+  els.rubricList.querySelectorAll(".subExampleAnswerInput,.keywordEditInput,.rubricNameInput,.rubricAcceptInput,.rubricRejectInput,.subSourceCheckInput")
     .forEach(control => { control.readOnly = locked; });
   updateTotal();
   updateKeywordSummary();
@@ -1798,18 +1799,6 @@ body.popupCompleted .popupLockBanner{display:block}
       </div>
     </div>
     <textarea id="popupAnswerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
-    <div class="sourceCheckGrid">
-      <label class="field" style="margin-bottom:0">
-        <span class="label">등록 본문</span>
-        <div class="sourceHighlightWrap">
-          <div class="sourceHighlightBackdrop" id="popupSourceHighlight" aria-hidden="true"></div>
-          <textarea class="sourceHighlightInput" id="popupSourceText" placeholder="조건에 활용해야 하는 본문을 붙여넣으세요"></textarea>
-        </div>
-      </label>
-      <div class="sourceCheckActions">
-        <button class="btn mini" id="popupSourceCheckBtn" type="button">본문 단어 확인</button>
-      </div>
-    </div>
     <div class="autoDetectStatus" id="popupAutoDetectStatus"></div>
   </section>
   <div class="popupRubric" id="popupRubricList"></div>
@@ -1845,24 +1834,13 @@ body.popupCompleted .popupLockBanner{display:block}
       syncRubricPopup();
       return;
     }
-    const popupSourceCheckBtn = evt.target.closest("#popupSourceCheckBtn");
-    if(popupSourceCheckBtn){
-      const doc = rubricPopupWindow.document;
-      const popupAnswer = doc.getElementById("popupAnswerText");
-      const popupSource = doc.getElementById("popupSourceText");
-      const popupHighlight = doc.getElementById("popupSourceHighlight");
-      const status = doc.getElementById("popupAutoDetectStatus");
-      if(popupAnswer) els.answerText.value = popupAnswer.value;
-      checkSourceTextKeywords({answerEl:popupAnswer, sourceEl:popupSource, highlightEl:popupHighlight, statusEl:status});
-      syncRubricPopup();
-      return;
-    }
     if(evt.target.closest("#popupRubricList") && state.editingRubricId){
       const activeEditor = evt.target.closest(".inlineRubricEditor");
       const activeCriterion = evt.target.closest(".criterion");
       const isAllowedEditorClick = activeEditor || activeCriterion?.dataset.id === state.editingRubricId;
       const isExampleInput = evt.target.closest(".subExampleAnswerInput");
-      if(!isAllowedEditorClick && !isExampleInput){
+      const isSourceCheckControl = evt.target.closest(".subSourceCheckRow");
+      if(!isAllowedEditorClick && !isExampleInput && !isSourceCheckControl){
         evt.preventDefault();
         showToast("현재 편집 중인 루브릭을 먼저 적용하거나 닫아주세요.");
         return;
@@ -1888,6 +1866,12 @@ body.popupCompleted .popupLockBanner{display:block}
     const removeKeywordBtn = evt.target.closest(".keywordRemoveBtn");
     if(removeKeywordBtn){
       removeKeywordBtn.closest(".keywordEditChip").remove();
+      return;
+    }
+    const subSourceCheckBtn = evt.target.closest(".subSourceCheckBtn");
+    if(subSourceCheckBtn){
+      const sub = subSourceCheckBtn.dataset.sub || subOptions()[0];
+      checkSubSourceTextKeywords(sub, subSourceCheckBtn.closest(".subSourceCheckRow")?.querySelector(".subSourceCheckInput"));
       return;
     }
     if(evt.target.closest(".keywordEditInput,.keywordScoreInput")) return;
@@ -1947,14 +1931,6 @@ body.popupCompleted .popupLockBanner{display:block}
       els.answerText.value = popupAnswer.value;
       return;
     }
-    const popupSource = evt.target.closest("#popupSourceText");
-    if(popupSource){
-      syncSourceTextToQuestion(popupSource);
-      sourceHighlightRanges = [];
-      updateSourceHighlight([], popupSource, rubricPopupWindow.document.getElementById("popupSourceHighlight"));
-      persist();
-      return;
-    }
     const exampleInput = evt.target.closest(".subExampleAnswerInput");
     if(exampleInput){
       resizeKeywordTextarea(exampleInput);
@@ -1964,11 +1940,11 @@ body.popupCompleted .popupLockBanner{display:block}
     }
     const textarea = evt.target.closest(".keywordEditInput");
     if(textarea) resizeKeywordTextarea(textarea);
+    const subSourceInput = evt.target.closest(".subSourceCheckInput");
+    if(subSourceInput){
+      state.sourceCheckAnswers[subSourceInput.dataset.sub || ""] = subSourceInput.value;
+    }
   });
-  rubricPopupWindow.document.addEventListener("scroll", evt => {
-    const popupSource = evt.target.closest?.("#popupSourceText");
-    if(popupSource) updateSourceHighlight(sourceHighlightRanges, popupSource, rubricPopupWindow.document.getElementById("popupSourceHighlight"));
-  }, true);
   rubricPopupWindow.document.addEventListener("keydown", evt => {
     if((evt.ctrlKey || evt.metaKey) && evt.key === "Enter"){
       const editor = evt.target.closest(".inlineRubricEditor");
@@ -2006,14 +1982,8 @@ function syncRubricPopup(){
   if(autoPanel) autoPanel.classList.toggle("hidden", !state.settings?.autoAssistEnabled);
   const popupAnswer = doc.getElementById("popupAnswerText");
   if(popupAnswer && doc.activeElement !== popupAnswer) popupAnswer.value = els.answerText.value || "";
-  const popupSource = doc.getElementById("popupSourceText");
-  const popupHighlight = doc.getElementById("popupSourceHighlight");
-  if(popupSource && doc.activeElement !== popupSource) popupSource.value = activeQuestion().sourceText || "";
-  updateSourceHighlight(sourceHighlightRanges, popupSource, popupHighlight);
   const popupAutoDetectBtn = doc.getElementById("popupAutoDetectBtn");
   if(popupAutoDetectBtn) popupAutoDetectBtn.disabled = !state.pdf || isRubricLocked();
-  const popupSourceCheckBtn = doc.getElementById("popupSourceCheckBtn");
-  if(popupSourceCheckBtn) popupSourceCheckBtn.disabled = isRubricLocked();
   list.innerHTML = els.rubricList.innerHTML;
   const subTotals = doc.getElementById("popupSubTotalList");
   if(subTotals) subTotals.innerHTML = els.subTotalList.innerHTML;
@@ -2212,6 +2182,8 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
     `;
   }
   groupEl.appendChild(title);
+  const sourceCheck = subSourceCheckRow(sub);
+  if(sourceCheck) groupEl.appendChild(sourceCheck);
   els.rubricList.appendChild(groupEl);
   items.forEach(item => {
     const wrap = document.createElement("div");
@@ -2262,11 +2234,24 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
   });
 }
 
+function subSourceCheckRow(sub){
+  if(isCommonDeductSub(sub)) return null;
+  const sourceText = sourceTextForSub(sub);
+  if(!String(sourceText || "").trim()) return null;
+  const row = document.createElement("div");
+  row.className = "subSourceCheckRow";
+  row.innerHTML = `
+    <textarea class="subSourceCheckInput" data-sub="${escapeHtml(sub)}" placeholder="답안을 입력하고 본문 확인">${escapeHtml(state.sourceCheckAnswers?.[sub] || "")}</textarea>
+    <button class="btn subSourceCheckBtn" type="button" data-sub="${escapeHtml(sub)}">본문 확인</button>
+  `;
+  return row;
+}
+
 function exampleAnswerForSub(sub, question=activeQuestion()){
   const answer = String(question.exampleAnswer || "").trim();
   if(!answer) return "";
   if(sub === "공통") return answer;
-  return splitAnswerBySub(answer)[sub] || "";
+  return splitAnswerBySub(answer, question)[sub] || "";
 }
 
 function setExampleAnswerForSub(sub, value, question=activeQuestion()){
@@ -2275,7 +2260,7 @@ function setExampleAnswerForSub(sub, value, question=activeQuestion()){
     question.exampleAnswer = text;
     return;
   }
-  const answers = splitAnswerBySub(question.exampleAnswer || "");
+  const answers = splitAnswerBySub(question.exampleAnswer || "", question);
   if(text) answers[sub] = text;
   else delete answers[sub];
   question.exampleAnswer = subOptions(question)
@@ -2642,87 +2627,46 @@ function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDet
   setAutoAssistStatus(`${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`, false, statusEl);
 }
 
-function extractAnswerTokens(text){
-  const raw = text.split(/[\s,\.!?()\[\]「」『』《》""''·:;\/\\~\-\n]+/)
-    .map(t => t.replace(/^[^가-힣a-zA-Z0-9]+|[^가-힣a-zA-Z0-9]+$/g, ""))
-    .filter(t => t.length >= 2);
-  return [...new Set(raw)];
+function extractAnswerPhrases(text){
+  const phrases = String(text || "")
+    .split(/\n+/)
+    .map(line => line.trim().replace(/\s+/g, " "))
+    .filter(line => compactTextWithMap(line).text.length >= 2);
+  return [...new Set(phrases)];
 }
 
 function runSourceCheckOnText(answerText, sourceText, sourceEl, highlightEl){
-  const tokens = extractAnswerTokens(answerText);
+  const phrases = extractAnswerPhrases(answerText);
   const sourceRanges = [];
   const foundInSource = [];
   const missingFromSource = [];
-  tokens.forEach(token => {
-    const ranges = sourceMatchRanges(sourceText, token);
-    if(ranges.length > 0){ sourceRanges.push(...ranges); foundInSource.push(token); }
-    else { missingFromSource.push(token); }
+  phrases.forEach(phrase => {
+    const ranges = sourceMatchRanges(sourceText, phrase);
+    if(ranges.length > 0){ sourceRanges.push(...ranges); foundInSource.push(phrase); }
+    else { missingFromSource.push(phrase); }
   });
   if(sourceEl && highlightEl) updateSourceHighlight(sourceRanges, sourceEl, highlightEl);
-  return {tokens, sourceRanges, foundInSource, missingFromSource};
+  return {phrases, sourceRanges, foundInSource, missingFromSource};
 }
 
-function checkSourceTextKeywords({
-  answerEl=els.sourceCheckInput,
-  sourceEl=null,
-  highlightEl=null,
-  statusEl=els.autoDetectStatus
-}={}){
+function checkSubSourceTextKeywords(sub, answerEl){
   const answerText = String(answerEl?.value || "").trim();
   if(!answerText){
     showToast("답안 텍스트를 먼저 입력하세요.");
     return;
   }
-
-  const question = activeQuestion();
-  const hasSubs = (question.subs?.length || 0) > 0;
-
-  // popup 전용: sourceEl/highlightEl이 명시적으로 전달된 경우 (팝업 창)
-  if(sourceEl){
-    const sourceText = String(sourceEl.value || "").trim();
-    if(!sourceText){ showToast("등록 본문을 먼저 입력하세요."); return; }
-    const {tokens, sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(answerText, sourceText, sourceEl, highlightEl);
-    sourceHighlightRanges = sourceRanges;
-    if(!tokens.length){ showToast("답안에서 확인할 단어를 찾을 수 없습니다."); return; }
-    if(!foundInSource.length){
-      showToast(`본문에 없음: ${missingFromSource.join(", ")}`);
-    } else {
-      openSourceHighlightModal([{label:null, sourceText, ranges:sourceRanges, foundInSource, missingFromSource}]);
-    }
+  const sourceText = sourceTextForSub(sub);
+  if(!String(sourceText || "").trim()){
+    showToast("설정창에서 소문항 본문을 먼저 입력하세요.");
     return;
   }
-
-  if(hasSubs){
-    const answerBySub = splitAnswerBySub(answerText);
-    const groups = [];
-    (question.subs || []).forEach(sub => {
-      const subSource = (question.subSourceTexts || {})[sub] || "";
-      if(!subSource) return;
-      const subAnswer = answerBySub[sub] || answerText;
-      const {sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(subAnswer, subSource);
-      groups.push({label:sub, sourceText:subSource, ranges:sourceRanges, foundInSource, missingFromSource});
-    });
-    if(!groups.length){ showToast("설정창에서 소문항 본문을 먼저 입력하세요."); return; }
-    const allMissing = groups.every(g => !g.foundInSource.length);
-    if(allMissing){
-      const missing = groups.flatMap(g => g.missingFromSource.map(w => `${g.label}: ${w}`));
-      showToast(`본문에 없음: ${missing.join(", ")}`);
-    } else {
-      openSourceHighlightModal(groups);
-    }
+  state.sourceCheckAnswers[sub] = answerText;
+  const {phrases, sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(answerText, sourceText);
+  if(!phrases.length){
+    showToast("답안에서 확인할 문구를 찾을 수 없습니다.");
     return;
   }
-
-  const sourceText = (question.sourceText || "").trim();
-  if(!sourceText){ showToast("설정창에서 본문을 먼저 입력하세요."); return; }
-  const {tokens, sourceRanges, foundInSource, missingFromSource} = runSourceCheckOnText(answerText, sourceText);
-  if(!tokens.length){ showToast("답안에서 확인할 단어를 찾을 수 없습니다."); return; }
-  if(!foundInSource.length){
-    showToast(`본문에 없음: ${missingFromSource.join(", ")}`);
-  } else {
-    openSourceHighlightModal([{label:null, sourceText, ranges:sourceRanges, foundInSource, missingFromSource}]);
-  }
+  openSourceHighlightModal([{label:sub, sourceText, ranges:sourceRanges, foundInSource, missingFromSource}]);
 }
 
 function openSourceHighlightModal(groups){
@@ -2732,16 +2676,16 @@ function openSourceHighlightModal(groups){
     const foundNote = foundInSource.length ? `<span style="color:var(--accent)">본문에 있음: ${escapeHtml(foundInSource.join(", "))}</span>` : "";
     const missingNote = missingFromSource.length ? `<span style="color:var(--danger)">본문에 없음: ${escapeHtml(missingFromSource.join(", "))}</span>` : "";
     const notes = [foundNote, missingNote].filter(Boolean).join(" &nbsp;/&nbsp; ");
-    return `<div>
-      ${label ? `<div style="font-size:12px;font-weight:850;margin-bottom:4px">${escapeHtml(label)}</div>` : ""}
-      <div style="font-size:12px;margin-bottom:6px">${notes}</div>
-      <div class="sourceHighlightWrap" style="min-height:80px;max-height:240px;overflow:auto">
-        <div class="sourceHighlightBackdrop" style="pointer-events:none" aria-hidden="true">${highlighted}</div>
-        <textarea class="sourceHighlightInput" readonly style="color:transparent;caret-color:transparent;resize:none;height:100%;min-height:80px">${escapeHtml(sourceText)}</textarea>
+    return `<section class="sourceResult">
+      <div class="sourceResultHead">
+        ${label ? `<div class="sourceResultLabel">${escapeHtml(label)}</div>` : "<div></div>"}
+        <div class="sourceResultNotes">${notes}</div>
       </div>
-    </div>`;
+      <div class="sourceResultBox" tabindex="0">${highlighted}</div>
+    </section>`;
   }).join("");
   els.sourceHighlightModal.classList.remove("hidden");
+  requestAnimationFrame(() => els.sourceHighlightModalBody.querySelector(".sourceResultBox")?.focus());
 }
 
 function savedRecordCount(){
@@ -3016,7 +2960,6 @@ function updateCompleteButton(){
   els.clearCurrentBtn.disabled = !state.pdf || completed;
   if(els.addRubricBottomBtn) els.addRubricBottomBtn.disabled = !state.pdf || completed;
   if(els.autoDetectBtn) els.autoDetectBtn.disabled = !state.pdf || completed;
-  if(els.sourceCheckBtn) els.sourceCheckBtn.disabled = completed;
   syncRubricPopup();
 }
 
@@ -4250,13 +4193,21 @@ function isSubLabel(value){
   return /^\(?\d+\)?$/.test(String(value || "").trim());
 }
 
-function splitAnswerBySub(text){
+function escapeRegExp(value){
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function splitAnswerBySub(text, question=null){
   const result = {};
   const value = String(text || "");
-  const markers = [...value.matchAll(/\((\d+)\)/g)];
+  const subs = Array.isArray(question?.subs) ? question.subs.map(sub => String(sub).trim()).filter(Boolean) : [];
+  const markerPattern = subs.length
+    ? new RegExp(`(^|\\n)\\s*(${subs.map(escapeRegExp).join("|")})\\s*`, "g")
+    : /()(\(\d+\))\s*/g;
+  const markers = [...value.matchAll(markerPattern)];
   markers.forEach((marker, index) => {
     const next = markers[index + 1];
-    result[`(${marker[1]})`] = value.slice(marker.index + marker[0].length, next ? next.index : value.length).trim();
+    result[marker[2]] = value.slice(marker.index + marker[0].length, next ? next.index : value.length).trim();
   });
   return result;
 }
@@ -5084,7 +5035,8 @@ els.rubricList.addEventListener("click", evt => {
     const activeCriterion = evt.target.closest(".criterion");
     const isAllowedEditorClick = activeEditor || activeCriterion?.dataset.id === state.editingRubricId;
     const isExampleInput = evt.target.closest(".subExampleAnswerInput");
-    if(!isAllowedEditorClick && !isExampleInput){
+    const isSourceCheckControl = evt.target.closest(".subSourceCheckRow");
+    if(!isAllowedEditorClick && !isExampleInput && !isSourceCheckControl){
       evt.preventDefault();
       showToast("현재 편집 중인 루브릭을 먼저 적용하거나 닫아주세요.");
       return;
@@ -5127,6 +5079,12 @@ els.rubricList.addEventListener("click", evt => {
     removeKeywordBtn.closest(".keywordEditChip").remove();
     return;
   }
+  const subSourceCheckBtn = evt.target.closest(".subSourceCheckBtn");
+  if(subSourceCheckBtn){
+    const sub = subSourceCheckBtn.dataset.sub || subOptions()[0];
+    checkSubSourceTextKeywords(sub, subSourceCheckBtn.closest(".subSourceCheckRow")?.querySelector(".subSourceCheckInput"));
+    return;
+  }
   if(evt.target.closest(".keywordEditInput,.keywordScoreInput")) return;
   const cancelInlineBtn = evt.target.closest(".inlineRubricCancelBtn");
   if(cancelInlineBtn){
@@ -5160,6 +5118,10 @@ els.rubricList.addEventListener("input", evt => {
   }
   const textarea = evt.target.closest(".keywordEditInput");
   if(textarea) resizeKeywordTextarea(textarea);
+  const subSourceInput = evt.target.closest(".subSourceCheckInput");
+  if(subSourceInput){
+    state.sourceCheckAnswers[subSourceInput.dataset.sub || ""] = subSourceInput.value;
+  }
 });
 els.rubricList.addEventListener("change", evt => {
   const typeInput = evt.target.closest(".rubricTypeInput");
@@ -5293,7 +5255,6 @@ window.addEventListener("keydown", evt => {
 });
 
 els.autoDetectBtn.addEventListener("click", () => autoDetectKeywords());
-els.sourceCheckBtn.addEventListener("click", () => checkSourceTextKeywords());
 els.closeSourceHighlightModalBtn.addEventListener("click", () => els.sourceHighlightModal.classList.add("hidden"));
 els.sourceHighlightModal.addEventListener("click", evt => {
   if(evt.target === els.sourceHighlightModal) els.sourceHighlightModal.classList.add("hidden");
@@ -5311,12 +5272,12 @@ promptInitialSetupIfNeeded();
 </script>
 
 <div class="modalBackdrop hidden" id="sourceHighlightModal" role="dialog" aria-modal="true" aria-labelledby="sourceHighlightModalTitle">
-  <div class="modal" style="width:min(680px,100%)">
+  <div class="modal sourceModal">
     <div class="modalHead">
       <h2 class="panelTitle" id="sourceHighlightModalTitle">본문 확인</h2>
       <button class="btn mini" id="closeSourceHighlightModalBtn" type="button">닫기</button>
     </div>
-    <div id="sourceHighlightModalBody" style="padding:14px;display:grid;gap:14px"></div>
+    <div class="sourceModalBody" id="sourceHighlightModalBody"></div>
   </div>
 </div>
 </body>
