@@ -33,140 +33,185 @@ a{color:inherit;text-decoration:none}
 .shell{
   min-height:100vh;
   display:grid;
-  grid-template-rows:auto 1fr auto;
-}
-header{
-  background:#fbfcfe;
-  border-bottom:1px solid var(--line);
+  grid-template-rows:1fr auto;
 }
 .wrap{
   width:min(1120px,100%);
   margin:0 auto;
-  padding:18px 20px;
+  padding:0 20px;
 }
-.top{
+
+/* Hero */
+.hero{
+  padding:min(14vh,120px) 20px 36px;
+  text-align:center;
   display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
+  flex-direction:column;
+  align-items:center;
   gap:16px;
 }
-h1{
-  margin:0;
-  font-size:clamp(24px,4vw,38px);
-  line-height:1.12;
-}
-.sub{
-  margin:7px 0 0;
-  color:var(--muted);
-  font-size:14px;
-  line-height:1.5;
-}
-.badge{
+.heroBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
   border:1px solid #c7e4ec;
   background:var(--accent2);
   color:var(--accent);
   border-radius:999px;
-  padding:7px 10px;
+  padding:7px 14px;
   font-size:12px;
   font-weight:850;
-  white-space:nowrap;
 }
-main .wrap{
-  padding-top:28px;
-  padding-bottom:34px;
+.heroTitle{
+  margin:4px 0 0;
+  font-size:clamp(32px,6vw,64px);
+  line-height:1.16;
+  font-weight:900;
+  letter-spacing:-0.02em;
 }
-.toolGrid{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:14px;
+.heroSub{
+  margin:0;
+  max-width:560px;
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.65;
 }
-.tool{
-  min-height:210px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:var(--panel);
-  box-shadow:var(--shadow);
-  padding:18px;
-  display:grid;
-  grid-template-rows:auto 1fr auto;
+
+/* Tool buttons */
+.toolButtons{
+  width:min(1120px,100%);
+  margin:0 auto;
+  padding:12px 20px 8px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:flex-start;
   gap:16px;
 }
-.tool.available{
-  border-color:#bedde6;
+.toolBtn{
+  width:270px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--panel);
+  box-shadow:var(--shadow);
+  padding:14px 18px;
+  display:block;
+  transition:border-radius .3s ease, border-color .3s ease, box-shadow .3s ease, transform .3s ease;
 }
-.toolHead{
+.toolBtn.available{border-color:#bedde6}
+.toolBtn:hover,
+.toolBtn:focus-within{
+  border-radius:20px;
+  border-color:var(--accent);
+  box-shadow:0 18px 40px rgba(23,32,51,.16);
+  transform:translateY(-2px);
+}
+.toolBtn.disabled{cursor:not-allowed}
+.toolBtn.disabled:hover,
+.toolBtn.disabled:focus-within{
+  border-color:var(--line);
+  transform:none;
+}
+.toolBtnHead{
   display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
+  align-items:center;
+  gap:10px;
 }
-.mark{
-  width:42px;
-  height:42px;
+.toolBtnMark{
+  width:32px;
+  height:32px;
   border-radius:8px;
   display:grid;
   place-items:center;
   background:#eef8fb;
   color:var(--accent);
   font-weight:950;
+  font-size:14px;
   border:1px solid #c7e4ec;
   flex:0 0 auto;
 }
-.state{
+.toolBtn.disabled .toolBtnMark{
+  background:#f4f6f9;
+  color:#8a94a6;
+  border-color:var(--line);
+}
+.toolBtnTitle{
+  flex:1 1 auto;
+  font-size:15px;
+  font-weight:850;
+  color:var(--ink);
+  text-align:left;
+}
+.toolBtn.disabled .toolBtnTitle{color:#8a94a6}
+.toolBtnState{
   border:1px solid var(--line);
   border-radius:999px;
-  padding:5px 8px;
-  font-size:11px;
+  padding:3px 8px;
+  font-size:10px;
   font-weight:900;
   color:var(--muted);
   white-space:nowrap;
+  flex:0 0 auto;
 }
-.state.ready{
+.toolBtnState.ready{
   color:var(--green);
   border-color:#bfe3cc;
   background:#f3fbf6;
 }
-.toolTitle{
-  margin:0;
-  font-size:19px;
-  line-height:1.35;
+
+/* hover-expand panel (CSS grid-rows trick, no JS) */
+.toolBtnPanel{
+  display:grid;
+  grid-template-rows:0fr;
+  transition:grid-template-rows .35s ease;
 }
-.toolText{
-  margin:8px 0 0;
+.toolBtn:hover .toolBtnPanel,
+.toolBtn:focus-within .toolBtnPanel{
+  grid-template-rows:1fr;
+}
+.toolBtnPanelInner{
+  overflow:hidden;
+  min-height:0;
+}
+.toolBtnDesc{
+  margin:12px 0 0;
+  padding-top:12px;
+  border-top:1px solid var(--line);
   color:var(--muted);
-  font-size:13px;
-  line-height:1.55;
+  font-size:12.5px;
+  line-height:1.6;
+  text-align:left;
 }
-.actions{
+.platforms{
+  margin-top:10px;
   display:flex;
-  gap:8px;
   flex-wrap:wrap;
+  gap:6px;
 }
-.btn{
-  min-height:40px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  padding:9px 12px;
-  background:#fff;
-  color:var(--ink);
-  font-weight:850;
-  font-size:13px;
+.platform{
   display:inline-flex;
   align-items:center;
-  justify-content:center;
+  gap:4px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:3px 9px;
+  font-size:11px;
+  font-weight:750;
+  color:var(--muted);
+  background:#f7f8fb;
 }
-.btn.primary{
-  background:var(--accent);
-  color:#fff;
-  border-color:var(--accent);
-}
-.btn.disabled{
+.platform.soon{
   color:#8a94a6;
-  background:#f4f6f9;
-  cursor:not-allowed;
+  border-style:dashed;
 }
+
 .notice{
-  margin-top:18px;
+  width:min(1120px,100%);
+  margin:26px auto 0;
+  padding:0 20px 34px;
+}
+.notice p{
+  margin:0;
   border:1px solid var(--line);
   border-radius:8px;
   background:#fff;
@@ -175,6 +220,7 @@ main .wrap{
   font-size:13px;
   line-height:1.6;
 }
+
 footer{
   border-top:1px solid var(--line);
   background:#fbfcfe;
@@ -185,93 +231,95 @@ footer .wrap{
   color:var(--muted);
   font-size:12px;
 }
-@media (max-width:860px){
-  .top{align-items:flex-start;flex-direction:column}
-  .toolGrid{grid-template-columns:1fr 1fr}
-}
+
 @media (max-width:620px){
-  .wrap{padding-left:14px;padding-right:14px}
-  .toolGrid{grid-template-columns:1fr}
-  .tool{min-height:190px}
-  .btn{width:100%}
+  .hero{padding-top:64px}
+  .toolBtn{width:100%;max-width:380px}
 }
 </style>
 </head>
 <body>
 <div class="shell">
-  <header>
-    <div class="wrap top">
-      <div>
-        <h1>평가 도구 모음</h1>
-        <p class="sub">필요한 채점 도구를 선택하세요. 입력 자료는 각 기기의 브라우저 저장소와 내려받은 백업 파일에 보관됩니다.</p>
-      </div>
-      <div class="badge">GitHub Pages용</div>
-    </div>
-  </header>
-
   <main>
-    <div class="wrap">
-      <section class="toolGrid" aria-label="평가 도구 목록">
-        <article class="tool available">
-          <div class="toolHead">
-            <div class="mark">W</div>
-            <span class="state ready">사용 가능</span>
-          </div>
-          <div>
-            <h2 class="toolTitle">글쓰기 채점표</h2>
-            <p class="toolText">주장의 명확성, 근거의 타당성, 출처, 글의 짜임새, 분량을 기록하는 공개용 템플릿입니다.</p>
-          </div>
-          <div class="actions">
-            <a class="btn primary" href="argument-writing-grader.html">열기</a>
-          </div>
-        </article>
+    <section class="hero">
+      <span class="heroBadge">GitHub Pages용</span>
+      <h1 class="heroTitle">평가 도구 모음</h1>
+      <p class="heroSub">필요한 채점 도구를 선택하세요. 입력 자료는 각 기기의 브라우저 저장소와 내려받은 백업 파일에 보관됩니다.</p>
+    </section>
 
-        <article class="tool">
-          <div class="toolHead">
-            <div class="mark">O</div>
-            <span class="state ready">사용 가능</span>
+    <section class="toolButtons" aria-label="평가 도구 목록">
+      <a class="toolBtn available" href="argument-writing-grader.html">
+        <div class="toolBtnHead">
+          <span class="toolBtnMark">W</span>
+          <span class="toolBtnTitle">글쓰기 채점표</span>
+          <span class="toolBtnState ready">사용 가능</span>
+        </div>
+        <div class="toolBtnPanel">
+          <div class="toolBtnPanelInner">
+            <p class="toolBtnDesc">주장의 명확성, 근거의 타당성, 출처, 글의 짜임새, 분량을 기록하는 공개용 템플릿입니다.</p>
+            <div class="platforms">
+              <span class="platform">Windows 11</span>
+              <span class="platform">macOS</span>
+              <span class="platform">iPadOS</span>
+            </div>
           </div>
-          <div>
-            <h2 class="toolTitle">OMR 서술형 채점 도구</h2>
-            <p class="toolText">PDF 답안 영역을 보며 문항별 점수와 메모를 기록하는 공개용 템플릿입니다.</p>
-          </div>
-          <div class="actions">
-            <a class="btn primary" href="omr-grader.html">열기</a>
-          </div>
-        </article>
+        </div>
+      </a>
 
-        <article class="tool available">
-          <div class="toolHead">
-            <div class="mark">S</div>
-            <span class="state ready">사용 가능</span>
+      <a class="toolBtn available" href="omr-grader.html">
+        <div class="toolBtnHead">
+          <span class="toolBtnMark">O</span>
+          <span class="toolBtnTitle">OMR 서술형 채점 도구</span>
+          <span class="toolBtnState ready">사용 가능</span>
+        </div>
+        <div class="toolBtnPanel">
+          <div class="toolBtnPanelInner">
+            <p class="toolBtnDesc">PDF 답안 영역을 보며 문항별 점수와 메모를 기록하는 공개용 템플릿입니다.</p>
+            <div class="platforms">
+              <span class="platform">Windows 11</span>
+              <span class="platform">macOS</span>
+            </div>
           </div>
-          <div>
-            <h2 class="toolTitle">말하기 채점표</h2>
-            <p class="toolText">발표 시간, 주제와 입장, 루브릭별 점수, 메모와 결과표를 기록하는 공개용 템플릿입니다.</p>
-          </div>
-          <div class="actions">
-            <a class="btn primary" href="logical-speaking-grader.html">열기</a>
-          </div>
-        </article>
+        </div>
+      </a>
 
-        <article class="tool">
-          <div class="toolHead">
-            <div class="mark">C</div>
-            <span class="state">준비 중</span>
+      <a class="toolBtn available" href="logical-speaking-grader.html">
+        <div class="toolBtnHead">
+          <span class="toolBtnMark">S</span>
+          <span class="toolBtnTitle">말하기 채점표</span>
+          <span class="toolBtnState ready">사용 가능</span>
+        </div>
+        <div class="toolBtnPanel">
+          <div class="toolBtnPanelInner">
+            <p class="toolBtnDesc">발표 시간, 주제와 입장, 루브릭별 점수, 메모와 결과표를 기록하는 공개용 템플릿입니다.</p>
+            <div class="platforms">
+              <span class="platform">Windows 11</span>
+              <span class="platform">macOS</span>
+              <span class="platform">iPadOS</span>
+            </div>
           </div>
-          <div>
-            <h2 class="toolTitle">점수 확인</h2>
-            <p class="toolText">학생 확인용 점수 조회 화면을 연결할 자리입니다.</p>
-          </div>
-          <div class="actions">
-            <span class="btn disabled">추가 예정</span>
-          </div>
-        </article>
-      </section>
+        </div>
+      </a>
 
-      <div class="notice">
-        공개 저장소에는 도구 파일만 올리고, 학생 명단과 채점 결과는 도구 안에서 직접 입력하거나 백업 JSON으로 관리하세요.
+      <div class="toolBtn disabled" tabindex="0">
+        <div class="toolBtnHead">
+          <span class="toolBtnMark">C</span>
+          <span class="toolBtnTitle">점수 확인</span>
+          <span class="toolBtnState">준비 중</span>
+        </div>
+        <div class="toolBtnPanel">
+          <div class="toolBtnPanelInner">
+            <p class="toolBtnDesc">학생 확인용 점수 조회 화면을 연결할 자리입니다. 준비되는 대로 열립니다.</p>
+            <div class="platforms">
+              <span class="platform soon">지원 예정</span>
+            </div>
+          </div>
+        </div>
       </div>
+    </section>
+
+    <div class="notice">
+      <p>공개 저장소에는 도구 파일만 올리고, 학생 명단과 채점 결과는 도구 안에서 직접 입력하거나 백업 JSON으로 관리하세요.</p>
     </div>
   </main>
 
