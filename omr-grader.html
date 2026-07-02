@@ -264,6 +264,8 @@ textarea{min-height:72px;resize:vertical}
 .subSourceWrap{position:relative;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;margin:4px 0 8px}
 .subSourceWrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14)}
 .subSourceWrap .sourceHighlightBackdrop,.subSourceWrap .sourceHighlightInput{min-height:44px;max-height:160px;font-size:12px;padding:6px 10px}
+.commonDeductGroup{border-top:2px dashed var(--line);margin-top:8px;padding-top:4px}
+.commonDeductLabel{color:var(--danger,#d32f2f);font-weight:850}
 .sourceHighlightWrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(23,107,135,.14)}
 .sourceHighlightBackdrop,.sourceHighlightInput{margin:0;border:0;border-radius:0;background:transparent;width:100%;min-height:112px;padding:8px 10px;font:inherit;font-size:inherit;line-height:1.45;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
 .sourceHighlightBackdrop{position:absolute;inset:0;color:var(--ink);pointer-events:none;overflow:auto}
@@ -1241,7 +1243,10 @@ function editableCrop(){
 }
 function subOptions(question=activeQuestion()){
   const subs = Array.isArray(question?.subs) ? question.subs.map(sub => String(sub).trim()).filter(Boolean) : [];
-  return subs.length ? subs : ["공통"];
+  return subs.length ? [...subs, "공통"] : ["공통"];
+}
+function isCommonDeductSub(sub, question=activeQuestion()){
+  return sub === "공통" && (question?.subs?.length || 0) > 0;
 }
 function normalizeSubValue(value, question=activeQuestion()){
   const options = subOptions(question);
@@ -1440,7 +1445,7 @@ function renderQuestionSettings(){
         <button class="btn mini danger questionDeleteBtn" type="button" ${state.questions.length <= 1 ? "disabled" : ""}>삭제</button>
       </div>
       <div class="subQuestionList">
-        ${subOptions(question).filter(sub => sub !== "공통" || question.subs?.length).map((sub, subIndex) => `
+        ${subOptions(question).filter(sub => sub !== "공통").map((sub, subIndex) => `
           <div class="subQuestionRow" data-index="${subIndex}">
             <input class="subQuestionInput" value="${escapeHtml(sub)}" title="소문항 이름">
             <input class="subQuestionScoreInput" type="number" min="0" step="1" value="${escapeHtml(subMaxScore(question, sub))}" title="소문항 총점" placeholder="총점">
@@ -2154,26 +2159,41 @@ window.__omrRubricPopupSelect = async (kind, value) => {
 
 function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
   const qrec = currentQuestionRecord();
+  const isCommonDeduct = isCommonDeductSub(sub);
   const isUnwritten = Boolean(qrec?.unwrittenSubs?.[sub]);
   const isCompleted = Boolean(qrec?.completedSubs?.[sub]);
   const groupEl = document.createElement("div");
-  groupEl.className = `subRubricGroup${isUnwritten ? " unwritten" : ""}${isCompleted ? " completed" : ""}`;
+  groupEl.className = `subRubricGroup${isUnwritten ? " unwritten" : ""}${isCompleted ? " completed" : ""}${isCommonDeduct ? " commonDeductGroup" : ""}`;
   const title = document.createElement("div");
   title.className = "subRubricTitle";
   title.dataset.sub = sub;
-  const exampleAnswer = exampleAnswerForSub(sub);
-  title.innerHTML = `
-    <span class="subRubricLabel">${escapeHtml(sub)}</span>
-    <textarea class="subExampleAnswerInput" data-sub="${escapeHtml(sub)}" placeholder="예시답안 입력">${escapeHtml(exampleAnswer)}</textarea>
-    <span style="display:flex;align-items:center;gap:6px">
-      <button class="subCompleteBtn${isCompleted ? " on" : ""}" type="button" data-sub="${escapeHtml(sub)}" aria-pressed="${isCompleted ? "true" : "false"}">완료</button>
-      <button class="subUnwrittenBtn${isUnwritten ? " on" : ""}" type="button" data-sub="${escapeHtml(sub)}" aria-pressed="${isUnwritten ? "true" : "false"}">미작성</button>
-      <strong class="subScoreBadge">${scoreFractionHtml(subTotal, subMaxScore(activeQuestion(), sub))}</strong>
-      <button class="subAddRubricBtn" type="button" data-sub="${escapeHtml(sub)}" title="이 소문항에 루브릭 추가">+</button>
-    </span>
-  `;
+  if(isCommonDeduct){
+    const deductHtml = subTotal < 0
+      ? `<span class="scoreNow negative">${escapeHtml(formatSignedScore(subTotal))}점</span>`
+      : `<span class="scoreNow">0점</span>`;
+    title.innerHTML = `
+      <span class="subRubricLabel commonDeductLabel">공통 영역 감점</span>
+      <span style="flex:1"></span>
+      <span style="display:flex;align-items:center;gap:6px">
+        <strong class="subScoreBadge">${deductHtml}</strong>
+        <button class="subAddRubricBtn" type="button" data-sub="${escapeHtml(sub)}" title="공통 감점 항목 추가">+</button>
+      </span>
+    `;
+  } else {
+    const exampleAnswer = exampleAnswerForSub(sub);
+    title.innerHTML = `
+      <span class="subRubricLabel">${escapeHtml(sub)}</span>
+      <textarea class="subExampleAnswerInput" data-sub="${escapeHtml(sub)}" placeholder="예시답안 입력">${escapeHtml(exampleAnswer)}</textarea>
+      <span style="display:flex;align-items:center;gap:6px">
+        <button class="subCompleteBtn${isCompleted ? " on" : ""}" type="button" data-sub="${escapeHtml(sub)}" aria-pressed="${isCompleted ? "true" : "false"}">완료</button>
+        <button class="subUnwrittenBtn${isUnwritten ? " on" : ""}" type="button" data-sub="${escapeHtml(sub)}" aria-pressed="${isUnwritten ? "true" : "false"}">미작성</button>
+        <strong class="subScoreBadge">${scoreFractionHtml(subTotal, subMaxScore(activeQuestion(), sub))}</strong>
+        <button class="subAddRubricBtn" type="button" data-sub="${escapeHtml(sub)}" title="이 소문항에 루브릭 추가">+</button>
+      </span>
+    `;
+  }
   groupEl.appendChild(title);
-  if(activeQuestion().subs?.length > 0){
+  if(activeQuestion().subs?.length > 0 && !isCommonDeduct){
     const sourceText = (activeQuestion().subSourceTexts || {})[sub] || "";
     const srcRow = document.createElement("div");
     srcRow.className = "subSourceWrap";
@@ -2546,8 +2566,16 @@ function resizeKeywordTextareas(root=els.rubricList){
 function updateTotal(){
   const qrec = currentQuestionRecord();
   const scores = qrec?.scores || {};
+  const question = activeQuestion();
   const totals = rubricSubTotals(activeRubric(), scores);
   els.subTotalList.innerHTML = "";
+  const commonDeduct = isCommonDeductSub("공통", question) ? (totals["공통"] || 0) : 0;
+  if(commonDeduct < 0){
+    const item = document.createElement("div");
+    item.className = "subTotalItem";
+    item.innerHTML = `<span>공통 영역 감점</span><strong style="color:var(--danger)">${escapeHtml(formatSignedScore(commonDeduct))}점</strong>`;
+    els.subTotalList.appendChild(item);
+  }
   const current = Object.values(totals).reduce((sum, value) => sum + value, 0);
   els.totalScore.innerHTML = scoreFractionHtml(current, questionMaxScore());
 }
@@ -2731,11 +2759,13 @@ function subHasGradingMark(qrec, sub, question=activeQuestion()){
 }
 
 function missingSubLabels(qrec=currentQuestionRecord(), question=activeQuestion()){
-  return subOptions(question).filter(sub => !subHasGradingMark(qrec, sub, question));
+  return subOptions(question)
+    .filter(sub => !isCommonDeductSub(sub, question))
+    .filter(sub => !subHasGradingMark(qrec, sub, question));
 }
 
 function allSubsCompleted(qrec=currentQuestionRecord(), question=activeQuestion()){
-  const subs = subOptions(question);
+  const subs = subOptions(question).filter(sub => !isCommonDeductSub(sub, question));
   if(!subs.length) return false;
   return subs.every(sub => Boolean(qrec?.completedSubs?.[sub]));
 }
@@ -2759,9 +2789,9 @@ function markAllSubsCompleted(qrec=currentQuestionRecord(), question=activeQuest
   if(!qrec) return;
   qrec.completedSubs = qrec.completedSubs || {};
   qrec.unwrittenSubs = qrec.unwrittenSubs || {};
-  subOptions(question).forEach(sub => {
-    qrec.completedSubs[sub] = true;
-  });
+  subOptions(question)
+    .filter(sub => !isCommonDeductSub(sub, question))
+    .forEach(sub => { qrec.completedSubs[sub] = true; });
 }
 
 function clearAllSubsCompleted(qrec=currentQuestionRecord(), question=activeQuestion()){
@@ -3511,8 +3541,10 @@ function shareReportSubGroupsHtml(question, qrec){
       const isUnwritten = Boolean(qrec.unwrittenSubs?.[sub]);
       if(!items && !isUnwritten) return "";
       const total = Number(subTotals[sub] || 0);
-      return `<section class="subGroup${isUnwritten ? " unwritten" : ""}">
-        <div class="subLabel">${escapeHtml(sub)}</div>
+      const isCommonDeduct = isCommonDeductSub(sub, question);
+      const subLabel = isCommonDeduct ? "공통 영역 감점" : sub;
+      return `<section class="subGroup${isUnwritten ? " unwritten" : ""}${isCommonDeduct ? " commonDeduct" : ""}">
+        <div class="subLabel">${escapeHtml(subLabel)}</div>
         <div class="subItems">${isUnwritten ? `<div class="item"><strong>미작성</strong></div>` : items}</div>
         <div class="subScore${total < 0 ? " negative" : ""}">${total > 0 ? "+" : ""}${escapeHtml(formatScore(total))}점</div>
       </section>`;
@@ -4037,7 +4069,9 @@ function rubricSubTotals(rubric, scores, question=activeQuestion()){
   });
   const totals = {};
   subOptions(question).forEach(sub => {
-    totals[sub] = Math.max(0, rawTotals[sub] || 0);
+    totals[sub] = isCommonDeductSub(sub, question)
+      ? (rawTotals[sub] || 0)
+      : Math.max(0, rawTotals[sub] || 0);
   });
   return totals;
 }
@@ -5016,7 +5050,9 @@ els.rubricList.addEventListener("click", evt => {
   }
   const subAddBtn = evt.target.closest(".subAddRubricBtn");
   if(subAddBtn){
-    addInlineRubricItem("score", subAddBtn.dataset.sub || subOptions()[0]);
+    const sub = subAddBtn.dataset.sub || subOptions()[0];
+    const type = isCommonDeductSub(sub) ? "deduct" : "score";
+    addInlineRubricItem(type, sub);
     return;
   }
   const subCompleteBtn = evt.target.closest(".subCompleteBtn");
