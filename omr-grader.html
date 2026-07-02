@@ -648,6 +648,7 @@ textarea{min-height:72px;resize:vertical}
         <button class="settingsTab on" type="button" data-pane="basic">기본</button>
         <button class="settingsTab" type="button" data-pane="questions">문항</button>
         <button class="settingsTab" type="button" data-pane="roster">명렬</button>
+        <button class="settingsTab" type="button" data-pane="merge">PDF 병합</button>
         <button class="settingsTab" type="button" data-pane="lab">실험실</button>
         <button class="settingsTab" type="button" data-pane="results">결과</button>
       </div>
@@ -691,12 +692,29 @@ textarea{min-height:72px;resize:vertical}
       <section class="panel settingsPane hidden" id="settingsRosterPane">
         <div class="panelHead">
           <h2 class="panelTitle">학생 명렬</h2>
-          <button class="btn mini" id="applyRosterBtn">적용</button>
+          <div class="compactBtns">
+            <label class="btn mini" style="cursor:pointer">CSV/엑셀 가져오기<input type="file" id="rosterFileInput" accept=".csv,.tsv,.txt" class="hidden"></label>
+            <button class="btn mini" id="applyRosterBtn">적용</button>
+          </div>
         </div>
-        <div class="statusLine" style="margin-bottom:8px">한 줄에 한 명씩 입력합니다. 예: 1반,12,학생이름</div>
+        <div class="statusLine" style="margin-bottom:8px">한 줄에 한 명씩 입력합니다. 예: 1반,12,학생이름 · CSV/엑셀에서 가져오려면 엑셀을 CSV로 저장 후 위 버튼으로 불러오세요.</div>
         <textarea id="rosterText" placeholder="1반,1,학생1&#10;1반,2,학생2&#10;1반,3,학생3" style="min-height:260px"></textarea>
         <div class="statusLine" id="rosterStatus">명렬 없음</div>
         <div class="statusLine" id="missingRosterList"></div>
+      </section>
+      <section class="panel settingsPane hidden" id="settingsMergePane">
+        <div class="panelHead"><h2 class="panelTitle">PDF 병합</h2></div>
+        <div class="statusLine" style="margin-bottom:10px">반별 PDF 여러 개를 선택하면 파일명 순으로 정렬해 하나로 합쳐 다운로드합니다. 이후 채점 화면에서 불러오세요.</div>
+        <div class="field">
+          <span class="label">PDF 파일 선택 (다중 선택 가능)</span>
+          <input id="mergePdfInput" type="file" accept=".pdf,application/pdf" multiple>
+        </div>
+        <div class="field">
+          <span class="label">또는 폴더 전체 선택</span>
+          <input id="mergePdfFolderInput" type="file" accept=".pdf,application/pdf" webkitdirectory>
+        </div>
+        <button class="btn mini primary" id="mergePdfBtn" type="button">PDF 병합 및 다운로드</button>
+        <div class="statusLine" id="mergePdfStatus" style="margin-top:8px">PDF를 선택하면 파일명 기준으로 정렬해 병합합니다.</div>
       </section>
       <section class="panel settingsPane hidden" id="settingsLabPane">
         <div class="panelHead"><h2 class="panelTitle">실험실</h2></div>
@@ -728,7 +746,11 @@ textarea{min-height:72px;resize:vertical}
         </label>
         <div class="field" style="margin-top:14px">
           <span class="label">OMR JPG → PDF 변환</span>
-          <input id="jpgPdfInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+          <div class="compactBtns" style="margin-bottom:6px">
+            <label class="btn mini" style="cursor:pointer">파일 선택<input id="jpgPdfInput" type="file" accept="image/jpeg,image/png,image/webp" multiple class="hidden"></label>
+            <label class="btn mini" style="cursor:pointer">폴더 선택<input id="jpgPdfFolderInput" type="file" accept="image/jpeg,image/png,image/webp" webkitdirectory class="hidden"></label>
+          </div>
+          <div class="statusLine" id="jpgPdfSelectedStatus" style="margin-bottom:6px">선택된 파일 없음</div>
           <div class="compactBtns">
             <button class="btn mini primary" id="convertJpgPdfBtn" type="button">PDF 만들기</button>
           </div>
@@ -832,7 +854,9 @@ const els = {
   applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportShareReportBtn:$("exportShareReportBtn"), exportJsonBtn:$("exportJsonBtn"),
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"), openRubricWindowBtn:$("openRubricWindowBtn"),
-  pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
+  pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), jpgPdfFolderInput:$("jpgPdfFolderInput"), jpgPdfSelectedStatus:$("jpgPdfSelectedStatus"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
+  rosterFileInput:$("rosterFileInput"),
+  mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
   answerText:$("answerText"), sourceText:$("sourceText"), sourceHighlight:$("sourceHighlight"),
@@ -4593,8 +4617,73 @@ function download(filename, mime, text){
   URL.revokeObjectURL(url);
 }
 
+function collectJpgFiles(){
+  const f1 = [...(els.jpgPdfInput.files || [])].filter(f => f.type.startsWith("image/"));
+  const f2 = [...(els.jpgPdfFolderInput.files || [])].filter(f => f.type.startsWith("image/"));
+  const seen = new Set();
+  return [...f1, ...f2].filter(f => { const k = f.name+f.size; return seen.has(k) ? false : (seen.add(k), true); });
+}
+
+function updateJpgSelection(){
+  const files = collectJpgFiles();
+  els.jpgPdfSelectedStatus.textContent = files.length ? `${files.length}개 이미지 선택됨` : "선택된 파일 없음";
+}
+
+function parseRosterFromCsv(text){
+  const lines = text.replace(/\r/g,"").split("\n").map(l => l.trim()).filter(Boolean);
+  if(!lines.length) return "";
+  const sample = lines[0];
+  const delim = sample.includes("\t") ? "\t" : sample.includes(";") ? ";" : ",";
+  const headerKw = ["반","번호","이름","class","number","name","학번","학생","성명"];
+  const dataLines = lines.filter((line, i) => {
+    if(i !== 0) return true;
+    const cols = line.split(delim).map(c => c.toLowerCase());
+    return !headerKw.some(k => cols.some(c => c.includes(k.toLowerCase())));
+  });
+  return dataLines.map(line => {
+    const cols = line.split(delim).map(c => c.replace(/^"|"$/g,"").trim());
+    if(cols.length >= 3) return `${cols[0]},${cols[1]},${cols[2]}`;
+    if(cols.length === 2) return `,${cols[0]},${cols[1]}`;
+    return null;
+  }).filter(Boolean).join("\n");
+}
+
+async function mergePdfsAndDownload(){
+  const f1 = [...(els.mergePdfInput.files || [])].filter(f => f.name.toLowerCase().endsWith(".pdf"));
+  const f2 = [...(els.mergePdfFolderInput.files || [])].filter(f => f.name.toLowerCase().endsWith(".pdf"));
+  const files = [...f1, ...f2].sort((a,b) => a.name.localeCompare(b.name,"ko",{numeric:true}));
+  if(!files.length){ alert("병합할 PDF 파일을 선택하세요."); return; }
+  els.mergePdfBtn.disabled = true;
+  els.mergePdfStatus.textContent = "pdf-lib 로딩 중…";
+  try{
+    const {PDFDocument} = await import("https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.js");
+    const merged = await PDFDocument.create();
+    for(let i = 0; i < files.length; i++){
+      els.mergePdfStatus.textContent = `${i+1} / ${files.length} 처리 중 · ${files[i].name}`;
+      const bytes = await files[i].arrayBuffer();
+      const doc = await PDFDocument.load(bytes, {ignoreEncryption:true});
+      const pages = await merged.copyPages(doc, doc.getPageIndices());
+      pages.forEach(p => merged.addPage(p));
+    }
+    const mergedBytes = await merged.save();
+    const blob = new Blob([mergedBytes], {type:"application/pdf"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `merged_${dateStamp()}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    els.mergePdfStatus.textContent = `${files.length}개 PDF 병합 완료 · 다운로드된 파일을 채점 화면에서 불러오세요.`;
+  }catch(err){
+    console.error(err);
+    alert(`PDF 병합 중 오류: ${err.message}`);
+    els.mergePdfStatus.textContent = "PDF 병합 실패";
+  }finally{
+    els.mergePdfBtn.disabled = false;
+  }
+}
+
 async function convertJpgsToPdf(){
-  const files = [...(els.jpgPdfInput.files || [])].filter(file => file.type.startsWith("image/"));
+  const files = collectJpgFiles();
   if(!files.length){
     alert("PDF로 변환할 JPG/이미지 파일을 선택해주세요.");
     return;
@@ -4805,6 +4894,22 @@ els.pagesPerStudentInput.addEventListener("change", () => {
   updateChrome();
 });
 els.convertJpgPdfBtn.addEventListener("click", convertJpgsToPdf);
+els.jpgPdfInput.addEventListener("change", updateJpgSelection);
+els.jpgPdfFolderInput.addEventListener("change", updateJpgSelection);
+els.mergePdfBtn.addEventListener("click", mergePdfsAndDownload);
+els.rosterFileInput.addEventListener("change", async () => {
+  const file = els.rosterFileInput.files?.[0];
+  if(!file) return;
+  const text = await file.text();
+  const parsed = parseRosterFromCsv(text);
+  if(!parsed){ alert("명렬을 인식할 수 없습니다. 반,번호,이름 형식의 CSV/TSV 파일을 사용하세요."); return; }
+  els.rosterText.value = parsed;
+  state.roster = parseRoster(els.rosterText.value);
+  applyRosterToRecords();
+  persist();
+  showToast(`명렬 ${state.roster.length}명을 가져왔습니다.`);
+  els.rosterFileInput.value = "";
+});
 els.settingsModal.addEventListener("change", evt => {
   const card = evt.target.closest(".questionEditCard");
   if(!card) return;
