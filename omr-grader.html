@@ -199,6 +199,14 @@ textarea{min-height:72px;resize:vertical}
 .scoreBtns{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .scoreBtn{min-height:34px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;font-weight:800}
 .scoreBtn.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+.unwrittenOcrPanel.hidden{display:none}
+.unwrittenOcrControls{display:grid;gap:8px}
+.unwrittenOcrList{display:grid;gap:7px;margin-top:10px}
+.unwrittenOcrItem{border:1px solid var(--line);border-radius:8px;background:#fbfcfe;padding:9px;display:grid;gap:7px}
+.unwrittenOcrTop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.unwrittenOcrName{font-size:13px;font-weight:900;line-height:1.35}
+.unwrittenOcrMeta{font-size:11px;color:var(--muted);font-weight:800;line-height:1.4}
+.unwrittenOcrText{font-size:12px;line-height:1.45;color:var(--muted);word-break:keep-all;overflow-wrap:anywhere}
 .rubricEditorRows{display:grid;gap:8px;margin-bottom:10px}
 .rubricEditRow{display:grid;grid-template-columns:220px 220px minmax(0,1fr) 34px;gap:8px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fbfcfe}
 .rubricEditRow textarea{min-height:54px}
@@ -530,6 +538,18 @@ textarea{min-height:72px;resize:vertical}
       <div class="autoDetectStatus" id="autoDetectStatus"></div>
     </section>
 
+    <section class="panel unwrittenOcrPanel hidden" id="unwrittenOcrPanel">
+      <div class="panelHead">
+        <h2 class="panelTitle">답안 미작성 후보</h2>
+        <button class="btn mini" id="runUnwrittenOcrBtn" type="button">후보 찾기</button>
+      </div>
+      <div class="unwrittenOcrControls">
+        <label class="checkField" style="margin:0"><input id="unwrittenOcrShortInput" type="checkbox"> 10자 이하 답안도 후보에 포함</label>
+        <div class="statusLine" id="unwrittenOcrStatus">현재 문항 답안 영역을 텍스트 인식으로 훑어 미작성 후보만 보여줍니다.</div>
+      </div>
+      <div class="unwrittenOcrList" id="unwrittenOcrList"></div>
+    </section>
+
     <section class="panel">
       <div class="panelHead">
         <h2 class="panelTitle">루브릭</h2>
@@ -732,6 +752,13 @@ textarea{min-height:72px;resize:vertical}
         </label>
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
+            <span class="label">미작성 후보 OCR</span>
+            <span class="statusLine">현재 문항 답안 영역을 텍스트 인식으로 훑어 미작성 후보를 보여줍니다. 확정은 직접 확인 후 수동으로 합니다.</span>
+          </span>
+          <input id="unwrittenOcrEnabledInput" type="checkbox" style="width:auto;min-height:auto">
+        </label>
+        <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
+          <span>
             <span class="label">다중창 모드</span>
             <span class="statusLine">루브릭을 별도 창으로 띄워 OMR 화면과 나눠 봅니다.</span>
           </span>
@@ -790,6 +817,7 @@ const LEGACY_KEY = "publicOmrEssayGraderState.legacy";
 const SIDEBAR_WIDTH_KEY = "publicOmrEssayGraderSidebarWidth.v1";
 const EXAM_CAPTURE_KEY = "publicOmrEssayGraderExamCapture.v1";
 const EXAM_CAPTURE_PREFIX = `${EXAM_CAPTURE_KEY}.`;
+const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
 const defaultRubric = [
   {name:"내용 충실성 충족", pt:4},
   {name:"근거와 설명 충족", pt:3},
@@ -818,12 +846,13 @@ const state = {
   keywordFilter:null,
   editingRubricId:"",
   sourceCheckAnswers:{},
+  unwrittenOcr:{running:false, candidates:[], status:""},
   missingRosterKeys:[],
   studentCropMode:false,
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, pagesPerStudent:1, deductTemplate:structuredClone(defaultDeductTemplate)}
+  settings:{autoAssistEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, pagesPerStudent:1, unwrittenOcrEnabled:false, unwrittenOcrIncludeShort:false, deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
@@ -860,6 +889,7 @@ const els = {
   applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportShareReportBtn:$("exportShareReportBtn"), exportJsonBtn:$("exportJsonBtn"),
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"), openRubricWindowBtn:$("openRubricWindowBtn"),
+  unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), jpgPdfFolderInput:$("jpgPdfFolderInput"), jpgPdfSelectedStatus:$("jpgPdfSelectedStatus"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
   rosterFileInput:$("rosterFileInput"),
   mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
@@ -879,6 +909,7 @@ const memoSaveTimers = new Map();
 let rubricPopupWindow = null;
 let rubricWindowActive = false;
 let sourceHighlightRanges = [];
+let tesseractLoadPromise = null;
 
 function loadSavedState(){
   try{
@@ -987,9 +1018,13 @@ function applyAppTitle(){
 function applySettings(){
   normalizeSettings();
   const enabled = Boolean(state.settings?.autoAssistEnabled);
+  const unwrittenOcrEnabled = Boolean(state.settings?.unwrittenOcrEnabled);
   const multiWindowEnabled = Boolean(state.settings?.multiWindowEnabled);
   els.autoAssistPanel.classList.toggle("hidden", !enabled);
+  if(els.unwrittenOcrPanel) els.unwrittenOcrPanel.classList.toggle("hidden", !unwrittenOcrEnabled);
   if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
+  if(els.unwrittenOcrEnabledInput) els.unwrittenOcrEnabledInput.checked = unwrittenOcrEnabled;
+  if(els.unwrittenOcrShortInput) els.unwrittenOcrShortInput.checked = Boolean(state.settings?.unwrittenOcrIncludeShort);
   if(els.multiWindowEnabledInput) els.multiWindowEnabledInput.checked = multiWindowEnabled;
   if(els.oneHandGradingInput) els.oneHandGradingInput.checked = Boolean(state.settings?.oneHandGradingEnabled);
   if(els.openRubricWindowBtn) els.openRubricWindowBtn.classList.toggle("hidden", !multiWindowEnabled);
@@ -1002,6 +1037,7 @@ function applySettings(){
   if(els.deductTemplateNameInput) els.deductTemplateNameInput.value = template.name;
   if(els.deductTemplateKeywordsInput) els.deductTemplateKeywordsInput.value = template.keywords;
   if(els.deductTemplateScoreInput) els.deductTemplateScoreInput.value = template.score;
+  renderUnwrittenOcrCandidates();
 }
 
 function setRubricWindowActive(active){
@@ -1108,6 +1144,8 @@ function normalizeSettings(){
     incompleteOnly:Boolean(settings.incompleteOnly),
     multiWindowEnabled:Boolean(settings.multiWindowEnabled),
     oneHandGradingEnabled:Boolean(settings.oneHandGradingEnabled),
+    unwrittenOcrEnabled:Boolean(settings.unwrittenOcrEnabled),
+    unwrittenOcrIncludeShort:Boolean(settings.unwrittenOcrIncludeShort),
     pagesPerStudent:Math.max(1, Math.floor(nonNegativeNumber(settings.pagesPerStudent) || 1)),
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
@@ -1394,6 +1432,7 @@ async function setQuestion(id){
   state.activeQuestion = id;
   state.keywordFilter = null;
   state.editingRubricId = "";
+  resetUnwrittenOcrCandidates();
   updateQuestionControls();
   loadRecordIntoForm();
   loadExamCapture();
@@ -1429,6 +1468,7 @@ function addQuestion(){
   state.questions.push(question);
   state.activeQuestion = question.id;
   state.editingRubricId = "";
+  resetUnwrittenOcrCandidates();
   persist();
   updateQuestionControls();
   loadExamCapture();
@@ -1500,6 +1540,7 @@ async function openPdf(file){
   state.page = clamp(rememberedPage || firstScopedPage() || 1, 1, state.pageCount);
   if(state.activeClass && !scopedPages().includes(firstPageForStudentIndex(studentIndexForPage(state.page)))) state.page = firstScopedPage() || state.page;
   state.lastPdfPage = state.page;
+  resetUnwrittenOcrCandidates();
   els.empty.classList.add("hidden");
   [els.pageInput, els.prevBtn, els.nextBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
   setMode("grade");
@@ -1588,6 +1629,7 @@ function updateChrome(){
   updateClassControls();
   updateMissingOmrButton();
   updateProgress();
+  renderUnwrittenOcrCandidates();
   updateMobileScanNav(scoped, scopedIndex);
   syncRubricPopup();
 }
@@ -2588,6 +2630,185 @@ function updateProgress(){
   const pct = total > 0 ? Math.round(graded / total * 100) : 0;
   els.progressFill.style.width = `${pct}%`;
   els.progressText.textContent = total > 0 ? `채점 완료: ${graded} / ${total}명 (${pct}%)` : "";
+}
+
+function renderUnwrittenOcrCandidates(){
+  if(!els.unwrittenOcrPanel) return;
+  const enabled = Boolean(state.settings?.unwrittenOcrEnabled);
+  els.unwrittenOcrPanel.classList.toggle("hidden", !enabled);
+  if(!enabled) return;
+  if(els.runUnwrittenOcrBtn) els.runUnwrittenOcrBtn.disabled = !state.pdf || state.unwrittenOcr.running;
+  if(els.unwrittenOcrShortInput) els.unwrittenOcrShortInput.checked = Boolean(state.settings?.unwrittenOcrIncludeShort);
+  const candidates = state.unwrittenOcr.candidates || [];
+  const fallback = state.pdf ? "후보 찾기를 누르면 현재 범위의 답안 영역을 훑습니다." : "PDF를 먼저 불러오세요.";
+  els.unwrittenOcrStatus.textContent = state.unwrittenOcr.status || fallback;
+  els.unwrittenOcrList.innerHTML = candidates.length ? candidates.map(candidate => `
+    <div class="unwrittenOcrItem">
+      <div class="unwrittenOcrTop">
+        <div>
+          <div class="unwrittenOcrName">${escapeHtml(candidate.studentText)}</div>
+          <div class="unwrittenOcrMeta">${escapeHtml(activeQuestion().label)} · ${escapeHtml(candidate.reason)} · 인식 ${escapeHtml(String(candidate.charCount))}자</div>
+        </div>
+        <div class="compactBtns">
+          <button class="btn mini" type="button" data-unwritten-ocr-go="${escapeHtml(candidate.page)}">이동</button>
+          <button class="btn mini primary" type="button" data-unwritten-ocr-mark="${escapeHtml(candidate.page)}">전체 미작성</button>
+        </div>
+      </div>
+      <div class="unwrittenOcrText">${escapeHtml(candidate.preview || "인식된 글자 없음")}</div>
+    </div>
+  `).join("") : `<div class="statusLine">${escapeHtml(state.unwrittenOcr.running ? "OCR로 후보를 찾는 중입니다." : "후보 없음")}</div>`;
+}
+
+function resetUnwrittenOcrCandidates(status=""){
+  state.unwrittenOcr = {running:false, candidates:[], status};
+  renderUnwrittenOcrCandidates();
+}
+
+function setUnwrittenOcrStatus(message){
+  state.unwrittenOcr.status = message;
+  renderUnwrittenOcrCandidates();
+}
+
+function meaningfulOcrText(text){
+  return String(text || "").replace(/\s+/g, "").replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+function cropForPage(pageNumber, question=activeQuestion()){
+  const rec = state.records[recordKey(pageNumber)];
+  const key = cropKey(question.id, pageNumber);
+  return rec?.cropOverrides?.[key] || question.crop;
+}
+
+async function cropCanvasForPage(pageNumber){
+  const page = await state.pdf.getPage(pageNumber);
+  const viewport = page.getViewport({scale:state.scale});
+  const fullCanvas = document.createElement("canvas");
+  fullCanvas.width = viewport.width;
+  fullCanvas.height = viewport.height;
+  const fullCtx = fullCanvas.getContext("2d", {alpha:false});
+  fullCtx.fillStyle = "#fff";
+  fullCtx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
+  await page.render({canvasContext:fullCtx, viewport}).promise;
+  const c = cropForPage(pageNumber);
+  const sx = Math.round(c.x * fullCanvas.width);
+  const sy = Math.round(c.y * fullCanvas.height);
+  const sw = Math.max(1, Math.round(c.w * fullCanvas.width));
+  const sh = Math.max(1, Math.round(c.h * fullCanvas.height));
+  const cropCanvas = document.createElement("canvas");
+  cropCanvas.width = sw;
+  cropCanvas.height = sh;
+  const cropCtx = cropCanvas.getContext("2d", {alpha:false});
+  cropCtx.fillStyle = "#fff";
+  cropCtx.fillRect(0, 0, sw, sh);
+  cropCtx.drawImage(fullCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  return cropCanvas;
+}
+
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  if(!tesseractLoadPromise){
+    tesseractLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = TESSERACT_URL;
+      script.async = true;
+      script.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("Tesseract를 초기화하지 못했습니다."));
+      script.onerror = () => reject(new Error("텍스트 인식 엔진을 불러오지 못했습니다."));
+      document.head.appendChild(script);
+    });
+  }
+  return tesseractLoadPromise;
+}
+
+async function recognizeCropText(canvas, pageNumber, index, total){
+  const Tesseract = await loadTesseract();
+  const result = await Tesseract.recognize(canvas, "kor+eng", {
+    logger: message => {
+      if(message?.status === "recognizing text" && Number.isFinite(message.progress)){
+        const pct = Math.round(message.progress * 100);
+        setUnwrittenOcrStatus(`텍스트 인식 중: ${index + 1}/${total}명 · ${pct}%`);
+      }
+    }
+  });
+  return result?.data?.text || "";
+}
+
+async function runUnwrittenOcrScan(){
+  if(!state.pdf){
+    showToast("PDF를 먼저 불러오세요.");
+    return;
+  }
+  if(state.unwrittenOcr.running) return;
+  state.unwrittenOcr = {running:true, candidates:[], status:"텍스트 인식 엔진을 준비하는 중입니다."};
+  renderUnwrittenOcrCandidates();
+  const includeShort = Boolean(state.settings?.unwrittenOcrIncludeShort);
+  const pages = baseProgressPages().filter(page => !isQuestionCompletedOnPage(page));
+  const total = pages.length;
+  if(!total){
+    state.unwrittenOcr = {running:false, candidates:[], status:"현재 범위의 미완료 답안이 없습니다."};
+    renderUnwrittenOcrCandidates();
+    return;
+  }
+  try{
+    await loadTesseract();
+    for(let index = 0; index < pages.length; index++){
+      const pageNumber = pages[index];
+      setUnwrittenOcrStatus(`답안 영역 준비 중: ${index + 1}/${total}명`);
+      const canvas = await cropCanvasForPage(pageNumber);
+      const text = await recognizeCropText(canvas, pageNumber, index, total);
+      const meaningful = meaningfulOcrText(text);
+      const charCount = meaningful.length;
+      const isBlank = charCount === 0;
+      const isShort = includeShort && charCount > 0 && charCount <= 10;
+      if(isBlank || isShort){
+        state.unwrittenOcr.candidates.push({
+          page:pageNumber,
+          studentText:studentTextForPage(pageNumber),
+          charCount,
+          reason:isBlank ? "미작성 추정" : "10자 이하",
+          preview:String(text || "").trim().replace(/\s+/g, " ").slice(0, 80)
+        });
+        renderUnwrittenOcrCandidates();
+      }
+    }
+    state.unwrittenOcr.running = false;
+    state.unwrittenOcr.status = `후보 찾기 완료: ${state.unwrittenOcr.candidates.length}명`;
+    renderUnwrittenOcrCandidates();
+  }catch(err){
+    console.error(err);
+    state.unwrittenOcr.running = false;
+    state.unwrittenOcr.status = `후보 찾기를 완료하지 못했습니다: ${err.message}`;
+    renderUnwrittenOcrCandidates();
+    showToast("미작성 후보 OCR을 실행하지 못했습니다.");
+  }
+}
+
+function markPageAllSubsUnwritten(pageNumber){
+  if(!state.pdf) return;
+  const key = recordKey(pageNumber);
+  ensureQuestionRecord(key);
+  const qrec = state.records[key].answers[state.activeQuestion];
+  qrec.unwrittenSubs = qrec.unwrittenSubs || {};
+  qrec.completedSubs = qrec.completedSubs || {};
+  qrec.completed = false;
+  subOptions().forEach(sub => {
+    qrec.unwrittenSubs[sub] = true;
+    delete qrec.completedSubs[sub];
+    clearSubScores(qrec, sub);
+  });
+  persist();
+  renderRubric();
+  updateResults();
+  updateClassControls();
+  updateProgress();
+  state.unwrittenOcr.candidates = (state.unwrittenOcr.candidates || []).filter(candidate => Number(candidate.page) !== Number(pageNumber));
+  state.unwrittenOcr.status = `후보 ${state.unwrittenOcr.candidates.length}명 남음`;
+  renderUnwrittenOcrCandidates();
+  showToast(`${studentTextForPage(pageNumber)} 전체 미작성으로 표시했습니다.`);
+}
+
+function studentTextForPage(pageNumber){
+  const student = studentForPage(pageNumber);
+  return [student?.className, student?.number ? `${student.number}번` : "", student?.name].filter(Boolean).join(" ") || `${pageNumber}쪽`;
 }
 
 function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDetectStatus){
@@ -4923,6 +5144,29 @@ els.autoAssistEnabledInput.addEventListener("change", () => {
   applySettings();
   persist();
 });
+els.unwrittenOcrEnabledInput.addEventListener("change", () => {
+  state.settings.unwrittenOcrEnabled = Boolean(els.unwrittenOcrEnabledInput.checked);
+  applySettings();
+  persist();
+});
+els.unwrittenOcrShortInput.addEventListener("change", () => {
+  state.settings.unwrittenOcrIncludeShort = Boolean(els.unwrittenOcrShortInput.checked);
+  resetUnwrittenOcrCandidates("옵션이 바뀌었습니다. 후보 찾기를 다시 실행하세요.");
+  applySettings();
+  persist();
+});
+els.runUnwrittenOcrBtn.addEventListener("click", runUnwrittenOcrScan);
+els.unwrittenOcrList.addEventListener("click", async evt => {
+  const goBtn = evt.target.closest("[data-unwritten-ocr-go]");
+  if(goBtn){
+    await goPage(Number(goBtn.dataset.unwrittenOcrGo));
+    return;
+  }
+  const markBtn = evt.target.closest("[data-unwritten-ocr-mark]");
+  if(markBtn){
+    markPageAllSubsUnwritten(Number(markBtn.dataset.unwrittenOcrMark));
+  }
+});
 els.multiWindowEnabledInput.addEventListener("change", () => {
   state.settings.multiWindowEnabled = Boolean(els.multiWindowEnabledInput.checked);
   applySettings();
@@ -5167,6 +5411,7 @@ els.rosterText.addEventListener("input", () => {
 els.classSelect.addEventListener("change", async () => {
   saveCurrent();
   state.activeClass = els.classSelect.value;
+  resetUnwrittenOcrCandidates();
   els.classSelect.blur();
   updateClassControls();
   state.page = firstScopedPage() || state.page || 1;
