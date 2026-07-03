@@ -120,10 +120,13 @@ body:not(.pdfLoaded) .answerZoomControls{display:none}
 .empty{width:min(680px,100%);background:var(--panel);border:1px dashed #b9c3d3;border-radius:8px;padding:28px;text-align:center;box-shadow:var(--shadow)}
 .empty h2{margin:0 0 8px;font-size:24px}
 .empty p{margin:0 0 18px;color:var(--muted);line-height:1.6}
-.pageWrap,.cropView{width:max-content;max-width:none}
-.pageWrap,.cropView{position:relative}
-.pageWrap,.cropView{margin:auto}
+.pageWrap,.cropView,.fullPageCompanion{width:max-content;max-width:none}
+.pageWrap,.cropView,.fullPageCompanion{position:relative}
+.pageWrap,.cropView,.fullPageCompanion{margin:auto}
+.canvasShell.fullPageSpread{gap:12px;align-items:center}
+.canvasShell.fullPageSpread .pageWrap,.canvasShell.fullPageSpread .fullPageCompanion{margin:0}
 canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:var(--shadow)}
+.fullPageSideLabel{position:absolute;left:10px;top:10px;z-index:3;border:1px solid rgba(23,32,51,.16);border-radius:999px;background:rgba(255,255,255,.92);color:var(--ink);padding:4px 8px;font-size:12px;font-weight:900;box-shadow:0 6px 16px rgba(23,32,51,.14)}
 .cropOverlay{position:absolute;z-index:3;border:3px solid #e23d32;background:rgba(226,61,50,.08);outline:9999px solid rgba(10,16,26,.50);cursor:move;touch-action:none}
 .cropOverlay::after{content:"";position:absolute;right:-16px;bottom:-16px;width:32px;height:32px;border-radius:50%;background:#e23d32;border:3px solid #fff;cursor:nwse-resize;box-shadow:0 4px 12px rgba(10,16,26,.25)}
 .pageWrap canvas,.cropView canvas{max-width:none;max-height:none;object-fit:contain}
@@ -231,6 +234,7 @@ textarea{min-height:72px;resize:vertical}
 .keywordModalList{display:grid;gap:8px;align-content:start;max-height:62vh;overflow:auto}
 .keywordModalBtn{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:9px;text-align:left;display:grid;gap:5px}
 .keywordModalBtn.on{border-color:var(--accent);background:#eef8fb}
+.keywordModalKind{font-size:10px;font-weight:950;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
 .keywordModalStudents{display:grid;gap:7px;max-height:62vh;overflow:auto}
 .keywordStudentRow{border:1px solid var(--line);border-radius:8px;background:#fff;padding:9px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
 .keywordStudentName{font-size:13px;font-weight:850;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}
@@ -481,7 +485,7 @@ textarea{min-height:72px;resize:vertical}
         <button class="btn topActionBtn" id="calibrateBtn" disabled><span class="twoLine"><span>영역</span><span>지정</span></span></button>
         <button class="btn topActionBtn" id="fullPageBtn" disabled><span class="twoLine"><span>전체</span><span>답안</span></span></button>
         <button class="btn topActionBtn hidden" id="studentCropBtn" type="button" disabled><span class="twoLine"><span>학생</span><span>영역</span></span></button>
-        <button class="btn topActionBtn hidden" id="clearStudentCropBtn" type="button" disabled><span class="twoLine"><span>영역</span><span>삭제</span></span></button>
+        <button class="btn topActionBtn hidden" id="clearStudentCropBtn" type="button" disabled><span class="twoLine"><span>설정된</span><span>학생 영역 삭제</span></span></button>
         <button class="btn topActionBtn primary" id="gradeModeBtn" disabled><span class="singleLine">채점</span></button>
         <button class="btn topActionBtn" id="settingsBtn" type="button"><span class="singleLine">설정</span></button>
       </div>
@@ -509,7 +513,7 @@ textarea{min-height:72px;resize:vertical}
           <div class="statusLine hidden" id="classStatus">명렬을 적용하면 학생 정보로 이동할 수 있습니다.</div>
           <div class="incompleteFilterNotice hidden" id="incompleteFilterNotice">미완료 필터 적용 중</div>
           <div class="keywordFilterNotice hidden" id="keywordFilterNotice">
-            <span id="keywordFilterText">키워드 필터 적용 중</span>
+            <span id="keywordFilterText">모아보기 필터 적용 중</span>
             <button class="btn mini" id="clearKeywordFilterBtn" type="button">해제</button>
           </div>
         </div>
@@ -532,7 +536,6 @@ textarea{min-height:72px;resize:vertical}
           <button class="btn mini highlightColorBtn red" id="highlightRedBtn" type="button" title="빨간 형광펜" aria-label="빨간 형광펜"></button>
           <button class="btn mini highlightColorBtn yellow on" id="highlightYellowBtn" type="button" title="노란 형광펜" aria-label="노란 형광펜"></button>
           <button class="btn mini highlightColorBtn green" id="highlightGreenBtn" type="button" title="초록 형광펜" aria-label="초록 형광펜"></button>
-          <button class="btn mini" id="undoHighlightBtn" type="button" disabled>취소</button>
         </div>
         <div class="examCapturePanel hidden" id="examCapturePanel">
           <div class="examCaptureHead">
@@ -557,9 +560,14 @@ textarea{min-height:72px;resize:vertical}
           <input type="file" id="pdfInput" accept="application/pdf">
         </div>
         <div class="pageWrap hidden" id="pageWrap">
+          <div class="fullPageSideLabel hidden" id="pageSideLabel">현재면</div>
           <canvas id="pdfCanvas"></canvas>
           <div class="answerHighlightLayer" id="pageHighlightLayer" aria-hidden="true"></div>
           <div class="cropOverlay hidden" id="cropOverlay" title="드래그로 이동, 오른쪽 아래 점으로 크기 조절"></div>
+        </div>
+        <div class="fullPageCompanion hidden" id="fullPageCompanion" aria-label="반대면 미리보기">
+          <div class="fullPageSideLabel" id="fullPageCompanionLabel">반대면</div>
+          <canvas id="fullPageCompanionCanvas"></canvas>
         </div>
         <div class="cropView hidden" id="cropView">
           <canvas id="cropCanvas"></canvas>
@@ -568,7 +576,7 @@ textarea{min-height:72px;resize:vertical}
       </div>
       <section class="panel viewerKeywordPanel">
         <div class="panelHead">
-          <h2 class="panelTitle">키워드별 학생</h2>
+          <h2 class="panelTitle">메모 & 논의 & 키워드별 모아보기</h2>
           <button class="btn mini" id="openKeywordModalBtn" type="button">보기</button>
         </div>
         <div class="statusLine" id="keywordSummary">루브릭에 키워드를 입력하면 학생 목록을 모아볼 수 있습니다.</div>
@@ -672,7 +680,7 @@ textarea{min-height:72px;resize:vertical}
 <div class="modalBackdrop hidden" id="keywordModal" role="dialog" aria-modal="true" aria-labelledby="keywordModalTitle">
   <div class="modal">
     <div class="modalHead">
-      <h2 class="panelTitle" id="keywordModalTitle">키워드별 학생</h2>
+      <h2 class="panelTitle" id="keywordModalTitle">메모 & 논의 & 키워드별 모아보기</h2>
       <div class="compactBtns">
         <button class="btn mini" id="openKeywordPopupBtn" type="button">팝업으로 보기</button>
         <button class="btn mini" id="closeKeywordModalBtn" type="button">닫기</button>
@@ -680,7 +688,7 @@ textarea{min-height:72px;resize:vertical}
     </div>
     <div class="modalBody keywordModalBody">
       <section class="panel">
-        <div class="panelHead"><h2 class="panelTitle">루브릭 키워드</h2></div>
+        <div class="panelHead"><h2 class="panelTitle">모아보기</h2></div>
         <div class="keywordModalList" id="keywordModalList"></div>
       </section>
       <section class="panel">
@@ -709,6 +717,7 @@ textarea{min-height:72px;resize:vertical}
         <label class="checkField"><input id="shareIncludeExampleInput" type="checkbox" checked> 예시답안</label>
         <label class="checkField"><input id="shareIncludeMemoInput" type="checkbox" checked> 문항 메모</label>
         <label class="checkField"><input id="shareIncludeDiscussionInput" type="checkbox" checked> 논의 필요 표시</label>
+        <label class="checkField"><input id="shareIncludeHighlightInput" type="checkbox" checked> 형광펜 캡처/메모</label>
         <div class="compactBtns" style="margin-top:14px">
           <button class="btn primary" id="createShareReportBtn" type="button">내보내기</button>
           <button class="btn" id="cancelShareExportBtn" type="button">취소</button>
@@ -951,6 +960,7 @@ const els = {
   deductTemplateNameInput:$("deductTemplateNameInput"), deductTemplateKeywordsInput:$("deductTemplateKeywordsInput"), deductTemplateScoreInput:$("deductTemplateScoreInput"),
   pdfInput:$("pdfInput"), changePdfBtn:$("changePdfBtn"), fileMeta:$("fileMeta"), empty:$("empty"),
   pageWrap:$("pageWrap"), cropView:$("cropView"), canvasShell:$("canvasShell"), pdfCanvas:$("pdfCanvas"), cropCanvas:$("cropCanvas"),
+  fullPageCompanion:$("fullPageCompanion"), fullPageCompanionCanvas:$("fullPageCompanionCanvas"), fullPageCompanionLabel:$("fullPageCompanionLabel"), pageSideLabel:$("pageSideLabel"),
   examCaptureBtn:$("examCaptureBtn"), examCapturePanel:$("examCapturePanel"), closeExamCaptureBtn:$("closeExamCaptureBtn"),
   floatingRubricWindowBtn:$("floatingRubricWindowBtn"),
   answerZoomControls:$("answerZoomControls"), answerZoomOutBtn:$("answerZoomOutBtn"), answerZoomInBtn:$("answerZoomInBtn"), answerZoomResetBtn:$("answerZoomResetBtn"), answerZoomText:$("answerZoomText"),
@@ -974,7 +984,7 @@ const els = {
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
   shareExportModal:$("shareExportModal"), closeShareExportBtn:$("closeShareExportBtn"), cancelShareExportBtn:$("cancelShareExportBtn"),
   createShareReportBtn:$("createShareReportBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
-  shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"),
+  shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"), shareIncludeHighlightInput:$("shareIncludeHighlightInput"),
   mergeJsonModal:$("mergeJsonModal"), openMergeJsonBtn:$("openMergeJsonBtn"), closeMergeJsonBtn:$("closeMergeJsonBtn"), cancelMergeJsonBtn:$("cancelMergeJsonBtn"),
   rubricEditorPanel:$("rubricEditorPanel"), rubricEditorRows:$("rubricEditorRows"),
   rubricText:$("rubricText"), addRubricItemBtn:$("addRubricItemBtn"), loadRubricTextBtn:$("loadRubricTextBtn"),
@@ -1274,6 +1284,7 @@ function normalizeQuestions(){
   const source = Array.isArray(state.questions) && state.questions.length ? state.questions : structuredClone(defaultQuestions);
   state.questions = source.map((saved, index) => {
     const fallback = defaultQuestions[index] || defaultQuestions[0];
+    const crop = normalizeCropOverride({...fallback.crop, ...(saved.crop || {})}, `${saved.id || fallback.id || `q_${index}`}__${saved.crop?.side || fallback.crop?.side || "page1"}`);
     return {
       id:saved.id || `q_${Date.now().toString(36)}_${index}`,
       label:saved.label || fallback.label,
@@ -1283,7 +1294,7 @@ function normalizeQuestions(){
       sourceText:String(saved.sourceText || saved.passageText || ""),
       subSourceTexts:typeof saved.subSourceTexts === "object" && saved.subSourceTexts !== null ? {...saved.subSourceTexts} : {},
       subs:normalizeQuestionSubs(saved),
-      crop:{...fallback.crop, ...(saved.crop || {})},
+      crop,
       rubric:normalizeRubric(Array.isArray(saved.rubric) ? saved.rubric : structuredClone(fallback.rubric))
     };
   });
@@ -1330,10 +1341,56 @@ function nonNegativeNumber(value){
   return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
+function cropSideDisplayFromKey(sideKey){
+  const side = String(sideKey || "page1");
+  if(side === "앞면" || side === "뒷면" || /^\d+쪽$/.test(side)) return side;
+  if(/^\d+$/.test(side)){
+    const sideNumber = Number(side);
+    if(pagesPerStudent() === 2) return sideNumber === 1 ? "앞면" : "뒷면";
+    return `${sideNumber}쪽`;
+  }
+  if(side === "page1") return pagesPerStudent() > 1 ? "앞면" : "단일면";
+  return side;
+}
+
+function cropOverrideMeta(questionId=state.activeQuestion, page=state.page){
+  const side = pageSideLabel(page) || "page1";
+  return {
+    questionId,
+    side,
+    sideLabel:cropSideDisplayFromKey(side),
+    sideIndex:((Math.max(1, Number(page) || 1) - 1) % pagesPerStudent()) + 1
+  };
+}
+
+function normalizeCropOverride(crop, key=""){
+  if(!crop || typeof crop !== "object") return null;
+  const [questionId = "", sideKey = "page1"] = String(key || "").split("__");
+  const x = clamp(Number(crop.x) || 0, 0, .96);
+  const y = clamp(Number(crop.y) || 0, 0, .96);
+  const w = clamp(Number(crop.w) || .04, .04, 1 - x);
+  const h = clamp(Number(crop.h) || .04, .04, 1 - y);
+  return {
+    ...crop,
+    x,
+    y,
+    w,
+    h,
+    questionId:crop.questionId || questionId,
+    side:crop.side || sideKey,
+    sideLabel:crop.sideLabel || cropSideDisplayFromKey(crop.side || sideKey)
+  };
+}
+
 function normalizeRecords(){
   Object.keys(state.records).forEach(key => {
     const rec = state.records[key];
     if(!rec.cropOverrides || typeof rec.cropOverrides !== "object") rec.cropOverrides = {};
+    Object.entries(rec.cropOverrides).forEach(([cropOverrideKey, crop]) => {
+      const normalized = normalizeCropOverride(crop, cropOverrideKey);
+      if(normalized) rec.cropOverrides[cropOverrideKey] = normalized;
+      else delete rec.cropOverrides[cropOverrideKey];
+    });
     rec.studentIndex = Number(rec.studentIndex || key) || studentIndexForPage(rec.page || Number(key));
     if(!rec.answers){
       rec.answers = {};
@@ -1367,19 +1424,55 @@ function syncSourceTextToQuestion(sourceEl=null){
   if(question && sourceEl) question.sourceText = sourceEl.value.trim();
 }
 function cropKey(questionId=state.activeQuestion, page=state.page){return `${questionId}__${pageSideLabel(page) || "page1"}`}
+function cropSideKeyForPage(page=state.page){return pageSideLabel(page) || "page1"}
 function studentCropForCurrent(){
   return currentRecord()?.cropOverrides?.[cropKey()];
+}
+function studentCropOverridesForQuestion(rec=currentRecord(), questionId=state.activeQuestion){
+  return Object.entries(rec?.cropOverrides || {})
+    .filter(([key]) => key.startsWith(`${questionId}__`));
+}
+function pageForCropSide(studentIndex, sideKey){
+  const side = String(sideKey || "page1");
+  const sideText = pageSideTextFromSide(side) || cropSideDisplayFromKey(side);
+  return pagesForStudentIndex(studentIndex).find(page => {
+    const pageSide = cropSideKeyForPage(page);
+    const pageSideIndex = String(((Math.max(1, Number(page) || 1) - 1) % pagesPerStudent()) + 1);
+    return pageSide === side || pageSide === sideText || pageSideIndex === side;
+  }) || null;
+}
+function pageWithStudentCropSide(page, questionId=state.activeQuestion){
+  const targetPage = normalizeTargetPage(page);
+  const studentIndex = studentIndexForPage(targetPage);
+  const rec = state.records[String(studentIndex)];
+  const currentKey = cropKey(questionId, targetPage);
+  if(rec?.cropOverrides?.[currentKey]) return targetPage;
+  const overrides = studentCropOverridesForQuestion(rec, questionId);
+  if(overrides.length){
+    const [, crop] = overrides[0];
+    const side = crop?.side || overrides[0][0].split("__")[1] || "page1";
+    return pageForCropSide(studentIndex, side) || targetPage;
+  }
+  const question = state.questions.find(item => item.id === questionId);
+  const side = question?.crop?.side;
+  return side ? (pageForCropSide(studentIndex, side) || targetPage) : targetPage;
 }
 function activeCrop(){
   return studentCropForCurrent() || activeQuestion().crop;
 }
 function editableCrop(){
-  if(!state.studentCropMode) return activeQuestion().crop;
+  if(!state.studentCropMode){
+    const crop = activeQuestion().crop;
+    Object.assign(crop, cropOverrideMeta(activeQuestion().id));
+    return crop;
+  }
   ensureRecord();
   const rec = currentRecord();
   rec.cropOverrides = rec.cropOverrides || {};
   const key = cropKey();
-  if(!rec.cropOverrides[key]) rec.cropOverrides[key] = {...activeQuestion().crop};
+  const meta = cropOverrideMeta();
+  if(!rec.cropOverrides[key]) rec.cropOverrides[key] = {...activeQuestion().crop, ...meta};
+  else Object.assign(rec.cropOverrides[key], meta);
   return rec.cropOverrides[key];
 }
 function subOptions(question=activeQuestion()){
@@ -1478,6 +1571,10 @@ function setMode(mode){
   const showFullPage = state.fullPage || mode === "calibrate";
   els.cropOverlay.classList.toggle("hidden", mode !== "calibrate");
   els.pageWrap.classList.toggle("hidden", !showFullPage);
+  const showCompanion = Boolean(state.pdf && state.fullPage && mode !== "calibrate" && pagesPerStudent() > 1);
+  els.fullPageCompanion.classList.toggle("hidden", !showCompanion);
+  els.pageSideLabel.classList.toggle("hidden", !showCompanion);
+  els.canvasShell.classList.toggle("fullPageSpread", showCompanion);
   els.cropView.classList.toggle("hidden", showFullPage);
   els.calibrateBtn.disabled = !state.pdf;
   els.fullPageBtn.disabled = !state.pdf || mode === "calibrate";
@@ -1541,6 +1638,7 @@ function toggleFullPage(){
   if(!state.pdf || state.mode === "calibrate") return;
   state.fullPage = !state.fullPage;
   setMode("grade");
+  renderCurrentPage();
 }
 
 function enterGradeMode(){
@@ -1556,6 +1654,7 @@ async function setQuestion(id){
   state.keywordFilter = null;
   state.editingRubricId = "";
   resetUnwrittenOcrCandidates();
+  if(state.pdf) state.page = pageWithStudentCropSide(state.page, id);
   updateQuestionControls();
   loadRecordIntoForm();
   loadExamCapture();
@@ -1665,7 +1764,9 @@ async function openPdf(file){
   state.lastPdfPage = state.page;
   resetUnwrittenOcrCandidates();
   els.empty.classList.add("hidden");
-  [els.pageInput, els.prevBtn, els.nextBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.highlightModeBtn, els.undoHighlightBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
+  [els.pageInput, els.prevBtn, els.nextBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.calibrateBtn, els.fullPageBtn, els.highlightModeBtn, els.undoHighlightBtn, els.gradeModeBtn].forEach(el => {
+    if(el) el.disabled = false;
+  });
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
@@ -1687,11 +1788,49 @@ async function renderCurrentPage(){
   canvas.height = viewport.height;
   await page.render({canvasContext:ctx, viewport}).promise;
   if(token !== renderToken){els.spinnerOverlay.classList.add("hidden");return;}
+  await renderFullPageCompanion(token);
+  if(token !== renderToken){els.spinnerOverlay.classList.add("hidden");return;}
   els.spinnerOverlay.classList.add("hidden");
   positionOverlay();
   if(state.mode === "grade" && !state.fullPage) drawCrop();
   updateAnswerZoomStyles();
   renderAnswerHighlights();
+}
+
+async function renderFullPageCompanion(token=renderToken){
+  const showCompanion = Boolean(state.pdf && state.fullPage && state.mode !== "calibrate" && pagesPerStudent() > 1);
+  els.fullPageCompanion.classList.toggle("hidden", !showCompanion);
+  els.pageSideLabel.classList.toggle("hidden", !showCompanion);
+  els.canvasShell.classList.toggle("fullPageSpread", showCompanion);
+  if(els.pageSideLabel) els.pageSideLabel.textContent = pageSideLabel(state.page) || "현재면";
+  if(!showCompanion){
+    els.pageWrap.style.order = "";
+    els.fullPageCompanion.style.order = "";
+    if(els.fullPageCompanionCanvas){
+      els.fullPageCompanionCanvas.width = 0;
+      els.fullPageCompanionCanvas.height = 0;
+    }
+    return;
+  }
+  const pages = pagesForStudentIndex(studentIndexForPage(state.page));
+  const companionPage = pages.find(page => page !== state.page) || null;
+  if(!companionPage){
+    els.fullPageCompanion.classList.add("hidden");
+    return;
+  }
+  const currentSideOrder = ((state.page - firstPageForStudentIndex(studentIndexForPage(state.page))) || 0) + 1;
+  const companionSideOrder = ((companionPage - firstPageForStudentIndex(studentIndexForPage(companionPage))) || 0) + 1;
+  els.pageWrap.style.order = String(currentSideOrder);
+  els.fullPageCompanion.style.order = String(companionSideOrder);
+  if(els.fullPageCompanionLabel) els.fullPageCompanionLabel.textContent = pageSideLabel(companionPage) || "반대면";
+  const page = await state.pdf.getPage(companionPage);
+  if(token !== renderToken) return;
+  const viewport = page.getViewport({scale:state.scale});
+  const canvas = els.fullPageCompanionCanvas;
+  const ctx = canvas.getContext("2d", {alpha:false});
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({canvasContext:ctx, viewport}).promise;
 }
 
 function positionOverlay(){
@@ -2113,11 +2252,16 @@ function bindHighlightDrawing(){
   });
 }
 
-function fitAnswerCanvasSize(canvas){
+function fullPageCompanionVisible(){
+  return Boolean(els.fullPageCompanion && !els.fullPageCompanion.classList.contains("hidden"));
+}
+
+function fitAnswerCanvasSize(canvas, columns=1){
   if(!canvas?.width || !canvas?.height) return {width:0, height:0};
   if(!els.canvasShell) return {width:0, height:0};
   const shellBox = els.canvasShell.getBoundingClientRect();
-  const maxWidth = Math.max(240, Math.min(shellBox.width - 36, 1280));
+  const gap = columns > 1 ? 12 * (columns - 1) : 0;
+  const maxWidth = Math.max(180, Math.min((shellBox.width - 36 - gap) / columns, 1280));
   const maxHeight = Math.max(180, shellBox.height - 36);
   const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height, 1);
   return {
@@ -2141,18 +2285,19 @@ function updateAnswerZoomStyles(){
   if(els.answerZoomText) els.answerZoomText.textContent = `${Math.round(zoom * 100)}%`;
   if(els.answerZoomOutBtn) els.answerZoomOutBtn.disabled = zoom <= .5;
   if(els.answerZoomInBtn) els.answerZoomInBtn.disabled = zoom >= 2.5;
-  [els.pageWrap, els.cropView].forEach(target => {
+  [els.pageWrap, els.cropView, els.fullPageCompanion].forEach(target => {
     if(!target) return;
     target.style.width = "";
     target.style.height = "";
   });
-  [els.pdfCanvas, els.cropCanvas].forEach(target => {
+  [els.pdfCanvas, els.cropCanvas, els.fullPageCompanionCanvas].forEach(target => {
     if(!target) return;
     target.style.width = "";
     target.style.height = "";
   });
   if(!wrap || !canvas) return;
-  const fitted = fitAnswerCanvasSize(canvas);
+  const columns = fullPageCompanionVisible() ? 2 : 1;
+  const fitted = fitAnswerCanvasSize(canvas, columns);
   if(!fitted.width || !fitted.height) return;
   const width = Math.round(fitted.width * zoom);
   const height = Math.round(fitted.height * zoom);
@@ -2160,6 +2305,17 @@ function updateAnswerZoomStyles(){
   wrap.style.height = `${height}px`;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
+  if(fullPageCompanionVisible()){
+    const companionFitted = fitAnswerCanvasSize(els.fullPageCompanionCanvas, columns);
+    const companionWidth = Math.round(companionFitted.width * zoom);
+    const companionHeight = Math.round(companionFitted.height * zoom);
+    if(companionWidth && companionHeight){
+      els.fullPageCompanion.style.width = `${companionWidth}px`;
+      els.fullPageCompanion.style.height = `${companionHeight}px`;
+      els.fullPageCompanionCanvas.style.width = `${companionWidth}px`;
+      els.fullPageCompanionCanvas.style.height = `${companionHeight}px`;
+    }
+  }
   if(!els.cropOverlay.classList.contains("hidden")) positionOverlay();
   renderAnswerHighlights();
   requestAnimationFrame(centerAnswerScroll);
@@ -2210,39 +2366,50 @@ function updateKeywordFilterNotice(){
   const active = Boolean(state.keywordFilter);
   els.keywordFilterNotice.classList.toggle("hidden", !active);
   if(!active) return;
-  const stillExists = keywordEntries().some(entry =>
-    entry.item.id === state.keywordFilter.itemId &&
-    entry.type === state.keywordFilter.type &&
-    entry.keyword === state.keywordFilter.keyword
-  );
+  const kind = state.keywordFilter.kind || "keyword";
+  const stillExists = kind === "memo"
+    ? memoRecords().length > 0
+    : kind === "discussion"
+      ? discussionRecords().length > 0
+      : keywordEntries().some(entry =>
+          entry.item.id === state.keywordFilter.itemId &&
+          entry.type === state.keywordFilter.type &&
+          entry.keyword === state.keywordFilter.keyword
+        );
   if(!stillExists){
     state.keywordFilter = null;
     els.keywordFilterNotice.classList.add("hidden");
     return;
   }
   const count = keywordFilterPages().length;
-  els.keywordFilterText.textContent = `키워드 필터 적용 중: ${keywordFilterLabel()} · ${count}명`;
+  els.keywordFilterText.textContent = `모아보기 필터 적용 중: ${keywordFilterLabel()} · ${count}명`;
 }
 
 function updateStudentCropButtons(){
   const hasOverride = Boolean(studentCropForCurrent());
-  [els.studentCropBtn, els.clearStudentCropBtn].forEach(btn => btn.classList.toggle("hidden", !state.pdf));
+  const sideLabel = cropOverrideMeta().sideLabel;
+  els.studentCropBtn.classList.toggle("hidden", !state.pdf);
+  els.clearStudentCropBtn.classList.toggle("hidden", !state.pdf || !hasOverride);
   els.studentCropBtn.disabled = !state.pdf;
   els.clearStudentCropBtn.disabled = !state.pdf || !hasOverride;
   els.studentCropBtn.classList.toggle("primary", Boolean(state.studentCropMode));
-  els.studentCropBtn.title = state.studentCropMode ? "현재 학생 전용 영역 지정 중" : "현재 학생만 다른 답안 영역을 지정";
-  els.clearStudentCropBtn.title = hasOverride ? "현재 학생 전용 영역 삭제" : "저장된 학생 전용 영역 없음";
+  els.studentCropBtn.title = state.studentCropMode ? `현재 학생 ${sideLabel} 전용 영역 지정 중` : `현재 학생 ${sideLabel}만 다른 답안 영역을 지정`;
+  els.clearStudentCropBtn.title = hasOverride ? `설정된 학생 ${sideLabel} 영역 삭제` : `저장된 현재 학생 ${sideLabel} 전용 영역 없음`;
 }
 
 function toggleStudentCropMode(){
   if(!state.pdf) return;
   state.studentCropMode = !state.studentCropMode;
-  if(state.studentCropMode) editableCrop();
+  if(state.studentCropMode){
+    editableCrop();
+    persist();
+  }
   if(state.studentCropMode && state.mode !== "calibrate") setMode("calibrate");
   updateStudentCropButtons();
   positionOverlay();
   if(state.mode === "grade" && !state.fullPage) drawCrop();
-  showToast(state.studentCropMode ? "현재 학생 전용 영역을 지정합니다." : "문항 공통 영역을 사용합니다.");
+  const sideLabel = cropOverrideMeta().sideLabel;
+  showToast(state.studentCropMode ? `현재 학생 ${sideLabel} 전용 영역을 지정합니다.` : "문항 공통 영역을 사용합니다.");
 }
 
 function clearStudentCropOverride(){
@@ -2256,7 +2423,7 @@ function clearStudentCropOverride(){
   updateStudentCropButtons();
   positionOverlay();
   if(state.mode === "grade" && !state.fullPage) drawCrop();
-  showToast("현재 학생 전용 영역을 삭제했습니다.");
+  showToast(`현재 학생 ${cropSideDisplayFromKey(key.split("__")[1])} 전용 영역을 삭제했습니다.`);
 }
 
 function pdfRestoreHint(){
@@ -2744,6 +2911,7 @@ window.__omrRubricPopupSelect = async (kind, value) => {
     state.activeClass = value;
     if(state.pdf && state.activeClass && !scopedPages().includes(firstPageForStudentIndex(studentIndexForPage(state.page)))){
       state.page = firstScopedPage() || state.page;
+      state.page = pageWithStudentCropSide(state.page);
       await renderCurrentPage();
     }
     updateClassControls();
@@ -2754,7 +2922,7 @@ window.__omrRubricPopupSelect = async (kind, value) => {
   }
   const page = kind === "side" ? Number(value) : pageWithCurrentSide(Number(value));
   if(!Number.isFinite(page) || page <= 0) return;
-  if(state.pdf) await goPage(page);
+  if(state.pdf) await goPage(page, {autoStudentCropSide:kind !== "side"});
   else{
     state.page = page;
     loadRecordIntoForm();
@@ -3816,10 +3984,12 @@ function saveCurrent(){
   updateChrome();
 }
 
-async function goPage(nextPage){
+async function goPage(nextPage, options={}){
   if(!state.pdf) return;
   saveCurrent();
-  state.page = normalizeTargetPage(nextPage);
+  const autoStudentCropSide = options.autoStudentCropSide !== false;
+  const targetPage = normalizeTargetPage(nextPage);
+  state.page = autoStudentCropSide ? pageWithStudentCropSide(targetPage) : targetPage;
   state.lastPdfPage = state.page;
   state.lastPdfPageCount = state.pageCount;
   persist();
@@ -3915,15 +4085,23 @@ function discussionRecords(){
     .sort((a,b) => Number(a.page) - Number(b.page));
 }
 
+function memoRecords(){
+  return Object.values(state.records)
+    .filter(rec => String(rec.answers?.[state.activeQuestion]?.memo || "").trim())
+    .sort((a,b) => Number(a.page) - Number(b.page));
+}
+
 function updateKeywordSummary(){
   const entries = keywordEntries();
-  if(!entries.length){
-    els.keywordSummary.textContent = "루브릭에 인정/미인정/감점 문구를 입력하면 학생 목록을 모아볼 수 있습니다.";
+  const memoCount = memoRecords().length;
+  const discussionCount = discussionRecords().length;
+  const hitCount = entries.reduce((sum, entry) => sum + keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length, 0);
+  if(!entries.length && !memoCount && !discussionCount){
+    els.keywordSummary.textContent = "키워드, 메모, 논의 필요 학생을 한곳에 모아볼 수 있습니다.";
     syncKeywordPopup();
     return;
   }
-  const hitCount = entries.reduce((sum, entry) => sum + keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length, 0);
-  els.keywordSummary.textContent = `${entries.length}개 키워드 · 선택된 학생 기록 ${hitCount}건`;
+  els.keywordSummary.textContent = `메모 ${memoCount}명 · 논의 ${discussionCount}명 · 키워드 ${entries.length}개 / 선택 기록 ${hitCount}건`;
   syncKeywordPopup();
 }
 
@@ -3939,46 +4117,94 @@ function keywordTypeLabel(item, type, keyword=""){
   return item.type === "deduct" ? `감점 -${keywordScore(item, type, keyword)}` : `미인정 -${keywordScore(item, type, keyword)}`;
 }
 
+function keywordHubEntries(){
+  const memos = memoRecords();
+  const discussions = discussionRecords();
+  const entries = [{
+    kind:"memo",
+    key:"memo",
+    title:"메모 있는 학생",
+    meta:`${memos.length}명`,
+    detail:"문항 메모가 입력된 학생"
+  },{
+    kind:"discussion",
+    key:"discussion",
+    title:"논의 필요 학생",
+    meta:`${discussions.length}명`,
+    detail:"논의 필요로 표시된 학생"
+  }];
+  entries.push(...keywordEntries().map(entry => ({
+    kind:"keyword",
+    key:`keyword|||${keywordEntryKey(entry)}`,
+    entry,
+    title:entry.keyword,
+    meta:`${keywordTypeLabel(entry.item, entry.type, entry.keyword)} · ${keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length}명`,
+    detail:`${entry.item.sub || "공통"} · ${entry.item.name}`
+  })));
+  return entries;
+}
+
 function renderKeywordModal(selectedKey=""){
-  const entries = keywordEntries();
+  const entries = keywordHubEntries();
   if(!entries.length){
     selectedKeywordModalKey = "";
-    els.keywordModalList.innerHTML = `<div class="statusLine">등록된 키워드가 없습니다.</div>`;
+    els.keywordModalList.innerHTML = `<div class="statusLine">모아볼 항목이 없습니다.</div>`;
     els.keywordStudentTitle.textContent = "학생 명렬";
-    els.keywordStudentDetail.innerHTML = `<div class="statusLine">루브릭 편집에서 키워드를 먼저 추가하세요.</div>`;
+    els.keywordStudentDetail.innerHTML = `<div class="statusLine">키워드, 메모, 논의 표시가 생기면 여기에 모아볼 수 있습니다.</div>`;
     syncKeywordPopup();
     return;
   }
-  const selected = entries.find(entry => keywordEntryKey(entry) === selectedKey) || entries[0];
-  selectedKeywordModalKey = keywordEntryKey(selected);
+  const selected = entries.find(entry => entry.key === selectedKey) || entries[0];
+  selectedKeywordModalKey = selected.key;
   els.keywordModalList.innerHTML = keywordModalListHtml(entries, selectedKeywordModalKey);
-  renderKeywordStudentDetail(selected.item.id, selected.type, selected.keyword);
+  renderKeywordStudentDetail(selected);
   syncKeywordPopup();
 }
 
 function keywordModalListHtml(entries, selectedKey){
   return entries.map((entry, index) => {
-    const count = keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length;
-    const on = keywordEntryKey(entry) === selectedKey ? " on" : "";
+    const on = entry.key === selectedKey ? " on" : "";
+    const kindLabel = entry.kind === "keyword" ? "키워드" : entry.kind === "memo" ? "메모" : "논의";
     return `
       <button class="keywordModalBtn${on}" type="button" data-entry-index="${index}">
+        <div class="keywordModalKind">${kindLabel}</div>
         <div class="keywordSummaryTop">
-          <div class="keywordSummaryText">${escapeHtml(entry.keyword)}</div>
-          <div class="keywordSummaryMeta">${keywordTypeLabel(entry.item, entry.type, entry.keyword)} · ${count}명</div>
+          <div class="keywordSummaryText">${escapeHtml(entry.title)}</div>
+          <div class="keywordSummaryMeta">${escapeHtml(entry.meta)}</div>
         </div>
-        <div class="keywordStudentMeta">${escapeHtml(entry.item.sub || "공통")} · ${escapeHtml(entry.item.name)}</div>
+        <div class="keywordStudentMeta">${escapeHtml(entry.detail)}</div>
       </button>
     `;
   }).join("");
 }
 
-function keywordStudentTitleText(item, type, keyword){
-  return item ? `${item.sub || "공통"} · ${keywordTypeLabel(item, type, keyword)}` : "학생 명렬";
+function keywordStudentTitleText(entry){
+  if(!entry) return "학생 명렬";
+  if(entry.kind === "keyword") return `${entry.entry.item.sub || "공통"} · ${keywordTypeLabel(entry.entry.item, entry.entry.type, entry.entry.keyword)}`;
+  return entry.title;
 }
 
-function keywordStudentDetailHtml(itemId, type, keyword){
-  const item = activeRubric().find(entry => entry.id === itemId);
-  const records = keywordStudentRecords(itemId, type, keyword);
+function memoStudentDetailHtml(records, emptyText, fallbackText="메모 없음"){
+  if(!records.length){
+    return `<div class="statusLine">${escapeHtml(emptyText)}</div>`;
+  }
+  return records.map(rec => `
+    <div class="keywordStudentRow">
+      <div>
+        <div class="keywordStudentName">${escapeHtml(studentLabelForRecord(rec))}</div>
+        <div class="keywordStudentMeta">${rec.page}쪽 · ${escapeHtml(String(rec.answers?.[state.activeQuestion]?.memo || "").trim() || fallbackText)}</div>
+      </div>
+      <button class="btn mini keywordGoStudentBtn" type="button" data-page="${escapeHtml(rec.page)}">OMR 보기</button>
+    </div>
+  `).join("");
+}
+
+function keywordStudentDetailHtml(entry){
+  if(!entry) return `<div class="statusLine">선택된 항목이 없습니다.</div>`;
+  if(entry.kind === "memo") return memoStudentDetailHtml(memoRecords(), "메모가 있는 학생이 아직 없습니다.");
+  if(entry.kind === "discussion") return memoStudentDetailHtml(discussionRecords(), "현재 문항에서 논의 표시된 학생이 없습니다.", "논의 필요 표시");
+  const {item, type, keyword} = entry.entry;
+  const records = keywordStudentRecords(item.id, type, keyword);
   if(!records.length){
     return `<div class="statusLine">이 키워드로 표시한 학생이 아직 없습니다.</div>`;
   }
@@ -3988,15 +4214,14 @@ function keywordStudentDetailHtml(itemId, type, keyword){
         <div class="keywordStudentName">${escapeHtml(studentLabelForRecord(rec))}</div>
         <div class="keywordStudentMeta">${rec.page}쪽 · ${escapeHtml(keyword)}</div>
       </div>
-      <button class="btn mini keywordGoStudentBtn" type="button" data-page="${escapeHtml(rec.page)}" data-entry-key="${escapeHtml(keywordEntryKey({item, type, keyword}))}">필터 적용</button>
+      <button class="btn mini keywordGoStudentBtn" type="button" data-page="${escapeHtml(rec.page)}" data-entry-key="${escapeHtml(keywordEntryKey({item, type, keyword}))}">OMR 보기</button>
     </div>
   `).join("");
 }
 
-function renderKeywordStudentDetail(itemId, type, keyword){
-  const item = activeRubric().find(entry => entry.id === itemId);
-  els.keywordStudentTitle.textContent = keywordStudentTitleText(item, type, keyword);
-  els.keywordStudentDetail.innerHTML = keywordStudentDetailHtml(itemId, type, keyword);
+function renderKeywordStudentDetail(entry){
+  els.keywordStudentTitle.textContent = keywordStudentTitleText(entry);
+  els.keywordStudentDetail.innerHTML = keywordStudentDetailHtml(entry);
 }
 
 function openKeywordPopup(){
@@ -4017,7 +4242,7 @@ function openKeywordPopup(){
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>키워드별 학생</title>
+<title>메모 & 논의 & 키워드별 모아보기</title>
 <style>
 ${styleText}
 body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -4032,14 +4257,14 @@ body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-syst
 <main class="keywordPopupWrap">
   <div class="keywordPopupHead">
     <div>
-      <h1 id="keywordPopupTitle" style="margin:0;font-size:18px">키워드별 학생</h1>
+      <h1 id="keywordPopupTitle" style="margin:0;font-size:18px">메모 & 논의 & 키워드별 모아보기</h1>
       <div class="meta" id="keywordPopupMeta"></div>
     </div>
     <button class="btn mini" id="keywordPopupCloseBtn" type="button">닫기</button>
   </div>
   <div class="keywordPopupBody">
     <section class="panel">
-      <div class="panelHead"><h2 class="panelTitle">루브릭 키워드</h2></div>
+      <div class="panelHead"><h2 class="panelTitle">모아보기</h2></div>
       <div class="keywordModalList" id="keywordPopupList"></div>
     </section>
     <section class="panel">
@@ -4058,11 +4283,12 @@ body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-syst
     }
     const keywordBtn = evt.target.closest(".keywordModalBtn");
     if(keywordBtn){
-      const entry = keywordEntries()[Number(keywordBtn.dataset.entryIndex)];
+      const entry = keywordHubEntries()[Number(keywordBtn.dataset.entryIndex)];
       if(entry){
-        selectedKeywordModalKey = keywordEntryKey(entry);
+        selectedKeywordModalKey = entry.key;
         renderKeywordModal(selectedKeywordModalKey);
         renderKeywordPopup(selectedKeywordModalKey);
+        await applyKeywordFilter(entry);
       }
       return;
     }
@@ -4070,6 +4296,17 @@ body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-syst
     if(goBtn){
       const entry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
       if(entry) await applyKeywordFilter(entry, Number(goBtn.dataset.page));
+      else{
+        const page = Number(goBtn.dataset.page);
+        if(Number.isFinite(page) && page > 0){
+          if(state.pdf) await goPage(page);
+          else{
+            state.page = page;
+            loadRecordIntoForm();
+            updateChrome();
+          }
+        }
+      }
       window.focus();
     }
   });
@@ -4083,24 +4320,24 @@ body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-syst
 function renderKeywordPopup(selectedKey=selectedKeywordModalKey){
   if(!keywordPopupWindow || keywordPopupWindow.closed) return;
   const doc = keywordPopupWindow.document;
-  const entries = keywordEntries();
+  const entries = keywordHubEntries();
   const list = doc.getElementById("keywordPopupList");
   const title = doc.getElementById("keywordPopupStudentTitle");
   const detail = doc.getElementById("keywordPopupStudentDetail");
   const meta = doc.getElementById("keywordPopupMeta");
-  if(meta) meta.textContent = `${activeQuestion().label} · ${entries.length}개 키워드`;
+  if(meta) meta.textContent = `${activeQuestion().label} · ${entries.length}개 항목`;
   if(!list || !title || !detail) return;
   if(!entries.length){
-    list.innerHTML = `<div class="statusLine">등록된 키워드가 없습니다.</div>`;
+    list.innerHTML = `<div class="statusLine">모아볼 항목이 없습니다.</div>`;
     title.textContent = "학생 명렬";
-    detail.innerHTML = `<div class="statusLine">루브릭 편집에서 키워드를 먼저 추가하세요.</div>`;
+    detail.innerHTML = `<div class="statusLine">키워드, 메모, 논의 표시가 생기면 여기에 모아볼 수 있습니다.</div>`;
     return;
   }
-  const selected = entries.find(entry => keywordEntryKey(entry) === selectedKey) || entries[0];
-  selectedKeywordModalKey = keywordEntryKey(selected);
+  const selected = entries.find(entry => entry.key === selectedKey) || entries[0];
+  selectedKeywordModalKey = selected.key;
   list.innerHTML = keywordModalListHtml(entries, selectedKeywordModalKey);
-  title.textContent = keywordStudentTitleText(selected.item, selected.type, selected.keyword);
-  detail.innerHTML = keywordStudentDetailHtml(selected.item.id, selected.type, selected.keyword);
+  title.textContent = keywordStudentTitleText(selected);
+  detail.innerHTML = keywordStudentDetailHtml(selected);
 }
 
 function syncKeywordPopup(){
@@ -4115,6 +4352,19 @@ function keywordEntryFromKey(key){
   return keywordEntries().find(entry => keywordEntryKey(entry) === key) || null;
 }
 
+function filterFromHubEntry(entry){
+  if(!entry) return null;
+  if(entry.kind === "memo") return {kind:"memo"};
+  if(entry.kind === "discussion") return {kind:"discussion"};
+  if(entry.kind === "keyword" && entry.entry){
+    return {kind:"keyword", itemId:entry.entry.item.id, type:entry.entry.type, keyword:entry.entry.keyword};
+  }
+  if(entry.item && entry.type && entry.keyword){
+    return {kind:"keyword", itemId:entry.item.id, type:entry.type, keyword:entry.keyword};
+  }
+  return null;
+}
+
 function keywordStudentRecords(itemId, type, keyword){
   return Object.values(state.records)
     .filter(rec => {
@@ -4126,7 +4376,13 @@ function keywordStudentRecords(itemId, type, keyword){
 
 function keywordFilterPages(filter=state.keywordFilter){
   if(!filter) return [];
-  return keywordStudentRecords(filter.itemId, filter.type, filter.keyword)
+  const kind = filter.kind || "keyword";
+  const records = kind === "memo"
+    ? memoRecords()
+    : kind === "discussion"
+      ? discussionRecords()
+      : keywordStudentRecords(filter.itemId, filter.type, filter.keyword);
+  return records
     .map(rec => firstPageForStudentIndex(Number(rec.studentIndex) || studentIndexForPage(rec.page)))
     .filter((page, index, pages) => page > 0 && pages.indexOf(page) === index)
     .sort((a,b) => a - b);
@@ -4134,18 +4390,23 @@ function keywordFilterPages(filter=state.keywordFilter){
 
 function keywordFilterLabel(filter=state.keywordFilter){
   if(!filter) return "";
+  const kind = filter.kind || "keyword";
+  if(kind === "memo") return "메모 있는 학생";
+  if(kind === "discussion") return "논의 필요 학생";
   const item = activeRubric().find(entry => entry.id === filter.itemId);
   const typeLabel = item ? keywordTypeLabel(item, filter.type, filter.keyword) : filter.type;
   return `${filter.keyword} · ${typeLabel}`;
 }
 
 async function applyKeywordFilter(entry, startPage=null){
-  state.keywordFilter = {itemId:entry.item.id, type:entry.type, keyword:entry.keyword};
+  const filter = filterFromHubEntry(entry);
+  if(!filter) return;
+  state.keywordFilter = filter;
   state.activeClass = "";
   const pages = scopedPages();
   if(!pages.length){
     state.keywordFilter = null;
-    showToast("이 키워드로 표시된 학생이 없습니다.");
+    showToast("해당 항목으로 표시된 학생이 없습니다.");
     return;
   }
   els.keywordModal.classList.add("hidden");
@@ -4157,14 +4418,14 @@ async function applyKeywordFilter(entry, startPage=null){
     loadRecordIntoForm();
     updateChrome();
   }
-  showToast(`키워드 필터 적용: ${entry.keyword}`);
+  showToast(`모아보기 필터 적용: ${keywordFilterLabel(filter)}`);
 }
 
 function clearKeywordFilter(){
   if(!state.keywordFilter) return;
   state.keywordFilter = null;
   updateChrome();
-  showToast("키워드 필터를 해제했습니다.");
+  showToast("모아보기 필터를 해제했습니다.");
 }
 
 async function handleGradingShortcut(evt){
@@ -4259,7 +4520,7 @@ function exportShareReport(){
   els.shareExportModal.classList.remove("hidden");
 }
 
-function createShareReport(){
+async function createShareReport(){
   cleanupAllRecords();
   const records = Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
   if(!records.length){
@@ -4269,9 +4530,23 @@ function createShareReport(){
   const options = {
     includeExample:els.shareIncludeExampleInput.checked,
     includeMemo:els.shareIncludeMemoInput.checked,
-    includeDiscussion:els.shareIncludeDiscussionInput.checked
+    includeDiscussion:els.shareIncludeDiscussionInput.checked,
+    includeHighlight:els.shareIncludeHighlightInput.checked
   };
-  const html = buildShareReportHtml(records, options);
+  const originalText = els.createShareReportBtn.textContent;
+  els.createShareReportBtn.disabled = true;
+  els.createShareReportBtn.textContent = options.includeHighlight && state.pdf ? "형광펜 캡처 중..." : "내보내는 중...";
+  let html = "";
+  try{
+    html = await buildShareReportHtml(records, options);
+  }catch(err){
+    console.error(err);
+    alert("내보내기 중 오류가 발생했습니다.");
+    return;
+  }finally{
+    els.createShareReportBtn.disabled = false;
+    els.createShareReportBtn.textContent = originalText;
+  }
   const reportWindow = window.open("", "_blank");
   if(reportWindow){
     reportWindow.document.open();
@@ -4286,9 +4561,10 @@ function createShareReport(){
   }
 }
 
-function buildShareReportHtml(records, options){
+async function buildShareReportHtml(records, options){
   const exportedAt = new Date().toLocaleString("ko-KR");
   const questionMaxTotal = state.questions.reduce((sum, question) => sum + questionMaxScore(question), 0);
+  const studentHtml = (await Promise.all(records.map(rec => shareReportStudentHtml(rec, options)))).join("");
   return `<!doctype html>
 <html lang="ko">
 <head>
@@ -4333,6 +4609,18 @@ function buildShareReportHtml(records, options){
   .chip.deduct{border-color:#edcfcb;background:#fff}
   .empty{color:#647085;font-size:12px}
   .memo{margin-top:10px;border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap}
+  .highlightReport{margin-top:10px;border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:10px;display:grid;gap:8px}
+  .highlightReportTitle{font-size:12px;font-weight:900}
+  .highlightReportList{display:grid;gap:8px}
+  .highlightReportItem{display:grid;grid-template-columns:minmax(160px,220px) minmax(0,1fr);gap:10px;align-items:start;border:1px solid #eef1f5;border-radius:8px;padding:8px;background:#fbfcfe}
+  .highlightCapture{width:100%;max-width:220px;border:1px solid #d9dee8;border-radius:6px;background:#fff;display:block}
+  .highlightMiniMap{position:relative;width:86px;aspect-ratio:1 / 1.32;border:1px solid #d9dee8;border-radius:6px;background:linear-gradient(#fff,#f8fafc);overflow:hidden}
+  .highlightMiniBox{position:absolute;border:2px solid var(--highlight-border,#d38e00);background:var(--highlight-bg,rgba(255,224,79,.34));border-radius:3px}
+  .highlightMiniBox.yellow{--highlight-border:rgba(211,142,0,.85);--highlight-bg:rgba(255,224,79,.38)}
+  .highlightMiniBox.red{--highlight-border:rgba(198,56,48,.86);--highlight-bg:rgba(255,107,100,.34)}
+  .highlightMiniBox.green{--highlight-border:rgba(42,133,68,.88);--highlight-bg:rgba(98,215,123,.34)}
+  .highlightReportMeta{font-size:11px;font-weight:900;color:#647085;margin-bottom:5px}
+  .highlightReportMemo{font-size:12px;line-height:1.55;white-space:pre-wrap}
   .badge{display:inline-block;border:1px solid #edcfcb;border-radius:999px;background:#fff7f6;color:#a33a35;padding:3px 7px;font-size:11px;font-weight:900;margin-left:6px}
   .badge.done{border-color:#c9e7d2;background:#f4fbf7;color:#1f7a45}
   @media print{
@@ -4350,6 +4638,7 @@ function buildShareReportHtml(records, options){
     .studentScale{transform:none;width:100%}
     .subGroup{grid-template-columns:52px minmax(0,1fr)}
     .subScore{grid-column:1 / -1;border-left:0;border-top:1px solid #d9dee8;padding:8px}
+    .highlightReportItem{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -4363,7 +4652,7 @@ function buildShareReportHtml(records, options){
     <div class="meta">문항 총점 합계 ${escapeHtml(formatScore(questionMaxTotal))}점</div>
   </div>
   <div class="tools"><button type="button" onclick="fitStudentPages();window.print()">인쇄/PDF 저장</button></div>
-  ${records.map(rec => shareReportStudentHtml(rec, options)).join("")}
+  ${studentHtml}
 </main>
 <script>
 function fitStudentPages(){
@@ -4388,7 +4677,7 @@ setTimeout(fitStudentPages, 120);
 </html>`;
 }
 
-function shareReportStudentHtml(rec, options){
+async function shareReportStudentHtml(rec, options){
   const total = state.questions.reduce((sum, question) => sum + questionTotal(rec, question), 0);
   const maxTotal = state.questions.reduce((sum, question) => sum + questionMaxScore(question), 0);
   return `<section class="printPage">
@@ -4401,13 +4690,13 @@ function shareReportStudentHtml(rec, options){
           </div>
           <div class="score">${escapeHtml(formatScore(Math.max(0, total)))}점 / ${escapeHtml(formatScore(maxTotal))}점</div>
         </div>
-        ${state.questions.map(question => shareReportQuestionHtml(rec, question, options)).join("")}
+        ${(await Promise.all(state.questions.map(question => shareReportQuestionHtml(rec, question, options)))).join("")}
       </section>
     </div>
   </section>`;
 }
 
-function shareReportQuestionHtml(rec, question, options){
+async function shareReportQuestionHtml(rec, question, options){
   const qrec = rec.answers?.[question.id] || {};
   const qtotal = questionTotal(rec, question);
   const qmax = questionMaxScore(question);
@@ -4417,6 +4706,7 @@ function shareReportQuestionHtml(rec, question, options){
   const example = options.includeExample && exampleAnswer ? `<div class="example"><strong>예시답안</strong>\n${escapeHtml(exampleAnswer)}</div>` : "";
   const groups = shareReportSubGroupsHtml(question, qrec);
   const memo = options.includeMemo && String(qrec.memo || "").trim() ? `<div class="memo"><strong>문항 메모</strong>\n${escapeHtml(qrec.memo)}</div>` : "";
+  const highlights = options.includeHighlight ? await shareReportHighlightsHtml(rec, question, qrec) : "";
   return `<article class="question">
     <div class="questionHead">
       <h2>${escapeHtml(question.label)} ${completed} ${discussion}</h2>
@@ -4425,7 +4715,136 @@ function shareReportQuestionHtml(rec, question, options){
     ${example}
     ${groups || `<div class="empty">선택된 채점 근거 없음</div>`}
     ${memo}
+    ${highlights}
   </article>`;
+}
+
+async function shareReportHighlightsHtml(rec, question, qrec){
+  const highlights = normalizeAnswerHighlights(qrec.highlights || []);
+  if(!highlights.length) return "";
+  const captures = await Promise.all(highlights.map(item => highlightCaptureDataUrl(rec, question, item)));
+  return `<div class="highlightReport">
+    <div class="highlightReportTitle">형광펜 캡처 및 메모</div>
+    <div class="highlightReportList">
+      ${highlights.map((item, index) => shareReportHighlightItemHtml(item, index, captures[index])).join("")}
+    </div>
+  </div>`;
+}
+
+function shareReportHighlightItemHtml(item, index, captureDataUrl=""){
+  const color = ["yellow","red","green"].includes(item.color) ? item.color : "yellow";
+  const memo = item.memo || "메모 없음";
+  const view = item.view === "page" ? "전체 답안" : "답안 영역";
+  const side = item.side ? ` · ${pageSideTextFromSide(item.side)}` : "";
+  return `<div class="highlightReportItem">
+    ${captureDataUrl
+      ? `<img class="highlightCapture" src="${escapeHtml(captureDataUrl)}" alt="형광펜 캡처">`
+      : `<div class="highlightMiniMap" aria-label="형광펜 위치">
+          <div class="highlightMiniBox ${escapeHtml(color)}" style="left:${item.x * 100}%;top:${item.y * 100}%;width:${item.w * 100}%;height:${item.h * 100}%"></div>
+        </div>`}
+    <div>
+      <div class="highlightReportMeta">${index + 1}. ${escapeHtml(highlightColorLabel(color))} · ${escapeHtml(view)}${escapeHtml(side)}</div>
+      <div class="highlightReportMemo">${escapeHtml(memo)}</div>
+    </div>
+  </div>`;
+}
+
+async function highlightCaptureDataUrl(rec, question, item){
+  if(!state.pdf) return "";
+  try{
+    const pageNumber = pageForHighlight(rec, item);
+    const page = await state.pdf.getPage(pageNumber);
+    const viewport = page.getViewport({scale:state.scale});
+    const fullCanvas = document.createElement("canvas");
+    fullCanvas.width = viewport.width;
+    fullCanvas.height = viewport.height;
+    const fullCtx = fullCanvas.getContext("2d", {alpha:false});
+    fullCtx.fillStyle = "#fff";
+    fullCtx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
+    await page.render({canvasContext:fullCtx, viewport}).promise;
+    const highlightRect = highlightAbsoluteRect(item, question, pageNumber);
+    const captureRect = highlightCaptureRect(highlightRect);
+    const sx = Math.round(captureRect.x * fullCanvas.width);
+    const sy = Math.round(captureRect.y * fullCanvas.height);
+    const sw = Math.max(1, Math.round(captureRect.w * fullCanvas.width));
+    const sh = Math.max(1, Math.round(captureRect.h * fullCanvas.height));
+    const maxWidth = 520;
+    const outScale = Math.min(1, maxWidth / sw);
+    const outCanvas = document.createElement("canvas");
+    outCanvas.width = Math.max(1, Math.round(sw * outScale));
+    outCanvas.height = Math.max(1, Math.round(sh * outScale));
+    const outCtx = outCanvas.getContext("2d", {alpha:false});
+    outCtx.fillStyle = "#fff";
+    outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+    outCtx.drawImage(fullCanvas, sx, sy, sw, sh, 0, 0, outCanvas.width, outCanvas.height);
+    drawHighlightOverlayOnCapture(outCtx, item, highlightRect, captureRect, outCanvas.width, outCanvas.height);
+    return outCanvas.toDataURL("image/jpeg", .86);
+  }catch(err){
+    console.warn("highlight capture failed", err);
+    return "";
+  }
+}
+
+function highlightAbsoluteRect(item, question, pageNumber){
+  const base = item.view === "page" ? {x:0, y:0, w:1, h:1} : cropForPage(pageNumber, question);
+  return {
+    x:base.x + item.x * base.w,
+    y:base.y + item.y * base.h,
+    w:item.w * base.w,
+    h:item.h * base.h
+  };
+}
+
+function highlightCaptureRect(highlightRect){
+  const hx = highlightRect.x;
+  const hy = highlightRect.y;
+  const hw = highlightRect.w;
+  const hh = highlightRect.h;
+  const pad = Math.max(.018, Math.min(.055, Math.max(hw, hh) * .65));
+  const x = clamp(hx - pad, 0, 1);
+  const y = clamp(hy - pad, 0, 1);
+  const right = clamp(hx + hw + pad, 0, 1);
+  const bottom = clamp(hy + hh + pad, 0, 1);
+  return {x, y, w:Math.max(.001, right - x), h:Math.max(.001, bottom - y)};
+}
+
+function drawHighlightOverlayOnCapture(ctx, item, highlightRect, captureRect, width, height){
+  const colorMap = {
+    yellow:{fill:"rgba(255,224,79,.32)", stroke:"rgba(211,142,0,.95)"},
+    red:{fill:"rgba(255,107,100,.28)", stroke:"rgba(198,56,48,.95)"},
+    green:{fill:"rgba(98,215,123,.28)", stroke:"rgba(42,133,68,.95)"}
+  };
+  const colors = colorMap[item.color] || colorMap.yellow;
+  const x = ((highlightRect.x - captureRect.x) / captureRect.w) * width;
+  const y = ((highlightRect.y - captureRect.y) / captureRect.h) * height;
+  const w = (highlightRect.w / captureRect.w) * width;
+  const h = (highlightRect.h / captureRect.h) * height;
+  ctx.fillStyle = colors.fill;
+  ctx.strokeStyle = colors.stroke;
+  ctx.lineWidth = Math.max(2, Math.min(width, height) * .012);
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x, y, w, h);
+}
+
+function pageForHighlight(rec, item){
+  const studentIndex = Number(rec.studentIndex) || studentIndexForPage(rec.page);
+  const pages = pagesForStudentIndex(studentIndex);
+  const side = item.side || "page1";
+  return pages.find(page => (pageSideLabel(page) || "page1") === side) || Number(rec.page) || pages[0] || 1;
+}
+
+function highlightColorLabel(color){
+  return color === "red" ? "빨간 형광펜" : color === "green" ? "초록 형광펜" : "노란 형광펜";
+}
+
+function pageSideTextFromSide(side){
+  const sideText = String(side || "");
+  if(sideText === "앞면" || sideText === "뒷면" || /^\d+쪽$/.test(sideText)) return sideText;
+  if(sideText === "page1") return pagesPerStudent() > 1 ? "앞면" : "";
+  const sideNumber = Number(side);
+  if(!Number.isFinite(sideNumber) || sideNumber <= 0) return "";
+  if(pagesPerStudent() === 2) return sideNumber === 1 ? "앞면" : "뒷면";
+  return `${sideNumber}쪽`;
 }
 
 function shareReportSubGroupsHtml(question, qrec){
@@ -5630,6 +6049,7 @@ async function toggleIncompleteOnly(){
   const pages = scopedPages();
   const currentBasePage = firstPageForStudentIndex(studentIndexForPage(state.page));
   if(pages.length && !pages.includes(currentBasePage)) state.page = pageWithCurrentSide(pages[0]);
+  if(state.pdf) state.page = pageWithStudentCropSide(state.page);
   updateChrome();
   loadRecordIntoForm();
   if(state.pdf) await renderCurrentPage();
@@ -5715,7 +6135,10 @@ function updatePageSideControls(){
   els.pageSideSelect.classList.toggle("hidden", pageCount <= 1);
   if(pageCount <= 1) return;
   const options = pagesForStudentIndex(studentIndexForPage(state.page))
-    .map(page => `<option value="${page}">${escapeHtml(pageSideLabel(page))}</option>`)
+    .map(page => {
+      const saved = Boolean(currentRecord()?.cropOverrides?.[cropKey(state.activeQuestion, page)]);
+      return `<option value="${page}">${escapeHtml(pageSideLabel(page))}${saved ? " · 학생 영역" : ""}</option>`;
+    })
     .join("");
   if(els.pageSideSelect.innerHTML !== options) els.pageSideSelect.innerHTML = options;
   els.pageSideSelect.value = String(state.page);
@@ -5954,7 +6377,7 @@ els.highlightModeBtn.addEventListener("click", toggleHighlightMode);
 els.highlightYellowBtn.addEventListener("click", () => setHighlightColor("yellow"));
 els.highlightRedBtn.addEventListener("click", () => setHighlightColor("red"));
 els.highlightGreenBtn.addEventListener("click", () => setHighlightColor("green"));
-els.undoHighlightBtn.addEventListener("click", undoLastHighlight);
+els.undoHighlightBtn?.addEventListener("click", undoLastHighlight);
 els.gradeModeBtn.addEventListener("click", enterGradeMode);
 els.openRubricWindowBtn.addEventListener("click", openRubricPopup);
 els.floatingRubricWindowBtn.addEventListener("click", openRubricPopup);
@@ -5972,21 +6395,36 @@ els.openKeywordPopupBtn.addEventListener("click", () => {
   els.keywordModal.classList.add("hidden");
 });
 els.closeKeywordModalBtn.addEventListener("click", () => els.keywordModal.classList.add("hidden"));
-els.keywordModal.addEventListener("click", evt => {
+els.keywordModal.addEventListener("click", async evt => {
   if(evt.target === els.keywordModal){
     els.keywordModal.classList.add("hidden");
     return;
   }
   const keywordBtn = evt.target.closest(".keywordModalBtn");
   if(keywordBtn){
-    const entry = keywordEntries()[Number(keywordBtn.dataset.entryIndex)];
-    if(entry) renderKeywordModal(keywordEntryKey(entry));
+    const entry = keywordHubEntries()[Number(keywordBtn.dataset.entryIndex)];
+    if(entry){
+      renderKeywordModal(entry.key);
+      await applyKeywordFilter(entry);
+    }
     return;
   }
   const goBtn = evt.target.closest(".keywordGoStudentBtn");
   if(goBtn){
     const entry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
-    if(entry) applyKeywordFilter(entry, Number(goBtn.dataset.page));
+    if(entry) await applyKeywordFilter(entry, Number(goBtn.dataset.page));
+    else{
+      els.keywordModal.classList.add("hidden");
+      const page = Number(goBtn.dataset.page);
+      if(Number.isFinite(page) && page > 0){
+        if(state.pdf) await goPage(page);
+        else{
+          state.page = page;
+          loadRecordIntoForm();
+          updateChrome();
+        }
+      }
+    }
   }
 });
 els.closeShareExportBtn.addEventListener("click", () => els.shareExportModal.classList.add("hidden"));
@@ -6323,10 +6761,13 @@ els.applyRosterBtn.addEventListener("click", () => {
   persist();
   if(state.pdf && state.activeClass && !scopedPages().includes(firstPageForStudentIndex(studentIndexForPage(state.page)))){
     state.page = firstScopedPage() || state.page;
-  renderCurrentPage();
-  renderAnswerHighlights();
-  updateHighlightButtons();
-}
+  }
+  if(state.pdf){
+    state.page = pageWithStudentCropSide(state.page);
+    renderCurrentPage();
+    renderAnswerHighlights();
+    updateHighlightButtons();
+  }
   loadRecordIntoForm();
   updateResults();
 });
@@ -6341,6 +6782,7 @@ els.classSelect.addEventListener("change", async () => {
   els.classSelect.blur();
   updateClassControls();
   state.page = firstScopedPage() || state.page || 1;
+  state.page = pageWithStudentCropSide(state.page);
   if(state.pdf){
     await renderCurrentPage();
   }
@@ -6363,7 +6805,7 @@ els.nameSelect.addEventListener("change", () => handleAnswerSelectChange(els.nam
 els.pageSideSelect.addEventListener("change", () => {
   const page = Number(els.pageSideSelect.value);
   if(!Number.isFinite(page) || page <= 0) return;
-  if(state.pdf) goPage(page);
+  if(state.pdf) goPage(page, {autoStudentCropSide:false});
   else{
     state.page = page;
     loadRecordIntoForm();
