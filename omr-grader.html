@@ -98,6 +98,13 @@ h1{margin:0;font-size:20px;line-height:1.25}
 #keywordSummary{max-height:calc(22vh - 54px);overflow:auto}
 .answerZoomControls{position:absolute;right:12px;bottom:12px;z-index:8;display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px;box-shadow:0 8px 22px rgba(23,32,51,.12)}
 .answerZoomText{min-width:46px;text-align:center;color:var(--muted);font-size:12px;font-weight:900}
+.toolDivider{width:1px;height:28px;background:var(--line);margin:0 2px}
+.highlightColorBtn{width:24px;min-width:24px;min-height:24px;padding:0;border:0;background:transparent;display:grid;place-items:center}
+.highlightColorBtn::before{content:"";width:16px;height:16px;border-radius:50%;border:1px solid rgba(23,32,51,.22)}
+.highlightColorBtn.yellow::before{background:#ffe04f}
+.highlightColorBtn.red::before{background:#ff6b64}
+.highlightColorBtn.green::before{background:#62d77b}
+.highlightColorBtn.on::before{outline:2px solid var(--accent);outline-offset:2px}
 body:not(.pdfLoaded) .answerZoomControls{display:none}
 .app.multiWindowMain .viewer{height:100vh;overflow:hidden}
 .app.multiWindowMain .stage{height:100%}
@@ -114,12 +121,27 @@ body:not(.pdfLoaded) .answerZoomControls{display:none}
 .empty h2{margin:0 0 8px;font-size:24px}
 .empty p{margin:0 0 18px;color:var(--muted);line-height:1.6}
 .pageWrap,.cropView{width:max-content;max-width:none}
-.pageWrap{position:relative}
+.pageWrap,.cropView{position:relative}
 .pageWrap,.cropView{margin:auto}
 canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:var(--shadow)}
-.cropOverlay{position:absolute;border:3px solid #e23d32;background:rgba(226,61,50,.08);outline:9999px solid rgba(10,16,26,.50);cursor:move;touch-action:none}
+.cropOverlay{position:absolute;z-index:3;border:3px solid #e23d32;background:rgba(226,61,50,.08);outline:9999px solid rgba(10,16,26,.50);cursor:move;touch-action:none}
 .cropOverlay::after{content:"";position:absolute;right:-16px;bottom:-16px;width:32px;height:32px;border-radius:50%;background:#e23d32;border:3px solid #fff;cursor:nwse-resize;box-shadow:0 4px 12px rgba(10,16,26,.25)}
 .pageWrap canvas,.cropView canvas{max-width:none;max-height:none;object-fit:contain}
+.answerHighlightLayer{position:absolute;inset:0;z-index:2;pointer-events:auto}
+.answerHighlightLayer.drawing{pointer-events:auto;cursor:crosshair}
+.answerHighlightBox{position:absolute;border:2px solid var(--highlight-border, rgba(211,142,0,.85));background:var(--highlight-bg, rgba(255,224,79,.38));border-radius:4px;box-shadow:0 1px 4px rgba(23,32,51,.16);cursor:move;touch-action:none}
+.answerHighlightBox.yellow{--highlight-border:rgba(211,142,0,.85);--highlight-bg:rgba(255,224,79,.38);--highlight-draft:rgba(255,224,79,.24)}
+.answerHighlightBox.red{--highlight-border:rgba(198,56,48,.86);--highlight-bg:rgba(255,107,100,.34);--highlight-draft:rgba(255,107,100,.22)}
+.answerHighlightBox.green{--highlight-border:rgba(42,133,68,.88);--highlight-bg:rgba(98,215,123,.34);--highlight-draft:rgba(98,215,123,.22)}
+.answerHighlightBox.draft{border-style:dashed;background:var(--highlight-draft, rgba(255,224,79,.24));pointer-events:none}
+.answerHighlightBox.editing{outline:2px solid #172033;outline-offset:2px}
+.highlightResizeHandle{position:absolute;right:-7px;bottom:-7px;width:15px;height:15px;border:2px solid #fff;border-radius:50%;background:var(--highlight-border, #d38e00);box-shadow:0 2px 7px rgba(10,16,26,.28);cursor:nwse-resize;z-index:8}
+.answerHighlightNote{display:none;position:absolute;left:0;bottom:calc(100% + 6px);max-width:260px;border:1px solid var(--line);border-radius:8px;background:#172033;color:#fff;padding:7px 9px;font-size:12px;font-weight:750;line-height:1.45;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;box-shadow:0 10px 24px rgba(10,16,26,.28);z-index:6}
+.answerHighlightBox:hover .answerHighlightNote{display:block}
+.highlightEditor{position:absolute;z-index:7;width:min(280px,calc(100% - 8px));border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px;box-shadow:0 14px 34px rgba(10,16,26,.22);display:grid;gap:7px}
+.highlightEditor textarea{min-height:74px;font-size:12px;line-height:1.45}
+.highlightEditorActions{display:flex;gap:6px;justify-content:flex-end}
+.highlightToolOn{background:#946200!important;border-color:#946200!important;color:#fff!important}
 .side{min-width:0;height:100vh;overflow:auto;background:#fbfcfe;padding:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
 .panelHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -505,6 +527,12 @@ textarea{min-height:72px;resize:vertical}
           <span class="answerZoomText" id="answerZoomText">100%</span>
           <button class="btn mini" id="answerZoomInBtn" type="button" title="확대">+</button>
           <button class="btn mini" id="answerZoomResetBtn" type="button" title="화면에 맞춤">맞춤</button>
+          <span class="toolDivider" aria-hidden="true"></span>
+          <button class="btn mini" id="highlightModeBtn" type="button" disabled>형광펜</button>
+          <button class="btn mini highlightColorBtn red" id="highlightRedBtn" type="button" title="빨간 형광펜" aria-label="빨간 형광펜"></button>
+          <button class="btn mini highlightColorBtn yellow on" id="highlightYellowBtn" type="button" title="노란 형광펜" aria-label="노란 형광펜"></button>
+          <button class="btn mini highlightColorBtn green" id="highlightGreenBtn" type="button" title="초록 형광펜" aria-label="초록 형광펜"></button>
+          <button class="btn mini" id="undoHighlightBtn" type="button" disabled>취소</button>
         </div>
         <div class="examCapturePanel hidden" id="examCapturePanel">
           <div class="examCaptureHead">
@@ -530,10 +558,12 @@ textarea{min-height:72px;resize:vertical}
         </div>
         <div class="pageWrap hidden" id="pageWrap">
           <canvas id="pdfCanvas"></canvas>
+          <div class="answerHighlightLayer" id="pageHighlightLayer" aria-hidden="true"></div>
           <div class="cropOverlay hidden" id="cropOverlay" title="드래그로 이동, 오른쪽 아래 점으로 크기 조절"></div>
         </div>
         <div class="cropView hidden" id="cropView">
           <canvas id="cropCanvas"></canvas>
+          <div class="answerHighlightLayer" id="cropHighlightLayer" aria-hidden="true"></div>
         </div>
       </div>
       <section class="panel viewerKeywordPanel">
@@ -643,7 +673,10 @@ textarea{min-height:72px;resize:vertical}
   <div class="modal">
     <div class="modalHead">
       <h2 class="panelTitle" id="keywordModalTitle">키워드별 학생</h2>
-      <button class="btn mini" id="closeKeywordModalBtn" type="button">닫기</button>
+      <div class="compactBtns">
+        <button class="btn mini" id="openKeywordPopupBtn" type="button">팝업으로 보기</button>
+        <button class="btn mini" id="closeKeywordModalBtn" type="button">닫기</button>
+      </div>
     </div>
     <div class="modalBody keywordModalBody">
       <section class="panel">
@@ -924,6 +957,8 @@ const els = {
   pasteExamCaptureBtn:$("pasteExamCaptureBtn"), chooseExamCaptureBtn:$("chooseExamCaptureBtn"), clearExamCaptureBtn:$("clearExamCaptureBtn"),
   examCaptureInput:$("examCaptureInput"), examCapturePreview:$("examCapturePreview"), examCaptureStatus:$("examCaptureStatus"),
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), studentCropBtn:$("studentCropBtn"), clearStudentCropBtn:$("clearStudentCropBtn"), gradeModeBtn:$("gradeModeBtn"),
+  highlightModeBtn:$("highlightModeBtn"), highlightYellowBtn:$("highlightYellowBtn"), highlightRedBtn:$("highlightRedBtn"), highlightGreenBtn:$("highlightGreenBtn"),
+  undoHighlightBtn:$("undoHighlightBtn"), pageHighlightLayer:$("pageHighlightLayer"), cropHighlightLayer:$("cropHighlightLayer"),
   settingsBtn:$("settingsBtn"), settingsModal:$("settingsModal"), closeSettingsBtn:$("closeSettingsBtn"),
   prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), pageInput:$("pageInput"), pageStatus:$("pageStatus"),
   classSelect:$("classSelect"), numberSelect:$("numberSelect"), pageSideSelect:$("pageSideSelect"), nameSelect:$("nameSelect"), classStatus:$("classStatus"),
@@ -935,7 +970,7 @@ const els = {
   incompleteOnlyBtn:$("incompleteOnlyBtn"), markAllUnwrittenBtn:$("markAllUnwrittenBtn"),
   completeNextBtn:$("completeNextBtn"), clearCurrentBtn:$("clearCurrentBtn"), completeBtn:$("completeBtn"),
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
-  closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
+  openKeywordPopupBtn:$("openKeywordPopupBtn"), closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
   shareExportModal:$("shareExportModal"), closeShareExportBtn:$("closeShareExportBtn"), cancelShareExportBtn:$("cancelShareExportBtn"),
   createShareReportBtn:$("createShareReportBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
@@ -967,8 +1002,13 @@ let undoSnapshot = null;
 const memoSaveTimers = new Map();
 let rubricPopupWindow = null;
 let rubricWindowActive = false;
+let keywordPopupWindow = null;
+let selectedKeywordModalKey = "";
 let sourceHighlightRanges = [];
 let tesseractLoadPromise = null;
+let highlightMode = false;
+let highlightColor = "yellow";
+let activeHighlightEditor = null;
 
 function loadSavedState(){
   try{
@@ -1308,6 +1348,7 @@ function normalizeRecords(){
       if(!qrec.keywordHits) qrec.keywordHits = {};
       if(!qrec.unwrittenSubs || typeof qrec.unwrittenSubs !== "object") qrec.unwrittenSubs = {};
       if(!qrec.completedSubs || typeof qrec.completedSubs !== "object") qrec.completedSubs = {};
+      qrec.highlights = normalizeAnswerHighlights(qrec.highlights);
       qrec.completed = Boolean(qrec.completed);
       syncQuestionCompletionState(qrec, question);
       question.rubric.forEach(item => {
@@ -1374,6 +1415,22 @@ function pageSideLabel(page=state.page){
 function recordKey(page=state.page){return String(studentIndexForPage(page))}
 function currentRecord(){return state.records[recordKey()] || null}
 function currentQuestionRecord(){return currentRecord()?.answers?.[state.activeQuestion] || null}
+function normalizeAnswerHighlights(highlights){
+  return (Array.isArray(highlights) ? highlights : [])
+    .map(item => ({
+      side:String(item.side || ""),
+      view:item.view === "page" ? "page" : "crop",
+      color:["yellow","red","green"].includes(item.color) ? item.color : "yellow",
+      memo:String(item.memo || "").trim(),
+      x:clamp(Number(item.x) || 0, 0, 1),
+      y:clamp(Number(item.y) || 0, 0, 1),
+      w:clamp(Number(item.w) || 0, 0, 1),
+      h:clamp(Number(item.h) || 0, 0, 1)
+    }))
+    .filter(item => item.w > .005 && item.h > .005);
+}
+function currentHighlightView(){return state.fullPage || state.mode === "calibrate" ? "page" : "crop"}
+function currentHighlightSide(){return pageSideLabel(state.page) || "page1"}
 function isRubricLocked(){return Boolean(currentQuestionRecord()?.completed)}
 function guardRubricUnlocked(){
   if(!isRubricLocked()) return true;
@@ -1397,7 +1454,7 @@ function ensureRecord(key=recordKey()){
 function ensureQuestionRecord(key=recordKey()){
   ensureRecord(key);
   if(!state.records[key].answers[state.activeQuestion]){
-    state.records[key].answers[state.activeQuestion] = {scores:blankScores(), memo:"", keywordHits:{}, needsDiscussion:false, completed:false, unwrittenSubs:{}, completedSubs:{}};
+    state.records[key].answers[state.activeQuestion] = {scores:blankScores(), memo:"", keywordHits:{}, needsDiscussion:false, completed:false, unwrittenSubs:{}, completedSubs:{}, highlights:[]};
   }
   if(!state.records[key].answers[state.activeQuestion].scores){
     state.records[key].answers[state.activeQuestion].scores = blankScores();
@@ -1411,10 +1468,12 @@ function ensureQuestionRecord(key=recordKey()){
   if(!state.records[key].answers[state.activeQuestion].completedSubs){
     state.records[key].answers[state.activeQuestion].completedSubs = {};
   }
+  state.records[key].answers[state.activeQuestion].highlights = normalizeAnswerHighlights(state.records[key].answers[state.activeQuestion].highlights);
 }
 
 function setMode(mode){
   state.mode = mode;
+  if(mode === "calibrate") highlightMode = false;
   if(mode === "calibrate") state.fullPage = false;
   const showFullPage = state.fullPage || mode === "calibrate";
   els.cropOverlay.classList.toggle("hidden", mode !== "calibrate");
@@ -1606,7 +1665,7 @@ async function openPdf(file){
   state.lastPdfPage = state.page;
   resetUnwrittenOcrCandidates();
   els.empty.classList.add("hidden");
-  [els.pageInput, els.prevBtn, els.nextBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
+  [els.pageInput, els.prevBtn, els.nextBtn, els.markAllUnwrittenBtn, els.completeNextBtn, els.clearCurrentBtn, els.calibrateBtn, els.fullPageBtn, els.highlightModeBtn, els.undoHighlightBtn, els.gradeModeBtn].forEach(el => el.disabled = false);
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
@@ -1632,6 +1691,7 @@ async function renderCurrentPage(){
   positionOverlay();
   if(state.mode === "grade" && !state.fullPage) drawCrop();
   updateAnswerZoomStyles();
+  renderAnswerHighlights();
 }
 
 function positionOverlay(){
@@ -1663,6 +1723,7 @@ function drawCrop(){
   ctx.fillRect(0,0,target.width,target.height);
   ctx.drawImage(source, sx, sy, sw, sh, 0, 0, target.width, target.height);
   updateAnswerZoomStyles();
+  renderAnswerHighlights();
 }
 
 function visibleAnswerWrap(){
@@ -1675,6 +1736,381 @@ function visibleAnswerCanvas(){
   if(!els.cropView.classList.contains("hidden")) return els.cropCanvas;
   if(!els.pageWrap.classList.contains("hidden")) return els.pdfCanvas;
   return null;
+}
+
+function visibleHighlightLayer(){
+  if(!els.cropView.classList.contains("hidden")) return els.cropHighlightLayer;
+  if(!els.pageWrap.classList.contains("hidden")) return els.pageHighlightLayer;
+  return null;
+}
+
+function highlightLayerForView(view){
+  return view === "page" ? els.pageHighlightLayer : els.cropHighlightLayer;
+}
+
+function currentAnswerHighlights(){
+  return normalizeAnswerHighlights(currentQuestionRecord()?.highlights || []);
+}
+
+function currentViewHighlights(){
+  const view = currentHighlightView();
+  const side = currentHighlightSide();
+  return currentAnswerHighlights().filter(item => item.view === view && item.side === side);
+}
+
+function currentViewHighlightEntries(){
+  const view = currentHighlightView();
+  const side = currentHighlightSide();
+  return currentAnswerHighlights()
+    .map((item, index) => ({item, index}))
+    .filter(entry => entry.item.view === view && entry.item.side === side);
+}
+
+function renderAnswerHighlights(draft=null){
+  closeHighlightEditor(false);
+  [els.pageHighlightLayer, els.cropHighlightLayer].forEach(layer => {
+    if(!layer) return;
+    layer.classList.toggle("drawing", Boolean(highlightMode && layer === visibleHighlightLayer()));
+    layer.innerHTML = "";
+  });
+  const layer = visibleHighlightLayer();
+  if(!layer) return;
+  const entries = currentViewHighlightEntries();
+  if(draft) entries.push({item:draft, index:"draft"});
+  layer.innerHTML = entries.map(({item, index}) => `
+    <div class="answerHighlightBox ${escapeHtml(item.color || "yellow")}${item.draft ? " draft" : ""}" data-highlight-index="${escapeHtml(index)}" title="${escapeHtml(item.memo || "더블클릭해서 메모 편집")}" style="left:${item.x * 100}%;top:${item.y * 100}%;width:${item.w * 100}%;height:${item.h * 100}%">
+      ${item.memo ? `<div class="answerHighlightNote">${escapeHtml(item.memo)}</div>` : ""}
+    </div>
+  `).join("");
+  updateHighlightButtons();
+}
+
+function updateHighlightButtons(){
+  const enabled = Boolean(state.pdf) && state.mode !== "calibrate";
+  if(els.highlightModeBtn){
+    els.highlightModeBtn.disabled = !enabled;
+    els.highlightModeBtn.classList.toggle("highlightToolOn", Boolean(highlightMode));
+    els.highlightModeBtn.title = highlightMode ? "형광펜 끄기" : "드래그해서 답안 위에 형광펜 표시";
+  }
+  [
+    [els.highlightRedBtn, "red"],
+    [els.highlightYellowBtn, "yellow"],
+    [els.highlightGreenBtn, "green"]
+  ].forEach(([btn, color]) => {
+    if(!btn) return;
+    btn.disabled = !enabled;
+    btn.classList.toggle("on", highlightColor === color);
+  });
+  if(els.undoHighlightBtn){
+    els.undoHighlightBtn.disabled = !enabled || !currentViewHighlights().length;
+    els.undoHighlightBtn.title = currentViewHighlights().length ? "현재 화면의 마지막 형광펜 삭제" : "삭제할 형광펜 없음";
+  }
+  [els.pageHighlightLayer, els.cropHighlightLayer].forEach(layer => layer?.classList.toggle("drawing", Boolean(highlightMode && layer === visibleHighlightLayer())));
+}
+
+function setHighlightColor(color){
+  if(!["yellow","red","green"].includes(color)) return;
+  highlightColor = color;
+  if(state.pdf && state.mode !== "calibrate") highlightMode = true;
+  updateHighlightButtons();
+  renderAnswerHighlights();
+}
+
+function setHighlightMode(active){
+  highlightMode = Boolean(active) && Boolean(state.pdf) && state.mode !== "calibrate";
+  if(highlightMode && state.fullPage) showToast("전체 답안 위에 드래그해서 형광펜을 표시합니다.");
+  else if(highlightMode) showToast("답안 영역 위에 드래그해서 형광펜을 표시합니다.");
+  renderAnswerHighlights();
+}
+
+function toggleHighlightMode(){
+  setHighlightMode(!highlightMode);
+}
+
+function addAnswerHighlight(highlight){
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  qrec.highlights = normalizeAnswerHighlights([...(qrec.highlights || []), {...highlight, color:highlightColor}]);
+  persist();
+  renderAnswerHighlights();
+  updateResults();
+  updateClassControls();
+}
+
+function closeHighlightEditor(shouldRender=false){
+  activeHighlightEditor = null;
+  document.querySelectorAll(".answerHighlightBox.editing").forEach(box => box.classList.remove("editing"));
+  document.querySelectorAll(".highlightResizeHandle").forEach(handle => handle.remove());
+  document.querySelectorAll(".highlightEditor").forEach(editor => editor.remove());
+  if(shouldRender) renderAnswerHighlights();
+}
+
+function editAnswerHighlight(index, patch){
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  const highlights = normalizeAnswerHighlights(qrec.highlights || []);
+  const item = highlights[index];
+  if(!item) return;
+  highlights[index] = {...item, ...patch};
+  qrec.highlights = normalizeAnswerHighlights(highlights);
+  cleanupRecord(recordKey());
+  persist();
+  renderAnswerHighlights();
+  updateResults();
+  updateClassControls();
+}
+
+function deleteAnswerHighlight(index){
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  const highlights = normalizeAnswerHighlights(qrec.highlights || []);
+  if(!highlights[index]) return;
+  highlights.splice(index, 1);
+  qrec.highlights = highlights;
+  cleanupRecord(recordKey());
+  persist();
+  renderAnswerHighlights();
+  updateResults();
+  updateClassControls();
+}
+
+function openHighlightEditor(index, anchor){
+  const item = normalizeAnswerHighlights(currentQuestionRecord()?.highlights || [])[index];
+  const layer = visibleHighlightLayer();
+  if(!item || !layer || !anchor) return;
+  closeHighlightEditor(false);
+  activeHighlightEditor = {index};
+  const editor = document.createElement("div");
+  anchor.classList.add("editing");
+  if(!anchor.querySelector(".highlightResizeHandle")){
+    anchor.insertAdjacentHTML("beforeend", `<span class="highlightResizeHandle" title="드래그해서 크기 조절"></span>`);
+  }
+  editor.className = "highlightEditor";
+  editor.dataset.highlightEditor = String(index);
+  const leftPct = clamp(item.x, 0, .98) * 100;
+  const topPct = clamp(item.y + item.h, 0, .86) * 100;
+  editor.style.left = `${leftPct}%`;
+  editor.style.top = `${topPct}%`;
+  editor.innerHTML = `
+    <textarea class="highlightMemoInput" placeholder="메모 입력">${escapeHtml(item.memo || "")}</textarea>
+    <div class="highlightEditorActions">
+      <button class="btn mini primary highlightSaveBtn" type="button">저장</button>
+      <button class="btn mini danger highlightDeleteBtn" type="button">삭제</button>
+      <button class="btn mini highlightCancelBtn" type="button">닫기</button>
+    </div>
+  `;
+  layer.appendChild(editor);
+  requestAnimationFrame(() => editor.querySelector(".highlightMemoInput")?.focus());
+}
+
+function undoLastHighlight(){
+  ensureQuestionRecord();
+  const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  const view = currentHighlightView();
+  const side = currentHighlightSide();
+  const highlights = normalizeAnswerHighlights(qrec.highlights || []);
+  const index = highlights.map((item, i) => ({item, i})).reverse().find(entry => entry.item.view === view && entry.item.side === side)?.i;
+  if(index == null) return;
+  highlights.splice(index, 1);
+  qrec.highlights = highlights;
+  cleanupRecord(recordKey());
+  persist();
+  renderAnswerHighlights();
+  updateResults();
+  updateClassControls();
+}
+
+function bindHighlightDrawing(){
+  let drag = null;
+  let move = null;
+  let suppressHighlightClick = false;
+  let lastHighlightTap = null;
+  [els.pageHighlightLayer, els.cropHighlightLayer].forEach(layer => {
+    if(!layer) return;
+    layer.addEventListener("click", evt => {
+      if(suppressHighlightClick){
+        suppressHighlightClick = false;
+        return;
+      }
+      const editor = evt.target.closest(".highlightEditor");
+      if(editor){
+        const index = Number(editor.dataset.highlightEditor);
+        if(evt.target.closest(".highlightSaveBtn")){
+          editAnswerHighlight(index, {memo:editor.querySelector(".highlightMemoInput")?.value || ""});
+          return;
+        }
+        if(evt.target.closest(".highlightDeleteBtn")){
+          deleteAnswerHighlight(index);
+          return;
+        }
+        if(evt.target.closest(".highlightCancelBtn")){
+          closeHighlightEditor(false);
+          return;
+        }
+        return;
+      }
+      if(evt.target.closest(".answerHighlightBox")) return;
+      if(evt.target === layer) closeHighlightEditor(false);
+    });
+    layer.addEventListener("dblclick", evt => {
+      const box = evt.target.closest(".answerHighlightBox");
+      if(box && !box.classList.contains("draft")){
+        evt.preventDefault();
+        closeHighlightEditor(false);
+        openHighlightEditor(Number(box.dataset.highlightIndex), box);
+      }
+    });
+    layer.addEventListener("pointerdown", evt => {
+      const resizeHandle = evt.target.closest(".highlightResizeHandle");
+      if(resizeHandle && !evt.target.closest(".highlightEditor")){
+        evt.preventDefault();
+        layer.setPointerCapture(evt.pointerId);
+        const box = resizeHandle.closest(".answerHighlightBox");
+        const rect = layer.getBoundingClientRect();
+        const index = Number(box?.dataset.highlightIndex);
+        const highlights = normalizeAnswerHighlights(currentQuestionRecord()?.highlights || []);
+        const item = highlights[index];
+        if(!item || !rect.width || !rect.height) return;
+        move = {
+          type:"resize",
+          layer,
+          index,
+          box,
+          rect,
+          startClient:{x:evt.clientX, y:evt.clientY},
+          startItem:{...item},
+          moved:false
+        };
+        return;
+      }
+      const existingBox = evt.target.closest(".answerHighlightBox");
+      if(existingBox && !existingBox.classList.contains("draft") && !evt.target.closest(".highlightEditor")){
+        evt.preventDefault();
+        closeHighlightEditor(false);
+        layer.setPointerCapture(evt.pointerId);
+        const rect = layer.getBoundingClientRect();
+        const index = Number(existingBox.dataset.highlightIndex);
+        const highlights = normalizeAnswerHighlights(currentQuestionRecord()?.highlights || []);
+        const item = highlights[index];
+        if(!item || !rect.width || !rect.height) return;
+        move = {
+          type:"move",
+          layer,
+          index,
+          box:existingBox,
+          rect,
+          startClient:{x:evt.clientX, y:evt.clientY},
+          startItem:{...item},
+          moved:false
+        };
+        return;
+      }
+      if(evt.target.closest(".highlightEditor")) return;
+      if(!highlightMode || layer !== visibleHighlightLayer() || state.mode === "calibrate") return;
+      evt.preventDefault();
+      layer.setPointerCapture(evt.pointerId);
+      const rect = layer.getBoundingClientRect();
+      if(!rect.width || !rect.height) return;
+      const start = {
+        x:clamp((evt.clientX - rect.left) / rect.width, 0, 1),
+        y:clamp((evt.clientY - rect.top) / rect.height, 0, 1)
+      };
+      drag = {layer, rect, start};
+    });
+    layer.addEventListener("pointermove", evt => {
+      if(move && move.layer === layer){
+        const dx = (evt.clientX - move.startClient.x) / move.rect.width;
+        const dy = (evt.clientY - move.startClient.y) / move.rect.height;
+        if(Math.abs(evt.clientX - move.startClient.x) > 2 || Math.abs(evt.clientY - move.startClient.y) > 2) move.moved = true;
+        if(move.type === "resize"){
+          const nextW = clamp(move.startItem.w + dx, .01, 1 - move.startItem.x);
+          const nextH = clamp(move.startItem.h + dy, .01, 1 - move.startItem.y);
+          move.box.style.width = `${nextW * 100}%`;
+          move.box.style.height = `${nextH * 100}%`;
+        }else{
+          const nextX = clamp(move.startItem.x + dx, 0, 1 - move.startItem.w);
+          const nextY = clamp(move.startItem.y + dy, 0, 1 - move.startItem.h);
+          move.box.style.left = `${nextX * 100}%`;
+          move.box.style.top = `${nextY * 100}%`;
+        }
+        return;
+      }
+      if(!drag || drag.layer !== layer) return;
+      const current = {
+        x:clamp((evt.clientX - drag.rect.left) / drag.rect.width, 0, 1),
+        y:clamp((evt.clientY - drag.rect.top) / drag.rect.height, 0, 1)
+      };
+      const draft = {
+        side:currentHighlightSide(),
+        view:currentHighlightView(),
+        color:highlightColor,
+        x:Math.min(drag.start.x, current.x),
+        y:Math.min(drag.start.y, current.y),
+        w:Math.abs(current.x - drag.start.x),
+        h:Math.abs(current.y - drag.start.y),
+        draft:true
+      };
+      renderAnswerHighlights(draft);
+    });
+    const finish = evt => {
+      if(move && move.layer === layer){
+        const dx = (evt.clientX - move.startClient.x) / move.rect.width;
+        const dy = (evt.clientY - move.startClient.y) / move.rect.height;
+        const moved = move.moved;
+        const index = move.index;
+        const type = move.type;
+        const nextPatch = type === "resize"
+          ? {
+              w:clamp(move.startItem.w + dx, .01, 1 - move.startItem.x),
+              h:clamp(move.startItem.h + dy, .01, 1 - move.startItem.y)
+            }
+          : {
+              x:clamp(move.startItem.x + dx, 0, 1 - move.startItem.w),
+              y:clamp(move.startItem.y + dy, 0, 1 - move.startItem.h)
+            };
+        move = null;
+        if(moved){
+          suppressHighlightClick = true;
+          editAnswerHighlight(index, nextPatch);
+        }else{
+          const now = Date.now();
+          if(lastHighlightTap && lastHighlightTap.index === index && now - lastHighlightTap.time < 420){
+            suppressHighlightClick = true;
+            lastHighlightTap = null;
+            const box = layer.querySelector(`.answerHighlightBox[data-highlight-index="${index}"]`);
+            if(box) openHighlightEditor(index, box);
+          }else{
+            lastHighlightTap = {index, time:now};
+            updateHighlightButtons();
+          }
+        }
+        return;
+      }
+      if(!drag || drag.layer !== layer) return;
+      const rect = drag.rect;
+      const current = {
+        x:clamp((evt.clientX - rect.left) / rect.width, 0, 1),
+        y:clamp((evt.clientY - rect.top) / rect.height, 0, 1)
+      };
+      const highlight = {
+        side:currentHighlightSide(),
+        view:currentHighlightView(),
+        x:Math.min(drag.start.x, current.x),
+        y:Math.min(drag.start.y, current.y),
+        w:Math.abs(current.x - drag.start.x),
+        h:Math.abs(current.y - drag.start.y)
+      };
+      drag = null;
+      if(highlight.w > .008 && highlight.h > .008) addAnswerHighlight(highlight);
+      else renderAnswerHighlights();
+    };
+    layer.addEventListener("pointerup", finish);
+    layer.addEventListener("pointercancel", () => {
+      drag = null;
+      move = null;
+      renderAnswerHighlights();
+    });
+  });
 }
 
 function fitAnswerCanvasSize(canvas){
@@ -1725,6 +2161,7 @@ function updateAnswerZoomStyles(){
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
   if(!els.cropOverlay.classList.contains("hidden")) positionOverlay();
+  renderAnswerHighlights();
   requestAnimationFrame(centerAnswerScroll);
 }
 
@@ -1760,6 +2197,7 @@ function updateChrome(){
   els.incompleteFilterNotice.classList.toggle("hidden", !state.settings?.incompleteOnly);
   updateKeywordFilterNotice();
   updateStudentCropButtons();
+  updateHighlightButtons();
   updateClassControls();
   updateMissingOmrButton();
   updateProgress();
@@ -1854,6 +2292,7 @@ function updateMobileScanNav(scoped=scopedPages(), scopedIndex=scoped.indexOf(fi
 function loadRecordIntoForm(){
   const qrec = currentQuestionRecord();
   state.studentCropMode = false;
+  highlightMode = false;
   els.memoInput.value = qrec?.memo || "";
   sourceHighlightRanges = [];
   updateDiscussionButton();
@@ -1865,6 +2304,8 @@ function loadRecordIntoForm(){
   updateResults();
   updateKeywordSummary();
   updateDiscussionList();
+  renderAnswerHighlights();
+  updateHighlightButtons();
   updateMobileScanNav();
 }
 
@@ -3059,6 +3500,7 @@ function questionRecordHasData(qrec, question=activeQuestion()){
   if(String(qrec.memo || "").trim()) return true;
   if(Object.values(qrec.unwrittenSubs || {}).some(Boolean)) return true;
   if(Object.values(qrec.completedSubs || {}).some(Boolean)) return true;
+  if(Array.isArray(qrec.highlights) && qrec.highlights.length) return true;
   const scores = qrec.scores || {};
   const hasScore = question.rubric.some(item => Number(scoreValue(scores, item) || 0) > 0);
   if(hasScore) return true;
@@ -3477,10 +3919,12 @@ function updateKeywordSummary(){
   const entries = keywordEntries();
   if(!entries.length){
     els.keywordSummary.textContent = "루브릭에 인정/미인정/감점 문구를 입력하면 학생 목록을 모아볼 수 있습니다.";
+    syncKeywordPopup();
     return;
   }
   const hitCount = entries.reduce((sum, entry) => sum + keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length, 0);
   els.keywordSummary.textContent = `${entries.length}개 키워드 · 선택된 학생 기록 ${hitCount}건`;
+  syncKeywordPopup();
 }
 
 function keywordEntries(){
@@ -3498,15 +3942,24 @@ function keywordTypeLabel(item, type, keyword=""){
 function renderKeywordModal(selectedKey=""){
   const entries = keywordEntries();
   if(!entries.length){
+    selectedKeywordModalKey = "";
     els.keywordModalList.innerHTML = `<div class="statusLine">등록된 키워드가 없습니다.</div>`;
     els.keywordStudentTitle.textContent = "학생 명렬";
     els.keywordStudentDetail.innerHTML = `<div class="statusLine">루브릭 편집에서 키워드를 먼저 추가하세요.</div>`;
+    syncKeywordPopup();
     return;
   }
   const selected = entries.find(entry => keywordEntryKey(entry) === selectedKey) || entries[0];
-  els.keywordModalList.innerHTML = entries.map((entry, index) => {
+  selectedKeywordModalKey = keywordEntryKey(selected);
+  els.keywordModalList.innerHTML = keywordModalListHtml(entries, selectedKeywordModalKey);
+  renderKeywordStudentDetail(selected.item.id, selected.type, selected.keyword);
+  syncKeywordPopup();
+}
+
+function keywordModalListHtml(entries, selectedKey){
+  return entries.map((entry, index) => {
     const count = keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length;
-    const on = keywordEntryKey(entry) === keywordEntryKey(selected) ? " on" : "";
+    const on = keywordEntryKey(entry) === selectedKey ? " on" : "";
     return `
       <button class="keywordModalBtn${on}" type="button" data-entry-index="${index}">
         <div class="keywordSummaryTop">
@@ -3517,18 +3970,19 @@ function renderKeywordModal(selectedKey=""){
       </button>
     `;
   }).join("");
-  renderKeywordStudentDetail(selected.item.id, selected.type, selected.keyword);
 }
 
-function renderKeywordStudentDetail(itemId, type, keyword){
+function keywordStudentTitleText(item, type, keyword){
+  return item ? `${item.sub || "공통"} · ${keywordTypeLabel(item, type, keyword)}` : "학생 명렬";
+}
+
+function keywordStudentDetailHtml(itemId, type, keyword){
   const item = activeRubric().find(entry => entry.id === itemId);
   const records = keywordStudentRecords(itemId, type, keyword);
-  els.keywordStudentTitle.textContent = item ? `${item.sub || "공통"} · ${keywordTypeLabel(item, type, keyword)}` : "학생 명렬";
   if(!records.length){
-    els.keywordStudentDetail.innerHTML = `<div class="statusLine">이 키워드로 표시한 학생이 아직 없습니다.</div>`;
-    return;
+    return `<div class="statusLine">이 키워드로 표시한 학생이 아직 없습니다.</div>`;
   }
-  els.keywordStudentDetail.innerHTML = records.map(rec => `
+  return records.map(rec => `
     <div class="keywordStudentRow">
       <div>
         <div class="keywordStudentName">${escapeHtml(studentLabelForRecord(rec))}</div>
@@ -3537,6 +3991,120 @@ function renderKeywordStudentDetail(itemId, type, keyword){
       <button class="btn mini keywordGoStudentBtn" type="button" data-page="${escapeHtml(rec.page)}" data-entry-key="${escapeHtml(keywordEntryKey({item, type, keyword}))}">필터 적용</button>
     </div>
   `).join("");
+}
+
+function renderKeywordStudentDetail(itemId, type, keyword){
+  const item = activeRubric().find(entry => entry.id === itemId);
+  els.keywordStudentTitle.textContent = keywordStudentTitleText(item, type, keyword);
+  els.keywordStudentDetail.innerHTML = keywordStudentDetailHtml(itemId, type, keyword);
+}
+
+function openKeywordPopup(){
+  if(keywordPopupWindow && !keywordPopupWindow.closed){
+    keywordPopupWindow.focus();
+    renderKeywordPopup(selectedKeywordModalKey);
+    return;
+  }
+  keywordPopupWindow = window.open("", "omrKeywordWindow", "width=760,height=820");
+  if(!keywordPopupWindow){
+    alert("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.");
+    return;
+  }
+  const styleText = document.querySelector("style")?.textContent || "";
+  keywordPopupWindow.document.open();
+  keywordPopupWindow.document.write(`<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>키워드별 학생</title>
+<style>
+${styleText}
+body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.keywordPopupWrap{padding:14px;display:grid;gap:10px}
+.keywordPopupHead{position:sticky;top:0;z-index:4;background:#fbfcfe;border:1px solid #d9dee8;border-radius:8px;padding:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.keywordPopupBody{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(360px,1.15fr);gap:12px;align-items:start}
+.keywordPopupBody .panel{margin-bottom:0}
+@media (max-width:760px){.keywordPopupBody{grid-template-columns:1fr}.keywordModalList,.keywordModalStudents{max-height:none}}
+</style>
+</head>
+<body>
+<main class="keywordPopupWrap">
+  <div class="keywordPopupHead">
+    <div>
+      <h1 id="keywordPopupTitle" style="margin:0;font-size:18px">키워드별 학생</h1>
+      <div class="meta" id="keywordPopupMeta"></div>
+    </div>
+    <button class="btn mini" id="keywordPopupCloseBtn" type="button">닫기</button>
+  </div>
+  <div class="keywordPopupBody">
+    <section class="panel">
+      <div class="panelHead"><h2 class="panelTitle">루브릭 키워드</h2></div>
+      <div class="keywordModalList" id="keywordPopupList"></div>
+    </section>
+    <section class="panel">
+      <div class="panelHead"><h2 class="panelTitle" id="keywordPopupStudentTitle">학생 명렬</h2></div>
+      <div class="keywordModalStudents" id="keywordPopupStudentDetail"></div>
+    </section>
+  </div>
+</main>
+</body>
+</html>`);
+  keywordPopupWindow.document.close();
+  keywordPopupWindow.document.addEventListener("click", async evt => {
+    if(evt.target.closest("#keywordPopupCloseBtn")){
+      keywordPopupWindow.close();
+      return;
+    }
+    const keywordBtn = evt.target.closest(".keywordModalBtn");
+    if(keywordBtn){
+      const entry = keywordEntries()[Number(keywordBtn.dataset.entryIndex)];
+      if(entry){
+        selectedKeywordModalKey = keywordEntryKey(entry);
+        renderKeywordModal(selectedKeywordModalKey);
+        renderKeywordPopup(selectedKeywordModalKey);
+      }
+      return;
+    }
+    const goBtn = evt.target.closest(".keywordGoStudentBtn");
+    if(goBtn){
+      const entry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
+      if(entry) await applyKeywordFilter(entry, Number(goBtn.dataset.page));
+      window.focus();
+    }
+  });
+  keywordPopupWindow.addEventListener("beforeunload", () => {
+    keywordPopupWindow = null;
+  });
+  renderKeywordPopup(selectedKeywordModalKey);
+  keywordPopupWindow.focus();
+}
+
+function renderKeywordPopup(selectedKey=selectedKeywordModalKey){
+  if(!keywordPopupWindow || keywordPopupWindow.closed) return;
+  const doc = keywordPopupWindow.document;
+  const entries = keywordEntries();
+  const list = doc.getElementById("keywordPopupList");
+  const title = doc.getElementById("keywordPopupStudentTitle");
+  const detail = doc.getElementById("keywordPopupStudentDetail");
+  const meta = doc.getElementById("keywordPopupMeta");
+  if(meta) meta.textContent = `${activeQuestion().label} · ${entries.length}개 키워드`;
+  if(!list || !title || !detail) return;
+  if(!entries.length){
+    list.innerHTML = `<div class="statusLine">등록된 키워드가 없습니다.</div>`;
+    title.textContent = "학생 명렬";
+    detail.innerHTML = `<div class="statusLine">루브릭 편집에서 키워드를 먼저 추가하세요.</div>`;
+    return;
+  }
+  const selected = entries.find(entry => keywordEntryKey(entry) === selectedKey) || entries[0];
+  selectedKeywordModalKey = keywordEntryKey(selected);
+  list.innerHTML = keywordModalListHtml(entries, selectedKeywordModalKey);
+  title.textContent = keywordStudentTitleText(selected.item, selected.type, selected.keyword);
+  detail.innerHTML = keywordStudentDetailHtml(selected.item.id, selected.type, selected.keyword);
+}
+
+function syncKeywordPopup(){
+  if(keywordPopupWindow && !keywordPopupWindow.closed) renderKeywordPopup(selectedKeywordModalKey);
 }
 
 function keywordEntryKey(entry){
@@ -5382,6 +5950,11 @@ els.calibrateBtn.addEventListener("click", () => setMode("calibrate"));
 els.fullPageBtn.addEventListener("click", toggleFullPage);
 els.studentCropBtn.addEventListener("click", toggleStudentCropMode);
 els.clearStudentCropBtn.addEventListener("click", clearStudentCropOverride);
+els.highlightModeBtn.addEventListener("click", toggleHighlightMode);
+els.highlightYellowBtn.addEventListener("click", () => setHighlightColor("yellow"));
+els.highlightRedBtn.addEventListener("click", () => setHighlightColor("red"));
+els.highlightGreenBtn.addEventListener("click", () => setHighlightColor("green"));
+els.undoHighlightBtn.addEventListener("click", undoLastHighlight);
 els.gradeModeBtn.addEventListener("click", enterGradeMode);
 els.openRubricWindowBtn.addEventListener("click", openRubricPopup);
 els.floatingRubricWindowBtn.addEventListener("click", openRubricPopup);
@@ -5393,6 +5966,10 @@ els.settingsModal.addEventListener("click", evt => {
 els.openKeywordModalBtn.addEventListener("click", () => {
   renderKeywordModal();
   els.keywordModal.classList.remove("hidden");
+});
+els.openKeywordPopupBtn.addEventListener("click", () => {
+  openKeywordPopup();
+  els.keywordModal.classList.add("hidden");
 });
 els.closeKeywordModalBtn.addEventListener("click", () => els.keywordModal.classList.add("hidden"));
 els.keywordModal.addEventListener("click", evt => {
@@ -5746,8 +6323,10 @@ els.applyRosterBtn.addEventListener("click", () => {
   persist();
   if(state.pdf && state.activeClass && !scopedPages().includes(firstPageForStudentIndex(studentIndexForPage(state.page)))){
     state.page = firstScopedPage() || state.page;
-    renderCurrentPage();
-  }
+  renderCurrentPage();
+  renderAnswerHighlights();
+  updateHighlightButtons();
+}
   loadRecordIntoForm();
   updateResults();
 });
@@ -5855,6 +6434,7 @@ els.sourceHighlightModal.addEventListener("click", evt => {
 loadSidebarWidth();
 loadSavedState();
 bindCropDrag();
+bindHighlightDrawing();
 bindSidebarResize();
 renderRubric();
 updateResults();
