@@ -505,7 +505,7 @@ textarea{min-height:72px;resize:vertical}
         <button class="btn topActionBtn" id="fullPageBtn" disabled><span class="twoLine"><span>전체</span><span>답안</span></span></button>
         <button class="btn topActionBtn primary" id="gradeModeBtn" disabled><span class="singleLine">채점</span></button>
         <span class="actionDivider" aria-hidden="true"></span>
-        <button class="btn topActionBtn iconActionBtn" id="exportTopBtn" type="button" title="결과 및 내보내기" aria-label="결과 및 내보내기">
+        <button class="btn topActionBtn iconActionBtn" id="exportTopBtn" type="button" title="내보내기" aria-label="내보내기">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 15.5V3.8"></path>
             <path d="M6.2 9.6 12 3.8l5.8 5.8"></path>
@@ -774,6 +774,7 @@ textarea{min-height:72px;resize:vertical}
         <button class="settingsTab" type="button" data-pane="roster">명렬</button>
         <button class="settingsTab" type="button" data-pane="merge">PDF 병합</button>
         <button class="settingsTab" type="button" data-pane="lab">실험실</button>
+        <button class="settingsTab" type="button" data-pane="data">데이터</button>
       </div>
       <div class="statusLine hidden" id="initialSetupNotice" style="margin-bottom:10px">처음 사용 전 문항 총점/소문항을 먼저 입력하고, 오른쪽 루브릭 영역에서 채점 기준을 정리해 주세요.</div>
       <section class="panel settingsPane" id="settingsBasicPane">
@@ -839,6 +840,19 @@ textarea{min-height:72px;resize:vertical}
         <button class="btn mini primary" id="mergePdfBtn" type="button">PDF 병합 및 다운로드</button>
         <div class="statusLine" id="mergePdfStatus" style="margin-top:8px">PDF를 선택하면 파일명 기준으로 정렬해 병합합니다.</div>
       </section>
+      <section class="panel settingsPane hidden" id="settingsDataPane">
+        <div class="panelHead"><h2 class="panelTitle">데이터</h2></div>
+        <div class="compactBtns">
+          <button class="btn" id="exportCsvBtn">CSV 내보내기</button>
+          <button class="btn" id="exportJsonBtn">JSON 전체 백업</button>
+          <button class="btn" id="importJsonBtn">JSON 불러오기</button>
+          <button class="btn" id="openMergeJsonBtn" type="button">JSON 병합</button>
+          <input class="hidden" type="file" id="jsonInput" accept="application/json">
+        </div>
+        <div style="max-height:430px;overflow:auto;margin-top:10px">
+          <table class="table"><thead id="resultHead"></thead><tbody id="resultBody"></tbody></table>
+        </div>
+      </section>
       <section class="panel settingsPane hidden" id="settingsLabPane">
         <div class="panelHead"><h2 class="panelTitle">실험실</h2></div>
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
@@ -894,28 +908,11 @@ textarea{min-height:72px;resize:vertical}
 <div class="modalBackdrop hidden" id="resultsModal" role="dialog" aria-modal="true" aria-labelledby="resultsTitle">
   <div class="modal">
     <div class="modalHead">
-      <h2 class="panelTitle" id="resultsTitle">결과 및 내보내기</h2>
+      <h2 class="panelTitle" id="resultsTitle">내보내기</h2>
       <button class="btn mini" id="closeResultsBtn" type="button">닫기</button>
     </div>
     <div class="modalBody" style="display:block">
-      <div class="settingsTabs">
-        <button class="settingsTab on" type="button" data-results-pane="data">데이터</button>
-        <button class="settingsTab" type="button" data-results-pane="export">내보내기</button>
-      </div>
-      <section class="panel settingsPane" id="resultsDataPane">
-        <div class="panelHead"><h2 class="panelTitle">데이터</h2></div>
-        <div class="compactBtns">
-          <button class="btn" id="exportCsvBtn">CSV 내보내기</button>
-          <button class="btn" id="exportJsonBtn">JSON 전체 백업</button>
-          <button class="btn" id="importJsonBtn">JSON 불러오기</button>
-          <button class="btn" id="openMergeJsonBtn" type="button">JSON 병합</button>
-          <input class="hidden" type="file" id="jsonInput" accept="application/json">
-        </div>
-        <div style="max-height:430px;overflow:auto;margin-top:10px">
-          <table class="table"><thead id="resultHead"></thead><tbody id="resultBody"></tbody></table>
-        </div>
-      </section>
-      <section class="panel settingsPane hidden" id="resultsExportPane">
+      <section class="panel settingsPane" id="resultsExportPane">
         <div class="panelHead"><h2 class="panelTitle">항상 포함</h2></div>
         <div class="shareRequiredList">
           학생 정보와 총점<br>
@@ -931,6 +928,7 @@ textarea{min-height:72px;resize:vertical}
         <label class="checkField"><input id="shareScopeAllInput" type="checkbox" checked> 전체 선택</label>
         <div class="shareClassList" id="shareClassList"></div>
         <div class="statusLine" id="shareScopeStatus">반을 선택하면 선택한 반만 내보냅니다.</div>
+        <label class="checkField"><input id="shareSeparateClassFilesInput" type="checkbox"> 반별로 개별 PDF 저장</label>
         <div class="compactBtns">
           <button class="btn primary" id="createShareReportBtn" type="button">내보내기</button>
         </div>
@@ -943,6 +941,7 @@ textarea{min-height:72px;resize:vertical}
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 import {jsPDF} from "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm";
+import html2canvas from "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
 
 const STORAGE_KEY = "publicOmrEssayGraderState.v1";
@@ -1021,7 +1020,8 @@ const els = {
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
   createShareReportBtn:$("createShareReportBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
   shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"), shareIncludeHighlightInput:$("shareIncludeHighlightInput"),
-  shareScopeAllInput:$("shareScopeAllInput"), shareClassList:$("shareClassList"), shareScopeStatus:$("shareScopeStatus"),
+  shareScopeAllInput:$("shareScopeAllInput"), shareSeparateClassFilesInput:$("shareSeparateClassFilesInput"),
+  shareClassList:$("shareClassList"), shareScopeStatus:$("shareScopeStatus"),
   mergeJsonModal:$("mergeJsonModal"), openMergeJsonBtn:$("openMergeJsonBtn"), closeMergeJsonBtn:$("closeMergeJsonBtn"), cancelMergeJsonBtn:$("cancelMergeJsonBtn"),
   rubricEditorPanel:$("rubricEditorPanel"), rubricEditorRows:$("rubricEditorRows"),
   rubricText:$("rubricText"), addRubricItemBtn:$("addRubricItemBtn"), loadRubricTextBtn:$("loadRubricTextBtn"),
@@ -1121,6 +1121,7 @@ function needsInitialSetup(){
 
 function selectSettingsPane(paneName){
   const target = paneName || "basic";
+  if(target === "data") updateResults();
   els.settingsModal.querySelectorAll(".settingsTab").forEach(btn => btn.classList.toggle("on", btn.dataset.pane === target));
   els.settingsModal.querySelectorAll(".settingsPane").forEach(pane => pane.classList.add("hidden"));
   const pane = $(`settings${target[0].toUpperCase()}${target.slice(1)}Pane`);
@@ -1132,14 +1133,6 @@ function openSettings(paneName="basic", options={}){
   if(els.initialSetupNotice) els.initialSetupNotice.classList.toggle("hidden", !options.initialSetup);
   selectSettingsPane(paneName);
   els.settingsModal.classList.remove("hidden");
-}
-
-function selectResultsPane(paneName="data"){
-  const target = paneName || "data";
-  els.resultsModal.querySelectorAll("[data-results-pane]").forEach(btn => btn.classList.toggle("on", btn.dataset.resultsPane === target));
-  els.resultsModal.querySelectorAll(".settingsPane").forEach(pane => pane.classList.add("hidden"));
-  const pane = $(`results${target[0].toUpperCase()}${target.slice(1)}Pane`);
-  if(pane) pane.classList.remove("hidden");
 }
 
 function updateShareScopeControls(){
@@ -1162,10 +1155,8 @@ function updateShareScopeControls(){
   }
 }
 
-function openResultsModal(paneName="data"){
-  updateResults();
+function openResultsModal(){
   updateShareScopeControls();
-  selectResultsPane(paneName);
   els.resultsModal.classList.remove("hidden");
 }
 
@@ -4791,7 +4782,8 @@ function shareReportRecordClassName(rec){
 
 async function createShareReport(){
   cleanupAllRecords();
-  let records = Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
+  const allRecords = Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
+  let records = [...allRecords];
   if(!records.length){
     alert("내보낼 채점 기록이 없습니다.");
     return;
@@ -4799,6 +4791,7 @@ async function createShareReport(){
   const selectedClasses = new Set([...els.shareClassList?.querySelectorAll("input:checked") || []].map(input => input.value));
   const availableClasses = classNames();
   const allClassesSelected = Boolean(availableClasses.length) && selectedClasses.size === availableClasses.length;
+  const separateByClass = Boolean(els.shareSeparateClassFilesInput?.checked);
   if(availableClasses.length && !selectedClasses.size){
     alert("내보낼 반을 하나 이상 선택해주세요.");
     return;
@@ -4821,10 +4814,35 @@ async function createShareReport(){
   };
   const originalText = els.createShareReportBtn.textContent;
   els.createShareReportBtn.disabled = true;
-  els.createShareReportBtn.textContent = options.includeHighlight && state.pdf ? "형광펜 캡처 중..." : "내보내는 중...";
-  let html = "";
+  els.createShareReportBtn.textContent = options.includeHighlight && state.pdf ? "형광펜 캡처 중..." : "PDF 만드는 중...";
   try{
-    html = await buildShareReportHtml(records, options);
+    if(separateByClass && availableClasses.length){
+      const targetClasses = availableClasses.filter(className => selectedClasses.has(className));
+      const zip = new JSZip();
+      const stamp = dateStamp();
+      let addedCount = 0;
+      for(const className of targetClasses){
+        const classRecords = allRecords.filter(rec => shareReportRecordClassName(rec) === className);
+        if(!classRecords.length) continue;
+        const classPdf = await buildShareReportPdfBlob(classRecords, {
+          ...options,
+          scope:"classes",
+          titleSuffix:className
+        });
+        zip.file(`${safeFileName(state.appTitle)}_${safeFileName(className)}_채점_내용_공유용_${stamp}.pdf`, classPdf);
+        addedCount++;
+      }
+      if(!addedCount){
+        alert("선택한 반에 해당하는 채점 기록이 없습니다.");
+        return;
+      }
+      const blob = await zip.generateAsync({type:"blob", mimeType:"application/zip"});
+      downloadBlob(`${safeFileName(state.appTitle)}_반별_채점_내용_공유용_${stamp}.zip`, "application/zip", blob);
+      return;
+    }
+    const pdfBlob = await buildShareReportPdfBlob(records, options);
+    const classPart = options.titleSuffix ? `_${safeFileName(options.titleSuffix)}` : "";
+    downloadBlob(`${safeFileName(state.appTitle)}${classPart}_채점_내용_공유용_${dateStamp()}.pdf`, "application/pdf", pdfBlob);
   }catch(err){
     console.error(err);
     alert("내보내기 중 오류가 발생했습니다.");
@@ -4833,17 +4851,61 @@ async function createShareReport(){
     els.createShareReportBtn.disabled = false;
     els.createShareReportBtn.textContent = originalText;
   }
-  const reportWindow = window.open("", "_blank");
-  if(reportWindow){
-    reportWindow.document.open();
-    reportWindow.document.write(html);
-    reportWindow.document.close();
-    reportWindow.focus();
-  }else{
-    const classPart = options.titleSuffix ? `_${safeFileName(options.titleSuffix)}` : "";
-    download(`${safeFileName(state.appTitle)}${classPart}_채점_내용_공유용_${dateStamp()}.html`, "text/html;charset=utf-8", html);
-    alert("팝업이 차단되어 HTML 파일로 저장했습니다.");
+}
+
+async function buildShareReportPdfBlob(records, options){
+  const html = await buildShareReportHtml(records, options);
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-12000px";
+  iframe.style.top = "0";
+  iframe.style.width = "1120px";
+  iframe.style.height = "1600px";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
+  try{
+    await new Promise(resolve => {
+      iframe.onload = resolve;
+      iframe.srcdoc = html;
+    });
+    const doc = iframe.contentDocument;
+    const win = iframe.contentWindow;
+    if(!doc || !win) throw new Error("PDF 렌더링 화면을 만들 수 없습니다.");
+    await waitForReportAssets(doc);
+    if(typeof win.fitStudentPages === "function") win.fitStudentPages();
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const pages = [...doc.querySelectorAll(".printPage")];
+    if(!pages.length) throw new Error("PDF로 변환할 페이지가 없습니다.");
+    const pdf = new jsPDF({orientation:"portrait", unit:"mm", format:"a4", compress:true});
+    for(let index = 0; index < pages.length; index++){
+      if(index) pdf.addPage("a4", "portrait");
+      const canvas = await html2canvas(pages[index], {
+        backgroundColor:"#ffffff",
+        scale:2,
+        useCORS:true,
+        windowWidth:1120,
+        windowHeight:1600
+      });
+      pdf.addImage(canvas.toDataURL("image/jpeg", .92), "JPEG", 0, 0, 210, 297);
+    }
+    return pdf.output("blob");
+  }finally{
+    iframe.remove();
   }
+}
+
+async function waitForReportAssets(doc){
+  const images = [...doc.images];
+  await Promise.all(images.map(img => {
+    if(img.complete) return Promise.resolve();
+    if(typeof img.decode === "function") return img.decode().catch(() => {});
+    return new Promise(resolve => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    });
+  }));
+  if(doc.fonts?.ready) await doc.fonts.ready.catch(() => {});
 }
 
 async function buildShareReportHtml(records, options){
@@ -4876,9 +4938,9 @@ async function buildShareReportHtml(records, options){
   .questionHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
   h2{margin:0;font-size:15px;line-height:1.45}
   .example{margin:8px 0 12px;border-left:3px solid #d9dee8;padding-left:10px;color:#41506a;font-size:12px;white-space:pre-wrap;line-height:1.55}
-  .subGroup{display:grid;grid-template-columns:74px minmax(0,1fr) 86px;gap:10px;align-items:stretch;border:1px solid #d9dee8;border-radius:10px;margin:10px 0;background:#fff;overflow:hidden}
+  .subGroup{display:grid;grid-template-columns:92px minmax(0,1fr) 86px;gap:10px;align-items:stretch;border:1px solid #d9dee8;border-radius:10px;margin:10px 0;background:#fff;overflow:hidden}
   .subGroup.unwritten{border-color:#d5a13b;background:#fffaf0}
-  .subLabel{display:grid;place-items:center;background:#f8fafc;border-right:1px solid #d9dee8;color:#172033;font-size:20px;font-weight:950}
+  .subLabel{display:grid;place-items:center;background:#f8fafc;border-right:1px solid #d9dee8;color:#172033;font-size:15px;font-weight:950;line-height:1.35;text-align:center;word-break:keep-all;overflow-wrap:normal;padding:8px}
   .subGroup.unwritten .subLabel{background:#fff4cf}
   .subItems{display:grid;gap:8px;padding:10px 0}
   .subScore{display:grid;place-items:center;border-left:1px solid #d9dee8;color:#176b87;font-size:17px;font-weight:950;white-space:nowrap}
@@ -6486,7 +6548,11 @@ function safeFileName(value){
 }
 function download(filename, mime, text){
   const blob = new Blob([text], {type:mime});
-  const url = URL.createObjectURL(blob);
+  downloadBlob(filename, mime, blob);
+}
+function downloadBlob(filename, mime, blob){
+  const fileBlob = blob instanceof Blob ? blob : new Blob([blob], {type:mime});
+  const url = URL.createObjectURL(fileBlob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -6678,10 +6744,7 @@ els.closeResultsBtn.addEventListener("click", () => els.resultsModal.classList.a
 els.resultsModal.addEventListener("click", evt => {
   if(evt.target === els.resultsModal){
     els.resultsModal.classList.add("hidden");
-    return;
   }
-  const tab = evt.target.closest("[data-results-pane]");
-  if(tab) selectResultsPane(tab.dataset.resultsPane);
 });
 els.resultsModal.addEventListener("change", evt => {
   if(evt.target === els.shareScopeAllInput){
