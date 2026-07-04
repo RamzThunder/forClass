@@ -374,6 +374,7 @@ textarea{min-height:72px;resize:vertical}
 .sourceHighlightInput::selection{background:rgba(23,107,135,.22);color:transparent}
 .sourceHighlightInput::placeholder{color:var(--muted)}
 .mobileScanNav{display:none}
+.mobileTopMenuBtn{display:none}
 .mobileNavBtn,.mobileNavFlag{
   border:1px solid var(--line);
   background:#fff;
@@ -427,6 +428,9 @@ textarea{min-height:72px;resize:vertical}
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+.mobileTopMenuModal{width:min(360px,calc(100vw - 28px));max-height:min(80vh,620px)}
+.mobileTopMenuBody{padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mobileTopMenuBody .btn{min-height:44px}
 @media (max-width:1180px){
   :root{--side-width:390px}
   .navstrip{grid-template-columns:1fr 1fr}
@@ -501,16 +505,24 @@ textarea{min-height:72px;resize:vertical}
   .rubricNameInput{grid-column:1 / -1}
 }
 @media (max-width:700px) and (orientation:portrait){
+  html:has(body.pdfLoaded),
+  body.pdfLoaded{height:100%;overflow:hidden}
   body.pdfLoaded{padding-bottom:calc(86px + env(safe-area-inset-bottom))}
-  body.pdfLoaded .app{display:block;min-height:100vh;min-height:100dvh;overflow:visible}
+  body.pdfLoaded .app{
+    display:grid;
+    grid-template-columns:1fr;
+    grid-template-rows:minmax(300px,44dvh) minmax(0,1fr);
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+  }
   body.pdfLoaded .viewer{
-    position:sticky;
-    top:0;
+    position:relative;
     z-index:18;
-    height:44vh;
-    height:44dvh;
+    height:auto;
     min-height:300px;
-    max-height:430px;
+    max-height:none;
     display:block;
     overflow:hidden;
     background:var(--bg);
@@ -558,9 +570,11 @@ textarea{min-height:72px;resize:vertical}
     position:relative;
     z-index:1;
     bottom:auto;
-    height:auto;
+    height:100%;
+    min-height:0;
     max-height:none;
-    overflow:visible;
+    overflow:auto;
+    overscroll-behavior:contain;
     border-top:1px solid var(--line);
     box-shadow:none;
     padding:10px 10px calc(98px + env(safe-area-inset-bottom));
@@ -575,8 +589,7 @@ textarea{min-height:72px;resize:vertical}
   body.pdfLoaded .side .subCompleteBtn,
   body.pdfLoaded .side .subUnwrittenBtn{font-size:13px}
   body.pdfLoaded .subRubricTitle{
-    top:calc(44vh + 1px);
-    top:calc(44dvh + 1px);
+    top:0;
     grid-template-columns:auto minmax(0,1fr);
     gap:7px;
     padding:7px;
@@ -641,6 +654,19 @@ textarea{min-height:72px;resize:vertical}
   body.pdfLoaded .highlightColorBtn{width:26px;min-width:26px;min-height:26px}
   body.pdfLoaded .examCaptureBtn{top:8px;left:8px}
   body.pdfLoaded .floatingRubricWindowBtn{top:8px;left:88px}
+  body.pdfLoaded .mobileTopMenuBtn{
+    position:absolute;
+    top:8px;
+    right:8px;
+    z-index:10;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:34px;
+    padding:5px 10px;
+    font-size:13px;
+    box-shadow:0 8px 22px rgba(23,32,51,.14);
+  }
   body.pdfLoaded .mobileScanNav{left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));gap:6px;padding:8px}
   body.pdfLoaded .mobileNavBtn{width:48px;min-height:46px}
   body.pdfLoaded .mobileNavFlag{padding:0 10px}
@@ -732,6 +758,7 @@ textarea{min-height:72px;resize:vertical}
     </nav>
     <section class="stage">
       <div class="canvasShell" id="canvasShell">
+        <button class="btn mini mobileTopMenuBtn" id="mobileTopMenuBtn" type="button">메뉴</button>
         <button class="btn mini examCaptureBtn" id="examCaptureBtn" type="button">시험문제</button>
         <button class="btn mini floatingRubricWindowBtn" id="floatingRubricWindowBtn" type="button">루브릭 창</button>
         <div class="answerZoomControls" id="answerZoomControls" aria-label="답안 확대/축소">
@@ -890,6 +917,24 @@ textarea{min-height:72px;resize:vertical}
   <button class="mobileNavFlag" id="mobileDiscussionBtn" type="button">논의</button>
   <button class="mobileNavBtn" id="mobileNextBtn" type="button" aria-label="다음 답안">›</button>
 </nav>
+<div class="modalBackdrop hidden mobileTopMenuBackdrop" id="mobileTopMenu" role="dialog" aria-modal="true" aria-labelledby="mobileTopMenuTitle">
+  <div class="modal mobileTopMenuModal">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="mobileTopMenuTitle">모바일 메뉴</h2>
+      <button class="btn mini" id="closeMobileTopMenuBtn" type="button">닫기</button>
+    </div>
+    <div class="mobileTopMenuBody">
+      <button class="btn" type="button" data-mobile-top-action="calibrate">영역 지정</button>
+      <button class="btn" type="button" data-mobile-top-action="studentCrop">학생 영역</button>
+      <button class="btn" type="button" data-mobile-top-action="fullPage">전체 답안</button>
+      <button class="btn primary" type="button" data-mobile-top-action="grade">채점</button>
+      <button class="btn" type="button" data-mobile-top-action="pdf">PDF 선택</button>
+      <button class="btn" type="button" data-mobile-top-action="tutorial">튜토리얼</button>
+      <button class="btn" type="button" data-mobile-top-action="export">내보내기</button>
+      <button class="btn" type="button" data-mobile-top-action="settings">설정</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="modalBackdrop hidden" id="keywordModal" role="dialog" aria-modal="true" aria-labelledby="keywordModalTitle">
@@ -1328,7 +1373,8 @@ const els = {
   autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus"),
   sourceHighlightModal:$("sourceHighlightModal"), sourceHighlightModalBody:$("sourceHighlightModalBody"), closeSourceHighlightModalBtn:$("closeSourceHighlightModalBtn")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
-  mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText")
+  mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText"),
+  mobileTopMenuBtn:$("mobileTopMenuBtn"), mobileTopMenu:$("mobileTopMenu"), closeMobileTopMenuBtn:$("closeMobileTopMenuBtn")
 };
 let draggedKeywordChip = null;
 let draggedRubricId = "";
@@ -1524,7 +1570,7 @@ const tutorialSteps = [
 ];
 
 function closeTutorialSurfaces(){
-  [els.settingsModal, els.resultsModal, els.keywordModal, els.mergeJsonModal, els.tutorialStartModal].forEach(modal => modal?.classList.add("hidden"));
+  [els.settingsModal, els.resultsModal, els.keywordModal, els.mergeJsonModal, els.tutorialStartModal, els.mobileTopMenu].forEach(modal => modal?.classList.add("hidden"));
   els.examCapturePanel?.classList.add("hidden");
 }
 
@@ -7701,6 +7747,28 @@ els.pagesPerStudentTwoBtn.addEventListener("click", () => {
 els.confirmPagesPerStudentBtn.addEventListener("click", confirmPagesPerStudentSetting);
 els.settingsBtn.addEventListener("click", () => openSettings());
 els.exportTopBtn.addEventListener("click", () => openResultsModal());
+els.mobileTopMenuBtn?.addEventListener("click", () => els.mobileTopMenu.classList.remove("hidden"));
+els.closeMobileTopMenuBtn?.addEventListener("click", () => els.mobileTopMenu.classList.add("hidden"));
+els.mobileTopMenu?.addEventListener("click", evt => {
+  if(evt.target === els.mobileTopMenu){
+    els.mobileTopMenu.classList.add("hidden");
+    return;
+  }
+  const actionBtn = evt.target.closest("[data-mobile-top-action]");
+  if(!actionBtn) return;
+  const targets = {
+    calibrate:els.calibrateBtn,
+    studentCrop:els.studentCropBtn,
+    fullPage:els.fullPageBtn,
+    grade:els.gradeModeBtn,
+    pdf:els.changePdfBtn,
+    tutorial:els.tutorialBtn,
+    export:els.exportTopBtn,
+    settings:els.settingsBtn
+  };
+  els.mobileTopMenu.classList.add("hidden");
+  targets[actionBtn.dataset.mobileTopAction]?.click();
+});
 els.closeSettingsBtn.addEventListener("click", () => els.settingsModal.classList.add("hidden"));
 els.settingsModal.addEventListener("click", evt => {
   if(evt.target === els.settingsModal) els.settingsModal.classList.add("hidden");
