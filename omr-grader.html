@@ -19,17 +19,18 @@
   --side-width:460px;
 }
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}
+html,body{height:100%;overflow:hidden}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
-.app{min-height:100vh;display:grid;grid-template-columns:minmax(360px,1fr) 8px var(--side-width)}
+.app{height:100vh;height:100dvh;min-height:0;display:grid;grid-template-columns:minmax(360px,1fr) 8px var(--side-width);overflow:hidden}
 .app.multiWindowMain{grid-template-columns:minmax(360px,1fr)}
 .app.multiWindowMain .sideResizer,.app.multiWindowMain .side{display:none}
 .app.resizing{cursor:col-resize;user-select:none}
 .sideResizer{background:#eef2f7;border-left:1px solid var(--line);border-right:1px solid var(--line);cursor:col-resize;position:relative}
 .sideResizer::before{content:"";position:absolute;inset:0 -5px}
 .sideResizer::after{content:"";position:absolute;top:50%;left:50%;width:2px;height:48px;border-radius:999px;background:#aab4c3;transform:translate(-50%,-50%)}
-.viewer{min-width:0;display:grid;grid-template-rows:auto auto minmax(0,1fr)}
+.viewer{min-width:0;min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr)}
 .topbar{min-height:64px;padding:10px 16px;border-bottom:1px solid var(--line);background:#fbfcfe;display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,.9fr) auto;align-items:center;gap:14px}
 .titleCluster{display:flex;align-items:center;gap:10px;min-width:0}
 .titleMain{display:grid;gap:3px;min-width:0}
@@ -44,6 +45,10 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .topActionBtn{width:52px;min-height:40px;padding:5px 6px;font-size:12px;line-height:1.08;display:grid;place-items:center;text-align:center}
 .topActionBtn .twoLine{display:grid;gap:1px}
 .topActionBtn .singleLine{display:block}
+.iconActionBtn{width:40px;min-width:40px;padding:0}
+.iconActionBtn svg{width:20px;height:20px;display:block;stroke:currentColor}
+.actionDivider{width:1px;align-self:stretch;min-height:32px;background:var(--line);margin:4px 2px}
+.canvasActionBtn{position:absolute;right:12px;top:12px;z-index:9;min-height:34px;padding:6px 9px;font-size:12px;font-weight:900;box-shadow:0 8px 22px rgba(23,32,51,.16)}
 .btn.primary,.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn.flag.on{background:#9a5b13;border-color:#9a5b13;color:#fff}
 .btn.danger{color:var(--danger);border-color:#e9c7c4;background:#fff7f6}
@@ -106,7 +111,7 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .highlightColorBtn.green::before{background:#62d77b}
 .highlightColorBtn.on::before{outline:2px solid var(--accent);outline-offset:2px}
 body:not(.pdfLoaded) .answerZoomControls{display:none}
-.app.multiWindowMain .viewer{height:100vh;overflow:hidden}
+.app.multiWindowMain .viewer{height:100%;overflow:hidden}
 .app.multiWindowMain .stage{height:100%}
 .app.multiWindowMain .canvasShell{min-height:0;height:100%;padding:12px}
 .examCaptureBtn{position:absolute;top:12px;left:12px;z-index:8;box-shadow:0 8px 22px rgba(23,32,51,.12)}
@@ -124,14 +129,20 @@ body:not(.pdfLoaded) .answerZoomControls{display:none}
 .pageWrap,.cropView,.fullPageCompanion{position:relative}
 .pageWrap,.cropView,.fullPageCompanion{margin:auto}
 .canvasShell.fullPageSpread{gap:12px;align-items:center}
-.canvasShell.fullPageSpread .pageWrap,.canvasShell.fullPageSpread .fullPageCompanion{margin:0}
+.canvasShell.fullPageSpread .pageWrap,.canvasShell.fullPageSpread .fullPageCompanion{margin:0;border-radius:8px;outline:3px solid transparent;outline-offset:4px;cursor:pointer;transition:outline-color .15s ease,box-shadow .15s ease,filter .15s ease,opacity .15s ease}
+.canvasShell.fullPageSpread .sideActive{outline-color:var(--accent);box-shadow:0 0 0 4px rgba(23,107,135,.18),0 18px 42px rgba(23,32,51,.18);filter:brightness(1.08)}
+.canvasShell.fullPageSpread .sideInactive{opacity:.62;filter:brightness(.82) saturate(.85)}
+.canvasShell.fullPageSpread .sideInactive:hover{opacity:.82;filter:brightness(.95)}
 canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:var(--shadow)}
 .fullPageSideLabel{position:absolute;left:10px;top:10px;z-index:3;border:1px solid rgba(23,32,51,.16);border-radius:999px;background:rgba(255,255,255,.92);color:var(--ink);padding:4px 8px;font-size:12px;font-weight:900;box-shadow:0 6px 16px rgba(23,32,51,.14)}
+button.fullPageSideLabel{cursor:pointer}
+button.fullPageSideLabel:hover,button.fullPageSideLabel.active{border-color:var(--accent);background:var(--accent);color:#fff}
 .cropOverlay{position:absolute;z-index:3;border:3px solid #e23d32;background:rgba(226,61,50,.08);outline:9999px solid rgba(10,16,26,.50);cursor:move;touch-action:none}
 .cropOverlay::after{content:"";position:absolute;right:-16px;bottom:-16px;width:32px;height:32px;border-radius:50%;background:#e23d32;border:3px solid #fff;cursor:nwse-resize;box-shadow:0 4px 12px rgba(10,16,26,.25)}
 .pageWrap canvas,.cropView canvas{max-width:none;max-height:none;object-fit:contain}
 .answerHighlightLayer{position:absolute;inset:0;z-index:2;pointer-events:auto}
 .answerHighlightLayer.drawing{pointer-events:auto;cursor:crosshair}
+.answerHighlightLayer.compositeActive{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px;box-shadow:0 0 0 4px rgba(23,107,135,.18)}
 .answerHighlightBox{position:absolute;border:2px solid var(--highlight-border, rgba(211,142,0,.85));background:var(--highlight-bg, rgba(255,224,79,.38));border-radius:4px;box-shadow:0 1px 4px rgba(23,32,51,.16);cursor:move;touch-action:none}
 .answerHighlightBox.yellow{--highlight-border:rgba(211,142,0,.85);--highlight-bg:rgba(255,224,79,.38);--highlight-draft:rgba(255,224,79,.24)}
 .answerHighlightBox.red{--highlight-border:rgba(198,56,48,.86);--highlight-bg:rgba(255,107,100,.34);--highlight-draft:rgba(255,107,100,.22)}
@@ -145,7 +156,7 @@ canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:var(-
 .highlightEditor textarea{min-height:74px;font-size:12px;line-height:1.45}
 .highlightEditorActions{display:flex;gap:6px;justify-content:flex-end}
 .highlightToolOn{background:#946200!important;border-color:#946200!important;color:#fff!important}
-.side{min-width:0;height:100vh;overflow:auto;background:#fbfcfe;padding:14px}
+.side{min-width:0;height:100%;overflow:auto;background:#fbfcfe;padding:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
 .panelHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .panelTitle{margin:0;font-size:15px}
@@ -305,6 +316,10 @@ textarea{min-height:72px;resize:vertical}
 .shareRequiredList{margin:8px 0 14px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--muted);font-size:12px;line-height:1.6}
 .checkField{display:flex;align-items:center;gap:10px;margin:10px 0;font-weight:800}
 .checkField input{width:auto;min-height:auto}
+.shareClassList{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px;margin:8px 0 4px}
+.shareClassOption{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:7px 10px;font-size:12px;font-weight:850;text-align:center}
+.shareClassOption input{width:auto;min-height:auto}
+.shareClassOption:has(input:checked){border-color:var(--accent);background:#eef8fb;color:var(--accent)}
 .hidden{display:none!important}
 .spinnerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(246,247,249,.82);z-index:5;pointer-events:none}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
@@ -393,9 +408,10 @@ textarea{min-height:72px;resize:vertical}
   .navstrip{grid-template-columns:1fr 1fr}
 }
 @media (max-width:980px){
+  html,body{height:auto;overflow:auto}
   body{padding-bottom:env(safe-area-inset-bottom)}
   body.pdfLoaded{padding-bottom:calc(82px + env(safe-area-inset-bottom))}
-  .app{display:block;min-height:100vh}
+  .app{display:block;height:auto;min-height:100vh;overflow:visible}
   .viewer{min-height:62vh}
   .sideResizer{display:none}
   .side{
@@ -447,6 +463,8 @@ textarea{min-height:72px;resize:vertical}
   .topbar,.navstrip,.side{padding-left:12px;padding-right:12px}
   .actions,.compactBtns{width:100%}
   .actions .btn,.compactBtns .btn{flex:1 1 auto}
+  .actions .iconActionBtn{flex:0 0 44px}
+  .actions .actionDivider{display:none}
   .currentAnswerAccess{grid-template-columns:1fr}
   .answerNavRow{grid-template-columns:40px minmax(0,1fr) 40px}
   .navStudent{grid-template-columns:1fr}
@@ -483,11 +501,23 @@ textarea{min-height:72px;resize:vertical}
       </div>
       <div class="actions">
         <button class="btn topActionBtn" id="calibrateBtn" disabled><span class="twoLine"><span>영역</span><span>지정</span></span></button>
-        <button class="btn topActionBtn" id="fullPageBtn" disabled><span class="twoLine"><span>전체</span><span>답안</span></span></button>
         <button class="btn topActionBtn hidden" id="studentCropBtn" type="button" disabled><span class="twoLine"><span>학생</span><span>영역</span></span></button>
-        <button class="btn topActionBtn hidden" id="clearStudentCropBtn" type="button" disabled><span class="twoLine"><span>설정된</span><span>학생 영역 삭제</span></span></button>
+        <button class="btn topActionBtn" id="fullPageBtn" disabled><span class="twoLine"><span>전체</span><span>답안</span></span></button>
         <button class="btn topActionBtn primary" id="gradeModeBtn" disabled><span class="singleLine">채점</span></button>
-        <button class="btn topActionBtn" id="settingsBtn" type="button"><span class="singleLine">설정</span></button>
+        <span class="actionDivider" aria-hidden="true"></span>
+        <button class="btn topActionBtn iconActionBtn" id="exportTopBtn" type="button" title="결과 및 내보내기" aria-label="결과 및 내보내기">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 15.5V3.8"></path>
+            <path d="M6.2 9.6 12 3.8l5.8 5.8"></path>
+            <path d="M4 15.8v1.5a3.2 3.2 0 0 0 3.2 3.2h9.6a3.2 3.2 0 0 0 3.2-3.2v-1.5"></path>
+          </svg>
+        </button>
+        <button class="btn topActionBtn iconActionBtn" id="settingsBtn" type="button" title="설정" aria-label="설정">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.04.04a2.05 2.05 0 0 1-2.9 2.9l-.04-.04A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.05a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.04.04a2.05 2.05 0 0 1-2.9-2.9l.04-.04A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.04-.04a2.05 2.05 0 0 1 2.9-2.9l.04.04A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.05a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.04-.04a2.05 2.05 0 0 1 2.9 2.9l-.04.04A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.05A1.7 1.7 0 0 0 19.4 15Z"></path>
+          </svg>
+        </button>
       </div>
     </header>
     <nav class="navstrip">
@@ -559,14 +589,15 @@ textarea{min-height:72px;resize:vertical}
           <p>상단에서 문항 번호와 소문항 개수를 설정한 뒤, 문항별 답란 영역을 지정하고 채점할 수 있습니다.</p>
           <input type="file" id="pdfInput" accept="application/pdf">
         </div>
+        <button class="btn danger canvasActionBtn hidden" id="clearStudentCropBtn" type="button" disabled>설정된 학생 영역 삭제</button>
         <div class="pageWrap hidden" id="pageWrap">
-          <div class="fullPageSideLabel hidden" id="pageSideLabel">현재면</div>
+          <button class="fullPageSideLabel hidden" id="pageSideLabel" type="button">현재면</button>
           <canvas id="pdfCanvas"></canvas>
           <div class="answerHighlightLayer" id="pageHighlightLayer" aria-hidden="true"></div>
           <div class="cropOverlay hidden" id="cropOverlay" title="드래그로 이동, 오른쪽 아래 점으로 크기 조절"></div>
         </div>
         <div class="fullPageCompanion hidden" id="fullPageCompanion" aria-label="반대면 미리보기">
-          <div class="fullPageSideLabel" id="fullPageCompanionLabel">반대면</div>
+          <button class="fullPageSideLabel" id="fullPageCompanionLabel" type="button">반대면</button>
           <canvas id="fullPageCompanionCanvas"></canvas>
         </div>
         <div class="cropView hidden" id="cropView">
@@ -699,34 +730,6 @@ textarea{min-height:72px;resize:vertical}
   </div>
 </div>
 
-<div class="modalBackdrop shareExportBackdrop hidden" id="shareExportModal" role="dialog" aria-modal="true" aria-labelledby="shareExportTitle">
-  <div class="modal" style="width:min(560px,100%)">
-    <div class="modalHead">
-      <h2 class="panelTitle" id="shareExportTitle">채점 내용 공유용 내보내기</h2>
-      <button class="btn mini" id="closeShareExportBtn" type="button">닫기</button>
-    </div>
-    <div class="modalBody shareOptionBody">
-      <section class="panel">
-        <div class="panelHead"><h2 class="panelTitle">항상 포함</h2></div>
-        <div class="shareRequiredList">
-          학생 정보와 총점<br>
-          문항별 점수 / 총점<br>
-          선택된 점수 인정 · 미인정 · 감점 문구
-        </div>
-        <div class="panelHead"><h2 class="panelTitle">추가로 포함</h2></div>
-        <label class="checkField"><input id="shareIncludeExampleInput" type="checkbox" checked> 예시답안</label>
-        <label class="checkField"><input id="shareIncludeMemoInput" type="checkbox" checked> 문항 메모</label>
-        <label class="checkField"><input id="shareIncludeDiscussionInput" type="checkbox" checked> 논의 필요 표시</label>
-        <label class="checkField"><input id="shareIncludeHighlightInput" type="checkbox" checked> 형광펜 캡처/메모</label>
-        <div class="compactBtns" style="margin-top:14px">
-          <button class="btn primary" id="createShareReportBtn" type="button">내보내기</button>
-          <button class="btn" id="cancelShareExportBtn" type="button">취소</button>
-        </div>
-      </section>
-    </div>
-  </div>
-</div>
-
 <div class="modalBackdrop hidden" id="mergeJsonModal" role="dialog" aria-modal="true" aria-labelledby="mergeJsonTitle">
   <div class="modal" style="width:min(560px,100%)">
     <div class="modalHead">
@@ -771,7 +774,6 @@ textarea{min-height:72px;resize:vertical}
         <button class="settingsTab" type="button" data-pane="roster">명렬</button>
         <button class="settingsTab" type="button" data-pane="merge">PDF 병합</button>
         <button class="settingsTab" type="button" data-pane="lab">실험실</button>
-        <button class="settingsTab" type="button" data-pane="results">결과</button>
       </div>
       <div class="statusLine hidden" id="initialSetupNotice" style="margin-bottom:10px">처음 사용 전 문항 총점/소문항을 먼저 입력하고, 오른쪽 루브릭 영역에서 채점 기준을 정리해 주세요.</div>
       <section class="panel settingsPane" id="settingsBasicPane">
@@ -885,11 +887,25 @@ textarea{min-height:72px;resize:vertical}
           <div class="statusLine" id="jpgPdfStatus">JPG 파일을 선택하면 파일명 기준으로 정렬해 PDF 1쪽당 이미지 1장을 넣습니다.</div>
         </div>
       </section>
-      <section class="panel settingsPane hidden" id="settingsResultsPane">
-        <div class="panelHead"><h2 class="panelTitle">결과</h2></div>
+    </div>
+  </div>
+</div>
+
+<div class="modalBackdrop hidden" id="resultsModal" role="dialog" aria-modal="true" aria-labelledby="resultsTitle">
+  <div class="modal">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="resultsTitle">결과 및 내보내기</h2>
+      <button class="btn mini" id="closeResultsBtn" type="button">닫기</button>
+    </div>
+    <div class="modalBody" style="display:block">
+      <div class="settingsTabs">
+        <button class="settingsTab on" type="button" data-results-pane="data">데이터</button>
+        <button class="settingsTab" type="button" data-results-pane="export">내보내기</button>
+      </div>
+      <section class="panel settingsPane" id="resultsDataPane">
+        <div class="panelHead"><h2 class="panelTitle">데이터</h2></div>
         <div class="compactBtns">
           <button class="btn" id="exportCsvBtn">CSV 내보내기</button>
-          <button class="btn" id="exportShareReportBtn">채점 내용 공유용 내보내기</button>
           <button class="btn" id="exportJsonBtn">JSON 전체 백업</button>
           <button class="btn" id="importJsonBtn">JSON 불러오기</button>
           <button class="btn" id="openMergeJsonBtn" type="button">JSON 병합</button>
@@ -897,6 +913,26 @@ textarea{min-height:72px;resize:vertical}
         </div>
         <div style="max-height:430px;overflow:auto;margin-top:10px">
           <table class="table"><thead id="resultHead"></thead><tbody id="resultBody"></tbody></table>
+        </div>
+      </section>
+      <section class="panel settingsPane hidden" id="resultsExportPane">
+        <div class="panelHead"><h2 class="panelTitle">항상 포함</h2></div>
+        <div class="shareRequiredList">
+          학생 정보와 총점<br>
+          문항별 점수 / 총점<br>
+          선택된 점수 인정 · 미인정 · 감점 문구
+        </div>
+        <div class="panelHead"><h2 class="panelTitle">추가로 포함</h2></div>
+        <label class="checkField"><input id="shareIncludeExampleInput" type="checkbox" checked> 예시답안</label>
+        <label class="checkField"><input id="shareIncludeMemoInput" type="checkbox" checked> 문항 메모</label>
+        <label class="checkField"><input id="shareIncludeDiscussionInput" type="checkbox" checked> 논의 필요 표시</label>
+        <label class="checkField"><input id="shareIncludeHighlightInput" type="checkbox" checked> 형광펜 캡처/메모</label>
+        <div class="panelHead" style="margin-top:14px"><h2 class="panelTitle">내보내기 범위</h2></div>
+        <label class="checkField"><input id="shareScopeAllInput" type="checkbox" checked> 전체 선택</label>
+        <div class="shareClassList" id="shareClassList"></div>
+        <div class="statusLine" id="shareScopeStatus">반을 선택하면 선택한 반만 내보냅니다.</div>
+        <div class="compactBtns">
+          <button class="btn primary" id="createShareReportBtn" type="button">내보내기</button>
         </div>
       </section>
     </div>
@@ -969,7 +1005,8 @@ const els = {
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), studentCropBtn:$("studentCropBtn"), clearStudentCropBtn:$("clearStudentCropBtn"), gradeModeBtn:$("gradeModeBtn"),
   highlightModeBtn:$("highlightModeBtn"), highlightYellowBtn:$("highlightYellowBtn"), highlightRedBtn:$("highlightRedBtn"), highlightGreenBtn:$("highlightGreenBtn"),
   undoHighlightBtn:$("undoHighlightBtn"), pageHighlightLayer:$("pageHighlightLayer"), cropHighlightLayer:$("cropHighlightLayer"),
-  settingsBtn:$("settingsBtn"), settingsModal:$("settingsModal"), closeSettingsBtn:$("closeSettingsBtn"),
+  settingsBtn:$("settingsBtn"), exportTopBtn:$("exportTopBtn"), settingsModal:$("settingsModal"), closeSettingsBtn:$("closeSettingsBtn"),
+  resultsModal:$("resultsModal"), closeResultsBtn:$("closeResultsBtn"),
   prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), pageInput:$("pageInput"), pageStatus:$("pageStatus"),
   classSelect:$("classSelect"), numberSelect:$("numberSelect"), pageSideSelect:$("pageSideSelect"), nameSelect:$("nameSelect"), classStatus:$("classStatus"),
   incompleteFilterNotice:$("incompleteFilterNotice"), keywordFilterNotice:$("keywordFilterNotice"), keywordFilterText:$("keywordFilterText"), clearKeywordFilterBtn:$("clearKeywordFilterBtn"),
@@ -982,14 +1019,14 @@ const els = {
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   openKeywordPopupBtn:$("openKeywordPopupBtn"), closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
-  shareExportModal:$("shareExportModal"), closeShareExportBtn:$("closeShareExportBtn"), cancelShareExportBtn:$("cancelShareExportBtn"),
   createShareReportBtn:$("createShareReportBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
   shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"), shareIncludeHighlightInput:$("shareIncludeHighlightInput"),
+  shareScopeAllInput:$("shareScopeAllInput"), shareClassList:$("shareClassList"), shareScopeStatus:$("shareScopeStatus"),
   mergeJsonModal:$("mergeJsonModal"), openMergeJsonBtn:$("openMergeJsonBtn"), closeMergeJsonBtn:$("closeMergeJsonBtn"), cancelMergeJsonBtn:$("cancelMergeJsonBtn"),
   rubricEditorPanel:$("rubricEditorPanel"), rubricEditorRows:$("rubricEditorRows"),
   rubricText:$("rubricText"), addRubricItemBtn:$("addRubricItemBtn"), loadRubricTextBtn:$("loadRubricTextBtn"),
   addRubricBottomBtn:$("addRubricBottomBtn"), importHwpxRubricBtn:$("importHwpxRubricBtn"), hwpxRubricInput:$("hwpxRubricInput"),
-  applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportShareReportBtn:$("exportShareReportBtn"), exportJsonBtn:$("exportJsonBtn"),
+  applyRubricBtn:$("applyRubricBtn"), exportCsvBtn:$("exportCsvBtn"), exportJsonBtn:$("exportJsonBtn"),
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"), openRubricWindowBtn:$("openRubricWindowBtn"),
   unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
@@ -1008,6 +1045,7 @@ const els = {
 let draggedKeywordChip = null;
 let draggedRubricId = "";
 let renderToken = 0;
+let cropRenderToken = 0;
 let undoSnapshot = null;
 const memoSaveTimers = new Map();
 let rubricPopupWindow = null;
@@ -1019,6 +1057,9 @@ let tesseractLoadPromise = null;
 let highlightMode = false;
 let highlightColor = "yellow";
 let activeHighlightEditor = null;
+let cropCompositeMode = false;
+let cropCompositeLayouts = [];
+let activeCompositeSide = "";
 
 function loadSavedState(){
   try{
@@ -1091,6 +1132,41 @@ function openSettings(paneName="basic", options={}){
   if(els.initialSetupNotice) els.initialSetupNotice.classList.toggle("hidden", !options.initialSetup);
   selectSettingsPane(paneName);
   els.settingsModal.classList.remove("hidden");
+}
+
+function selectResultsPane(paneName="data"){
+  const target = paneName || "data";
+  els.resultsModal.querySelectorAll("[data-results-pane]").forEach(btn => btn.classList.toggle("on", btn.dataset.resultsPane === target));
+  els.resultsModal.querySelectorAll(".settingsPane").forEach(pane => pane.classList.add("hidden"));
+  const pane = $(`results${target[0].toUpperCase()}${target.slice(1)}Pane`);
+  if(pane) pane.classList.remove("hidden");
+}
+
+function updateShareScopeControls(){
+  if(!els.shareClassList) return;
+  const selected = new Set([...els.shareClassList.querySelectorAll("input:checked")].map(input => input.value));
+  const classes = classNames();
+  const shouldSelectAll = Boolean(els.shareScopeAllInput?.checked) && !selected.size;
+  els.shareClassList.innerHTML = classes.map(className => `
+    <label class="shareClassOption">
+      <input type="checkbox" value="${escapeHtml(className)}"${selected.has(className) || shouldSelectAll ? " checked" : ""}>
+      ${escapeHtml(className)}
+    </label>
+  `).join("") || `<div class="statusLine">명렬에 반 정보가 없습니다.</div>`;
+  const selectedCount = [...els.shareClassList.querySelectorAll("input:checked")].length;
+  if(els.shareScopeAllInput) els.shareScopeAllInput.checked = Boolean(classes.length) && selectedCount === classes.length;
+  if(els.shareScopeStatus){
+    els.shareScopeStatus.textContent = selectedCount
+      ? `${selectedCount}개 반을 선택했습니다.`
+      : "반을 선택하세요.";
+  }
+}
+
+function openResultsModal(paneName="data"){
+  updateResults();
+  updateShareScopeControls();
+  selectResultsPane(paneName);
+  els.resultsModal.classList.remove("hidden");
 }
 
 function promptInitialSetupIfNeeded(){
@@ -1523,7 +1599,10 @@ function normalizeAnswerHighlights(highlights){
     .filter(item => item.w > .005 && item.h > .005);
 }
 function currentHighlightView(){return state.fullPage || state.mode === "calibrate" ? "page" : "crop"}
-function currentHighlightSide(){return pageSideLabel(state.page) || "page1"}
+function currentHighlightSide(){
+  if(cropCompositeMode && !els.cropView.classList.contains("hidden") && activeCompositeSide) return activeCompositeSide;
+  return pageSideLabel(state.page) || "page1";
+}
 function isRubricLocked(){return Boolean(currentQuestionRecord()?.completed)}
 function guardRubricUnlocked(){
   if(!isRubricLocked()) return true;
@@ -1571,7 +1650,7 @@ function setMode(mode){
   const showFullPage = state.fullPage || mode === "calibrate";
   els.cropOverlay.classList.toggle("hidden", mode !== "calibrate");
   els.pageWrap.classList.toggle("hidden", !showFullPage);
-  const showCompanion = Boolean(state.pdf && state.fullPage && mode !== "calibrate" && pagesPerStudent() > 1);
+  const showCompanion = shouldShowFullPageCompanion(mode);
   els.fullPageCompanion.classList.toggle("hidden", !showCompanion);
   els.pageSideLabel.classList.toggle("hidden", !showCompanion);
   els.canvasShell.classList.toggle("fullPageSpread", showCompanion);
@@ -1589,6 +1668,7 @@ function setMode(mode){
   positionOverlay();
   updateAnswerZoomStyles();
   requestAnimationFrame(updateAnswerZoomStyles);
+  if(showCompanion) renderFullPageCompanion(renderToken).then(() => updateAnswerZoomStyles());
 }
 
 function loadSidebarWidth(){
@@ -1797,15 +1877,32 @@ async function renderCurrentPage(){
   renderAnswerHighlights();
 }
 
+function shouldShowFullPageCompanion(mode=state.mode){
+  return Boolean(state.pdf && (state.fullPage || mode === "calibrate") && pagesPerStudent() > 1);
+}
+
 async function renderFullPageCompanion(token=renderToken){
-  const showCompanion = Boolean(state.pdf && state.fullPage && state.mode !== "calibrate" && pagesPerStudent() > 1);
+  const showCompanion = shouldShowFullPageCompanion();
   els.fullPageCompanion.classList.toggle("hidden", !showCompanion);
   els.pageSideLabel.classList.toggle("hidden", !showCompanion);
   els.canvasShell.classList.toggle("fullPageSpread", showCompanion);
-  if(els.pageSideLabel) els.pageSideLabel.textContent = pageSideLabel(state.page) || "현재면";
+  if(els.pageSideLabel){
+    els.pageSideLabel.textContent = pageSideLabel(state.page) || "현재면";
+    els.pageSideLabel.dataset.page = String(state.page);
+    els.pageSideLabel.classList.add("active");
+  }
+  els.pageWrap.dataset.page = String(state.page);
+  els.pageWrap.classList.toggle("sideActive", showCompanion);
+  els.pageWrap.classList.remove("sideInactive");
   if(!showCompanion){
     els.pageWrap.style.order = "";
     els.fullPageCompanion.style.order = "";
+    els.pageWrap.classList.remove("sideActive", "sideInactive");
+    els.fullPageCompanion.classList.remove("sideActive", "sideInactive");
+    delete els.pageWrap.dataset.page;
+    delete els.fullPageCompanion.dataset.page;
+    if(els.pageSideLabel) delete els.pageSideLabel.dataset.page;
+    if(els.fullPageCompanionLabel) delete els.fullPageCompanionLabel.dataset.page;
     if(els.fullPageCompanionCanvas){
       els.fullPageCompanionCanvas.width = 0;
       els.fullPageCompanionCanvas.height = 0;
@@ -1816,13 +1913,24 @@ async function renderFullPageCompanion(token=renderToken){
   const companionPage = pages.find(page => page !== state.page) || null;
   if(!companionPage){
     els.fullPageCompanion.classList.add("hidden");
+    delete els.fullPageCompanion.dataset.page;
+    if(els.fullPageCompanionLabel) delete els.fullPageCompanionLabel.dataset.page;
     return;
   }
   const currentSideOrder = ((state.page - firstPageForStudentIndex(studentIndexForPage(state.page))) || 0) + 1;
   const companionSideOrder = ((companionPage - firstPageForStudentIndex(studentIndexForPage(companionPage))) || 0) + 1;
   els.pageWrap.style.order = String(currentSideOrder);
   els.fullPageCompanion.style.order = String(companionSideOrder);
-  if(els.fullPageCompanionLabel) els.fullPageCompanionLabel.textContent = pageSideLabel(companionPage) || "반대면";
+  els.pageWrap.classList.add("sideActive");
+  els.pageWrap.classList.remove("sideInactive");
+  els.fullPageCompanion.classList.add("sideInactive");
+  els.fullPageCompanion.classList.remove("sideActive");
+  if(els.fullPageCompanionLabel){
+    els.fullPageCompanionLabel.textContent = pageSideLabel(companionPage) || "반대면";
+    els.fullPageCompanionLabel.dataset.page = String(companionPage);
+    els.fullPageCompanionLabel.classList.remove("active");
+  }
+  els.fullPageCompanion.dataset.page = String(companionPage);
   const page = await state.pdf.getPage(companionPage);
   if(token !== renderToken) return;
   const viewport = page.getViewport({scale:state.scale});
@@ -1847,22 +1955,120 @@ function positionOverlay(){
   });
 }
 
-function drawCrop(){
+function studentCropPagesForCurrentQuestion(){
+  const rec = currentRecord();
+  const entries = studentCropOverridesForQuestion(rec, state.activeQuestion)
+    .map(([key, crop]) => {
+      const side = crop?.side || key.split("__")[1] || "page1";
+      const page = pageForCropSide(Number(rec?.studentIndex || recordKey()), side);
+      return page ? {key, crop, side, page} : null;
+    })
+    .filter(Boolean)
+    .sort((a,b) => a.page - b.page);
+  return entries;
+}
+
+function cropCanvasFromRenderedPage(source, crop){
+  const sx = Math.round(crop.x * source.width);
+  const sy = Math.round(crop.y * source.height);
+  const sw = Math.max(1, Math.round(crop.w * source.width));
+  const sh = Math.max(1, Math.round(crop.h * source.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  const ctx = canvas.getContext("2d", {alpha:false});
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, sw, sh);
+  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+  return canvas;
+}
+
+async function cropCanvasForEntry(entry){
+  if(entry.page === state.page && els.pdfCanvas.width){
+    return cropCanvasFromRenderedPage(els.pdfCanvas, entry.crop);
+  }
+  return cropCanvasForPage(entry.page);
+}
+
+function drawSingleCrop(){
+  cropCompositeMode = false;
+  cropCompositeLayouts = [];
+  activeCompositeSide = "";
   const source = els.pdfCanvas;
   const target = els.cropCanvas;
   const c = activeCrop();
-  const sx = Math.round(c.x * source.width);
-  const sy = Math.round(c.y * source.height);
-  const sw = Math.round(c.w * source.width);
-  const sh = Math.round(c.h * source.height);
-  target.width = Math.max(1, sw);
-  target.height = Math.max(1, sh);
+  const cropped = cropCanvasFromRenderedPage(source, c);
+  target.width = cropped.width;
+  target.height = cropped.height;
   const ctx = target.getContext("2d", {alpha:false});
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0,0,target.width,target.height);
-  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, target.width, target.height);
+  ctx.drawImage(cropped, 0, 0);
   updateAnswerZoomStyles();
   renderAnswerHighlights();
+}
+
+async function drawCompositeCrop(entries, token){
+  const canvases = [];
+  for(const entry of entries){
+    const canvas = await cropCanvasForEntry(entry);
+    if(token !== cropRenderToken) return;
+    canvases.push({entry, canvas});
+  }
+  if(!canvases.length || token !== cropRenderToken) return;
+  cropCompositeMode = true;
+  const labelHeight = 34;
+  const gap = 14;
+  const padding = 10;
+  const width = Math.max(...canvases.map(item => item.canvas.width)) + padding * 2;
+  const height = canvases.reduce((sum, item, index) => sum + labelHeight + item.canvas.height + (index ? gap : 0), padding * 2);
+  const target = els.cropCanvas;
+  target.width = Math.max(1, width);
+  target.height = Math.max(1, height);
+  const ctx = target.getContext("2d", {alpha:false});
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(0, 0, target.width, target.height);
+  ctx.font = "700 18px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.textBaseline = "middle";
+  cropCompositeLayouts = [];
+  let y = padding;
+  canvases.forEach(({entry, canvas}, index) => {
+    if(index) y += gap;
+    ctx.fillStyle = "#edf7fa";
+    ctx.fillRect(padding, y, target.width - padding * 2, labelHeight);
+    ctx.fillStyle = "#176b87";
+    const label = `${pageSideLabel(entry.page) || cropSideDisplayFromKey(entry.side)} 학생 영역`;
+    ctx.fillText(label, padding + 12, y + labelHeight / 2);
+    y += labelHeight;
+    const x = Math.round((target.width - canvas.width) / 2);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, canvas.width, canvas.height);
+    ctx.drawImage(canvas, x, y);
+    cropCompositeLayouts.push({
+      side:pageSideLabel(entry.page) || entry.side,
+      page:entry.page,
+      x:x / target.width,
+      y:y / target.height,
+      w:canvas.width / target.width,
+      h:canvas.height / target.height
+    });
+    y += canvas.height;
+  });
+  if(!cropCompositeLayouts.some(item => item.side === activeCompositeSide)){
+    const currentSide = pageSideLabel(state.page) || "";
+    activeCompositeSide = cropCompositeLayouts.find(item => item.side === currentSide)?.side || cropCompositeLayouts[0]?.side || "";
+  }
+  updateAnswerZoomStyles();
+  renderAnswerHighlights();
+}
+
+function drawCrop(){
+  const entries = studentCropPagesForCurrentQuestion();
+  const splitEntries = entries.length > 1 ? entries : [];
+  const token = ++cropRenderToken;
+  if(splitEntries.length){
+    drawCompositeCrop(splitEntries, token);
+    return;
+  }
+  drawSingleCrop();
 }
 
 function visibleAnswerWrap(){
@@ -1881,6 +2087,45 @@ function visibleHighlightLayer(){
   if(!els.cropView.classList.contains("hidden")) return els.cropHighlightLayer;
   if(!els.pageWrap.classList.contains("hidden")) return els.pageHighlightLayer;
   return null;
+}
+
+function activeCompositeLayout(){
+  if(!cropCompositeMode || els.cropView.classList.contains("hidden")) return null;
+  return cropCompositeLayouts.find(item => item.side === activeCompositeSide) || cropCompositeLayouts[0] || null;
+}
+
+function updateCompositeHighlightLayer(){
+  const layer = els.cropHighlightLayer;
+  if(!layer) return;
+  const layout = activeCompositeLayout();
+  layer.classList.toggle("compositeActive", Boolean(layout));
+  if(!layout){
+    layer.style.left = "";
+    layer.style.top = "";
+    layer.style.width = "";
+    layer.style.height = "";
+    layer.style.right = "";
+    layer.style.bottom = "";
+    return;
+  }
+  layer.style.left = `${layout.x * 100}%`;
+  layer.style.top = `${layout.y * 100}%`;
+  layer.style.width = `${layout.w * 100}%`;
+  layer.style.height = `${layout.h * 100}%`;
+  layer.style.right = "auto";
+  layer.style.bottom = "auto";
+}
+
+function resetCompositeHighlightLayer(){
+  const layer = els.cropHighlightLayer;
+  if(!layer) return;
+  layer.classList.remove("compositeActive");
+  layer.style.left = "";
+  layer.style.top = "";
+  layer.style.width = "";
+  layer.style.height = "";
+  layer.style.right = "";
+  layer.style.bottom = "";
 }
 
 function highlightLayerForView(view){
@@ -1907,6 +2152,8 @@ function currentViewHighlightEntries(){
 
 function renderAnswerHighlights(draft=null){
   closeHighlightEditor(false);
+  if(cropCompositeMode && !els.cropView.classList.contains("hidden")) updateCompositeHighlightLayer();
+  else resetCompositeHighlightLayer();
   [els.pageHighlightLayer, els.cropHighlightLayer].forEach(layer => {
     if(!layer) return;
     layer.classList.toggle("drawing", Boolean(highlightMode && layer === visibleHighlightLayer()));
@@ -1925,7 +2172,7 @@ function renderAnswerHighlights(draft=null){
 }
 
 function updateHighlightButtons(){
-  const enabled = Boolean(state.pdf) && state.mode !== "calibrate";
+  const enabled = Boolean(state.pdf) && state.mode !== "calibrate" && Boolean(visibleHighlightLayer());
   if(els.highlightModeBtn){
     els.highlightModeBtn.disabled = !enabled;
     els.highlightModeBtn.classList.toggle("highlightToolOn", Boolean(highlightMode));
@@ -1957,7 +2204,8 @@ function setHighlightColor(color){
 
 function setHighlightMode(active){
   highlightMode = Boolean(active) && Boolean(state.pdf) && state.mode !== "calibrate";
-  if(highlightMode && state.fullPage) showToast("전체 답안 위에 드래그해서 형광펜을 표시합니다.");
+  if(highlightMode && cropCompositeMode && !els.cropView.classList.contains("hidden")) showToast("선택된 면 위에 드래그해서 형광펜을 표시합니다.");
+  else if(highlightMode && state.fullPage) showToast("전체 답안 위에 드래그해서 형광펜을 표시합니다.");
   else if(highlightMode) showToast("답안 영역 위에 드래그해서 형광펜을 표시합니다.");
   renderAnswerHighlights();
 }
@@ -2057,6 +2305,23 @@ function undoLastHighlight(){
   renderAnswerHighlights();
   updateResults();
   updateClassControls();
+}
+
+function selectCompositeSideFromClick(evt){
+  if(!cropCompositeMode || els.cropView.classList.contains("hidden")) return;
+  if(evt.target.closest(".answerHighlightBox") || evt.target.closest(".highlightEditor")) return;
+  const rect = els.cropCanvas.getBoundingClientRect();
+  if(!rect.width || !rect.height) return;
+  const x = (evt.clientX - rect.left) / rect.width;
+  const y = (evt.clientY - rect.top) / rect.height;
+  const layout = cropCompositeLayouts.find(item =>
+    x >= item.x && x <= item.x + item.w && y >= item.y && y <= item.y + item.h
+  );
+  if(!layout || layout.side === activeCompositeSide) return;
+  activeCompositeSide = layout.side;
+  closeHighlightEditor(false);
+  renderAnswerHighlights();
+  showToast(`${layout.side} 형광펜 영역을 선택했습니다.`);
 }
 
 function bindHighlightDrawing(){
@@ -2352,6 +2617,7 @@ function updateChrome(){
   els.incompleteOnlyBtn.setAttribute("aria-label", els.incompleteOnlyBtn.title);
   els.incompleteFilterNotice.classList.toggle("hidden", !state.settings?.incompleteOnly);
   updateKeywordFilterNotice();
+  updateShareScopeControls();
   updateStudentCropButtons();
   updateHighlightButtons();
   updateClassControls();
@@ -2405,6 +2671,7 @@ function toggleStudentCropMode(){
     persist();
   }
   if(state.studentCropMode && state.mode !== "calibrate") setMode("calibrate");
+  updatePageSideControls();
   updateStudentCropButtons();
   positionOverlay();
   if(state.mode === "grade" && !state.fullPage) drawCrop();
@@ -2420,6 +2687,7 @@ function clearStudentCropOverride(){
   if(!Object.keys(rec.cropOverrides).length) delete rec.cropOverrides;
   state.studentCropMode = false;
   persist();
+  updatePageSideControls();
   updateStudentCropButtons();
   positionOverlay();
   if(state.mode === "grade" && !state.fullPage) drawCrop();
@@ -2841,7 +3109,7 @@ function popupRubricNavHtml(){
       <div class="popupNavStudent">
         <select data-popup-select="class" title="반 선택">${classOptions}</select>
         <select data-popup-select="number" title="번호 선택"${pages.length ? "" : " disabled"}>${numberOptions}</select>
-        <select data-popup-select="side" title="면 선택"${sideOptions ? "" : " class=\"hidden\" disabled"}>${sideOptions}</select>
+        <select data-popup-select="side" title="면 선택" class="hidden"${sideOptions ? "" : " disabled"}>${sideOptions}</select>
         <select data-popup-select="name" title="이름 선택"${pages.length ? "" : " disabled"}>${nameOptions}</select>
         <button class="btn filterToggleBtn${state.settings?.incompleteOnly ? " primary" : ""}" type="button" data-popup-nav="filter" title="${escapeHtml(filterTitle)}" aria-label="${escapeHtml(filterTitle)}"><span class="filterGlyph" aria-hidden="true"></span></button>
       </div>
@@ -4516,22 +4784,40 @@ function exportCsv(){
   download(`OMR_서술형_채점_${dateStamp()}.csv`, "text/csv;charset=utf-8", "\ufeff" + lines.join("\n"));
 }
 
-function exportShareReport(){
-  els.shareExportModal.classList.remove("hidden");
+function shareReportRecordClassName(rec){
+  const rosterStudent = studentForPage(Number(rec.page) || 1);
+  return String(rec.className || rosterStudent?.className || "").trim();
 }
 
 async function createShareReport(){
   cleanupAllRecords();
-  const records = Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
+  let records = Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
   if(!records.length){
     alert("내보낼 채점 기록이 없습니다.");
     return;
+  }
+  const selectedClasses = new Set([...els.shareClassList?.querySelectorAll("input:checked") || []].map(input => input.value));
+  const availableClasses = classNames();
+  const allClassesSelected = Boolean(availableClasses.length) && selectedClasses.size === availableClasses.length;
+  if(availableClasses.length && !selectedClasses.size){
+    alert("내보낼 반을 하나 이상 선택해주세요.");
+    return;
+  }
+  const scope = selectedClasses.size && !allClassesSelected ? "classes" : "all";
+  if(scope === "classes"){
+    records = records.filter(rec => selectedClasses.has(shareReportRecordClassName(rec)));
+    if(!records.length){
+      alert("선택한 반에 해당하는 채점 기록이 없습니다.");
+      return;
+    }
   }
   const options = {
     includeExample:els.shareIncludeExampleInput.checked,
     includeMemo:els.shareIncludeMemoInput.checked,
     includeDiscussion:els.shareIncludeDiscussionInput.checked,
-    includeHighlight:els.shareIncludeHighlightInput.checked
+    includeHighlight:els.shareIncludeHighlightInput.checked,
+    scope,
+    titleSuffix:scope === "classes" ? [...selectedClasses].join(", ") : ""
   };
   const originalText = els.createShareReportBtn.textContent;
   els.createShareReportBtn.disabled = true;
@@ -4553,10 +4839,9 @@ async function createShareReport(){
     reportWindow.document.write(html);
     reportWindow.document.close();
     reportWindow.focus();
-    els.shareExportModal.classList.add("hidden");
   }else{
-    download(`${safeFileName(state.appTitle)}_채점_내용_공유용_${dateStamp()}.html`, "text/html;charset=utf-8", html);
-    els.shareExportModal.classList.add("hidden");
+    const classPart = options.titleSuffix ? `_${safeFileName(options.titleSuffix)}` : "";
+    download(`${safeFileName(state.appTitle)}${classPart}_채점_내용_공유용_${dateStamp()}.html`, "text/html;charset=utf-8", html);
     alert("팝업이 차단되어 HTML 파일로 저장했습니다.");
   }
 }
@@ -4564,12 +4849,13 @@ async function createShareReport(){
 async function buildShareReportHtml(records, options){
   const exportedAt = new Date().toLocaleString("ko-KR");
   const questionMaxTotal = state.questions.reduce((sum, question) => sum + questionMaxScore(question), 0);
+  const reportTitle = `${state.appTitle}${options.titleSuffix ? ` · ${options.titleSuffix}` : ""} 채점 내용 공유용`;
   const studentHtml = (await Promise.all(records.map(rec => shareReportStudentHtml(rec, options)))).join("");
   return `<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>${escapeHtml(state.appTitle)} 채점 내용 공유용</title>
+<title>${escapeHtml(reportTitle)}</title>
 <style>
   *{box-sizing:border-box}
   body{margin:0;background:#f5f6f8;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}
@@ -4646,7 +4932,7 @@ async function buildShareReportHtml(records, options){
 <main class="wrap">
   <div class="reportHead">
     <div>
-      <h1>${escapeHtml(state.appTitle)} 채점 내용 공유용</h1>
+      <h1>${escapeHtml(reportTitle)}</h1>
       <div class="meta">교사 공유용 상세 보고서 · ${escapeHtml(exportedAt)} · ${records.length}명</div>
     </div>
     <div class="meta">문항 총점 합계 ${escapeHtml(formatScore(questionMaxTotal))}점</div>
@@ -6132,7 +6418,7 @@ function updateClassControls(){
 
 function updatePageSideControls(){
   const pageCount = pagesPerStudent();
-  els.pageSideSelect.classList.toggle("hidden", pageCount <= 1);
+  els.pageSideSelect.classList.add("hidden");
   if(pageCount <= 1) return;
   const options = pagesForStudentIndex(studentIndexForPage(state.page))
     .map(page => {
@@ -6174,6 +6460,7 @@ function bindCropDrag(){
     if(!drag) return;
     drag = null;
     persist();
+    updatePageSideControls();
     drawCrop();
   });
 }
@@ -6382,9 +6669,29 @@ els.gradeModeBtn.addEventListener("click", enterGradeMode);
 els.openRubricWindowBtn.addEventListener("click", openRubricPopup);
 els.floatingRubricWindowBtn.addEventListener("click", openRubricPopup);
 els.settingsBtn.addEventListener("click", () => openSettings());
+els.exportTopBtn.addEventListener("click", () => openResultsModal());
 els.closeSettingsBtn.addEventListener("click", () => els.settingsModal.classList.add("hidden"));
 els.settingsModal.addEventListener("click", evt => {
   if(evt.target === els.settingsModal) els.settingsModal.classList.add("hidden");
+});
+els.closeResultsBtn.addEventListener("click", () => els.resultsModal.classList.add("hidden"));
+els.resultsModal.addEventListener("click", evt => {
+  if(evt.target === els.resultsModal){
+    els.resultsModal.classList.add("hidden");
+    return;
+  }
+  const tab = evt.target.closest("[data-results-pane]");
+  if(tab) selectResultsPane(tab.dataset.resultsPane);
+});
+els.resultsModal.addEventListener("change", evt => {
+  if(evt.target === els.shareScopeAllInput){
+    els.shareClassList?.querySelectorAll("input").forEach(input => input.checked = els.shareScopeAllInput.checked);
+    updateShareScopeControls();
+    return;
+  }
+  if(evt.target.closest("#shareClassList")){
+    updateShareScopeControls();
+  }
 });
 els.openKeywordModalBtn.addEventListener("click", () => {
   renderKeywordModal();
@@ -6426,11 +6733,6 @@ els.keywordModal.addEventListener("click", async evt => {
       }
     }
   }
-});
-els.closeShareExportBtn.addEventListener("click", () => els.shareExportModal.classList.add("hidden"));
-els.cancelShareExportBtn.addEventListener("click", () => els.shareExportModal.classList.add("hidden"));
-els.shareExportModal.addEventListener("click", evt => {
-  if(evt.target === els.shareExportModal) els.shareExportModal.classList.add("hidden");
 });
 els.createShareReportBtn.addEventListener("click", createShareReport);
 els.openMergeJsonBtn.addEventListener("click", () => {
@@ -6802,6 +7104,27 @@ function handleAnswerSelectChange(select){
 }
 els.numberSelect.addEventListener("change", () => handleAnswerSelectChange(els.numberSelect));
 els.nameSelect.addEventListener("change", () => handleAnswerSelectChange(els.nameSelect));
+async function selectVisibleSidePage(target){
+  const page = Number(target?.dataset?.page || 0);
+  if(!state.pdf || !Number.isFinite(page) || page <= 0 || page === state.page) return;
+  await goPage(page, {autoStudentCropSide:false});
+  showToast(`${pageSideLabel(page) || "선택한 면"} 영역을 선택했습니다.`);
+}
+function selectVisibleSideFromClick(evt){
+  if(evt.target.closest(".fullPageSideLabel")) return;
+  selectVisibleSidePage(evt.currentTarget);
+}
+els.pageWrap.addEventListener("click", selectVisibleSideFromClick);
+els.fullPageCompanion.addEventListener("click", selectVisibleSideFromClick);
+els.cropView.addEventListener("click", selectCompositeSideFromClick);
+els.pageSideLabel.addEventListener("click", evt => {
+  evt.stopPropagation();
+  selectVisibleSidePage(evt.currentTarget);
+});
+els.fullPageCompanionLabel.addEventListener("click", evt => {
+  evt.stopPropagation();
+  selectVisibleSidePage(evt.currentTarget);
+});
 els.pageSideSelect.addEventListener("change", () => {
   const page = Number(els.pageSideSelect.value);
   if(!Number.isFinite(page) || page <= 0) return;
@@ -6841,7 +7164,6 @@ els.loadRubricTextBtn.addEventListener("click", () => {
 });
 els.applyRubricBtn.addEventListener("click", applyRubricText);
 els.exportCsvBtn.addEventListener("click", exportCsv);
-els.exportShareReportBtn.addEventListener("click", exportShareReport);
 els.exportJsonBtn.addEventListener("click", exportJson);
 els.importJsonBtn.addEventListener("click", () => els.jsonInput.click());
 els.jsonInput.addEventListener("change", async evt => {
