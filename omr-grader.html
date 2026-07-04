@@ -17,6 +17,7 @@
   --soft:#edf7fa;
   --shadow:0 14px 38px rgba(23,32,51,.10);
   --side-width:460px;
+  --mobile-viewer-height:44dvh;
 }
 *{box-sizing:border-box}
 html,body{height:100%;overflow:hidden}
@@ -27,6 +28,7 @@ button{cursor:pointer}
 .app.multiWindowMain{grid-template-columns:minmax(360px,1fr)}
 .app.multiWindowMain .sideResizer,.app.multiWindowMain .side{display:none}
 .app.resizing{cursor:col-resize;user-select:none}
+.app.mobileResizing{cursor:row-resize;user-select:none}
 .sideResizer{background:#eef2f7;border-left:1px solid var(--line);border-right:1px solid var(--line);cursor:col-resize;position:relative}
 .sideResizer::before{content:"";position:absolute;inset:0 -5px}
 .sideResizer::after{content:"";position:absolute;top:50%;left:50%;width:2px;height:48px;border-radius:999px;background:#aab4c3;transform:translate(-50%,-50%)}
@@ -511,7 +513,7 @@ textarea{min-height:72px;resize:vertical}
   body.pdfLoaded .app{
     display:grid;
     grid-template-columns:1fr;
-    grid-template-rows:minmax(300px,44dvh) minmax(0,1fr);
+    grid-template-rows:minmax(250px,var(--mobile-viewer-height)) 10px minmax(0,1fr);
     height:100vh;
     height:100dvh;
     min-height:0;
@@ -521,13 +523,30 @@ textarea{min-height:72px;resize:vertical}
     position:relative;
     z-index:18;
     height:auto;
-    min-height:300px;
+    min-height:250px;
     max-height:none;
     display:block;
     overflow:hidden;
     background:var(--bg);
     border-bottom:1px solid var(--line);
     box-shadow:0 14px 34px rgba(23,32,51,.10);
+  }
+  body.pdfLoaded .sideResizer{
+    display:block;
+    width:100%;
+    height:10px;
+    cursor:row-resize;
+    border:0;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    background:#edf2f7;
+    z-index:19;
+  }
+  body.pdfLoaded .sideResizer::before{inset:-8px 0}
+  body.pdfLoaded .sideResizer::after{
+    width:48px;
+    height:2px;
+    background:#94a3b8;
   }
   body.pdfLoaded .topbar,
   body.pdfLoaded .navstrip{display:none}
@@ -616,14 +635,13 @@ textarea{min-height:72px;resize:vertical}
   body.pdfLoaded .total{padding:10px;margin-top:8px}
   body.pdfLoaded .total strong{font-size:24px}
   body.pdfLoaded .rubricActionBar{
-    position:sticky;
-    bottom:calc(84px + env(safe-area-inset-bottom));
+    position:static;
     z-index:8;
     background:#fbfcfe;
     border:1px solid var(--line);
     border-radius:8px;
     padding:8px;
-    box-shadow:0 -10px 28px rgba(23,32,51,.10);
+    box-shadow:none;
   }
   body.pdfLoaded .rubricActionLeft,
   body.pdfLoaded .rubricActionRight{gap:6px}
@@ -1266,6 +1284,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dis
 const STORAGE_KEY = "publicOmrEssayGraderState.v1";
 const LEGACY_KEY = "publicOmrEssayGraderState.legacy";
 const SIDEBAR_WIDTH_KEY = "publicOmrEssayGraderSidebarWidth.v1";
+const MOBILE_VIEWER_HEIGHT_KEY = "publicOmrEssayGraderMobileViewerHeight.v1";
 const EXAM_CAPTURE_KEY = "publicOmrEssayGraderExamCapture.v1";
 const EXAM_CAPTURE_PREFIX = `${EXAM_CAPTURE_KEY}.`;
 const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
@@ -2340,6 +2359,8 @@ function setMode(mode){
 function loadSidebarWidth(){
   const saved = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
   if(Number.isFinite(saved) && saved > 0) setSidebarWidth(saved, false);
+  const savedMobileHeight = Number(localStorage.getItem(MOBILE_VIEWER_HEIGHT_KEY));
+  if(Number.isFinite(savedMobileHeight) && savedMobileHeight > 0) setMobileViewerHeight(savedMobileHeight, false);
 }
 
 function setSidebarWidth(width, shouldPersist=true){
@@ -2355,29 +2376,54 @@ function setSidebarWidth(width, shouldPersist=true){
 function bindSidebarResize(){
   let drag = null;
   els.sideResizer.addEventListener("pointerdown", evt => {
-    if(window.matchMedia("(max-width: 980px)").matches) return;
+    const mobile = isMobilePortraitGradingLayout();
+    if(window.matchMedia("(max-width: 980px)").matches && !mobile) return;
     evt.preventDefault();
     els.sideResizer.setPointerCapture(evt.pointerId);
-    drag = {startX:evt.clientX, startWidth:sidebarWidth()};
-    els.app.classList.add("resizing");
+    drag = mobile
+      ? {mode:"mobile", startY:evt.clientY, startHeight:mobileViewerHeight()}
+      : {mode:"desktop", startX:evt.clientX, startWidth:sidebarWidth()};
+    els.app.classList.add(mobile ? "mobileResizing" : "resizing");
   });
   els.sideResizer.addEventListener("pointermove", evt => {
     if(!drag) return;
-    setSidebarWidth(drag.startWidth - (evt.clientX - drag.startX));
+    if(drag.mode === "mobile") setMobileViewerHeight(drag.startHeight + (evt.clientY - drag.startY));
+    else setSidebarWidth(drag.startWidth - (evt.clientX - drag.startX));
   });
   els.sideResizer.addEventListener("pointerup", () => {
     if(!drag) return;
     drag = null;
     els.app.classList.remove("resizing");
+    els.app.classList.remove("mobileResizing");
   });
   els.sideResizer.addEventListener("pointercancel", () => {
     drag = null;
     els.app.classList.remove("resizing");
+    els.app.classList.remove("mobileResizing");
   });
 }
 
 function sidebarWidth(){
   return Number(getComputedStyle(document.documentElement).getPropertyValue("--side-width").replace("px","")) || 460;
+}
+
+function isMobilePortraitGradingLayout(){
+  return document.body.classList.contains("pdfLoaded") && window.matchMedia("(max-width: 700px) and (orientation: portrait)").matches;
+}
+
+function setMobileViewerHeight(height, shouldPersist=true){
+  const viewport = Math.max(420, window.innerHeight || 0);
+  const bottomReserve = 220;
+  const nextHeight = clamp(Number(height) || Math.round(viewport * .44), 250, Math.max(260, viewport - bottomReserve));
+  document.documentElement.style.setProperty("--mobile-viewer-height", `${Math.round(nextHeight)}px`);
+  if(shouldPersist) localStorage.setItem(MOBILE_VIEWER_HEIGHT_KEY, String(Math.round(nextHeight)));
+  requestAnimationFrame(updateAnswerZoomStyles);
+}
+
+function mobileViewerHeight(){
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--mobile-viewer-height").trim();
+  if(raw.endsWith("px")) return Number(raw.replace("px","")) || Math.round((window.innerHeight || 720) * .44);
+  return Math.round((window.innerHeight || 720) * .44);
 }
 
 function toggleFullPage(){
@@ -8321,6 +8367,7 @@ els.jsonInput.addEventListener("change", async evt => {
 });
 window.addEventListener("resize", () => {
   setSidebarWidth(sidebarWidth(), false);
+  setMobileViewerHeight(mobileViewerHeight(), false);
   positionOverlay();
   updateAnswerZoomStyles();
 });
