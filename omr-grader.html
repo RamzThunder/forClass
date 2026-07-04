@@ -500,6 +500,153 @@ textarea{min-height:72px;resize:vertical}
   .rubricEditRow > .inlineRubricCancelBtn{grid-column:3}
   .rubricNameInput{grid-column:1 / -1}
 }
+@media (max-width:700px) and (orientation:portrait){
+  body.pdfLoaded{padding-bottom:calc(86px + env(safe-area-inset-bottom))}
+  body.pdfLoaded .app{display:block;min-height:100vh;min-height:100dvh;overflow:visible}
+  body.pdfLoaded .viewer{
+    position:sticky;
+    top:0;
+    z-index:18;
+    height:44vh;
+    height:44dvh;
+    min-height:300px;
+    max-height:430px;
+    display:block;
+    overflow:hidden;
+    background:var(--bg);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 14px 34px rgba(23,32,51,.10);
+  }
+  body.pdfLoaded .topbar,
+  body.pdfLoaded .navstrip{display:none}
+  body.pdfLoaded .stage{
+    position:relative;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+    padding:8px;
+    display:grid;
+    grid-template-rows:minmax(0,1fr);
+    gap:0;
+  }
+  body.pdfLoaded .canvasShell{
+    height:100%;
+    min-height:0;
+    padding:8px 8px 70px;
+    align-items:center;
+    justify-content:center;
+    overscroll-behavior:contain;
+  }
+  body.pdfLoaded .viewerKeywordPanel{
+    position:absolute;
+    left:8px;
+    bottom:8px;
+    z-index:9;
+    display:block;
+    max-height:none;
+    margin:0;
+    padding:0;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+  }
+  body.pdfLoaded .viewerKeywordPanel .panelHead{margin:0}
+  body.pdfLoaded .viewerKeywordPanel .panelTitle,
+  body.pdfLoaded #keywordSummary{display:none}
+  body.pdfLoaded #openKeywordModalBtn{min-height:34px;padding:5px 9px;font-size:13px;box-shadow:0 8px 22px rgba(23,32,51,.14)}
+  body.pdfLoaded .side{
+    position:relative;
+    z-index:1;
+    bottom:auto;
+    height:auto;
+    max-height:none;
+    overflow:visible;
+    border-top:1px solid var(--line);
+    box-shadow:none;
+    padding:10px 10px calc(98px + env(safe-area-inset-bottom));
+  }
+  body.pdfLoaded .side .panel{padding:10px;margin-bottom:10px}
+  body.pdfLoaded .side .panelHead{margin-bottom:8px;align-items:flex-start}
+  body.pdfLoaded .side .panelTitle{font-size:14px;line-height:1.35}
+  body.pdfLoaded .side .compactBtns{width:auto;gap:6px}
+  body.pdfLoaded .side .compactBtns .btn{flex:0 1 auto}
+  body.pdfLoaded .side .btn,
+  body.pdfLoaded .side .completeBtn,
+  body.pdfLoaded .side .subCompleteBtn,
+  body.pdfLoaded .side .subUnwrittenBtn{font-size:13px}
+  body.pdfLoaded .subRubricTitle{
+    top:calc(44vh + 1px);
+    top:calc(44dvh + 1px);
+    grid-template-columns:auto minmax(0,1fr);
+    gap:7px;
+    padding:7px;
+  }
+  body.pdfLoaded .subRubricTitle > span:last-child{
+    grid-column:1 / -1;
+    justify-content:flex-start!important;
+    flex-wrap:wrap;
+  }
+  body.pdfLoaded .subRubricLabel{font-size:14px}
+  body.pdfLoaded .subExampleAnswerInput{
+    min-height:36px;
+    height:36px!important;
+    max-height:64px;
+    font-size:12px;
+    padding:5px 7px;
+  }
+  body.pdfLoaded .criterionTitle{grid-template-columns:minmax(0,1fr) auto;padding:9px;gap:7px}
+  body.pdfLoaded .criterionName{font-size:14px;line-height:1.45}
+  body.pdfLoaded .criterionEditBtn{font-size:12px}
+  body.pdfLoaded .keywordGrid{gap:6px;padding:0 9px 9px}
+  body.pdfLoaded .keywordBox{min-height:0;padding:7px}
+  body.pdfLoaded .keywordChip{padding:7px 8px;font-size:13px;line-height:1.4}
+  body.pdfLoaded .total{padding:10px;margin-top:8px}
+  body.pdfLoaded .total strong{font-size:24px}
+  body.pdfLoaded .rubricActionBar{
+    position:sticky;
+    bottom:calc(84px + env(safe-area-inset-bottom));
+    z-index:8;
+    background:#fbfcfe;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px;
+    box-shadow:0 -10px 28px rgba(23,32,51,.10);
+  }
+  body.pdfLoaded .rubricActionLeft,
+  body.pdfLoaded .rubricActionRight{gap:6px}
+  body.pdfLoaded .rubricActionBar .btn,
+  body.pdfLoaded .rubricActionBar .completeBtn{
+    flex:1 1 42%;
+    min-height:38px;
+    padding:7px 8px;
+  }
+  body.pdfLoaded .answerZoomControls{
+    left:50%;
+    right:auto;
+    bottom:8px;
+    transform:translateX(-50%);
+    max-width:calc(100% - 16px);
+    overflow-x:auto;
+    padding:5px;
+    gap:5px;
+  }
+  body.pdfLoaded .answerZoomControls .btn{
+    min-height:34px;
+    padding:5px 8px;
+    font-size:13px;
+    white-space:nowrap;
+  }
+  body.pdfLoaded .answerZoomText{min-width:42px}
+  body.pdfLoaded .toolDivider{height:24px}
+  body.pdfLoaded .highlightColorBtn{width:26px;min-width:26px;min-height:26px}
+  body.pdfLoaded .examCaptureBtn{top:8px;left:8px}
+  body.pdfLoaded .floatingRubricWindowBtn{top:8px;left:88px}
+  body.pdfLoaded .mobileScanNav{left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));gap:6px;padding:8px}
+  body.pdfLoaded .mobileNavBtn{width:48px;min-height:46px}
+  body.pdfLoaded .mobileNavFlag{padding:0 10px}
+  body.pdfLoaded .mobileNavPage{font-size:13px}
+  body.pdfLoaded .mobileNavStudent{font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -5277,7 +5424,9 @@ function keywordFilterLabel(filter=state.keywordFilter){
   return `${filter.keyword} · ${typeLabel}`;
 }
 
-async function applyKeywordFilter(entry, startPage=null){
+async function applyKeywordFilter(entry, startPage=null, options={}){
+  const shouldCloseModal = options.closeModal !== false;
+  const shouldNavigate = options.navigate !== false;
   const filter = filterFromHubEntry(entry);
   if(!filter) return;
   state.keywordFilter = filter;
@@ -5288,7 +5437,12 @@ async function applyKeywordFilter(entry, startPage=null){
     showToast("해당 항목으로 표시된 학생이 없습니다.");
     return;
   }
-  els.keywordModal.classList.add("hidden");
+  if(shouldCloseModal) els.keywordModal.classList.add("hidden");
+  if(!shouldNavigate){
+    updateChrome();
+    showToast(`모아보기 필터 적용: ${keywordFilterLabel(filter)}`);
+    return;
+  }
   const baseStartPage = startPage ? firstPageForStudentIndex(studentIndexForPage(startPage)) : pages[0];
   const nextPage = pageWithCurrentSide(pages.includes(baseStartPage) ? baseStartPage : pages[0]);
   if(state.pdf) await goPage(nextPage);
@@ -7596,14 +7750,14 @@ els.keywordModal.addEventListener("click", async evt => {
     const entry = keywordHubEntries()[Number(keywordBtn.dataset.entryIndex)];
     if(entry){
       renderKeywordModal(entry.key);
-      await applyKeywordFilter(entry);
+      await applyKeywordFilter(entry, null, {closeModal:false, navigate:false});
     }
     return;
   }
   const goBtn = evt.target.closest(".keywordGoStudentBtn");
   if(goBtn){
     const entry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
-    if(entry) await applyKeywordFilter(entry, Number(goBtn.dataset.page));
+    if(entry) await applyKeywordFilter(entry, Number(goBtn.dataset.page), {closeModal:true, navigate:true});
     else{
       els.keywordModal.classList.add("hidden");
       const page = Number(goBtn.dataset.page);
