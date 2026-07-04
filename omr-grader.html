@@ -672,6 +672,28 @@ textarea{min-height:72px;resize:vertical}
   body.pdfLoaded .highlightColorBtn{width:26px;min-width:26px;min-height:26px}
   body.pdfLoaded .examCaptureBtn{top:8px;left:8px}
   body.pdfLoaded .floatingRubricWindowBtn{top:8px;left:88px}
+  body.pdfLoaded .canvasActionBtn{
+    right:8px;
+    top:50px;
+    max-width:calc(100% - 16px);
+    min-height:34px;
+    padding:5px 9px;
+    font-size:13px;
+    line-height:1.2;
+    white-space:nowrap;
+  }
+  body.pdfLoaded #clearStudentCropBtn{font-size:0}
+  body.pdfLoaded #clearStudentCropBtn::after{
+    content:"학생 영역 삭제";
+    font-size:13px;
+  }
+  body.pdfLoaded #saveCropBtn{top:90px}
+  body.pdfLoaded .studentCropAreaControls{
+    top:132px;
+    right:8px;
+    max-width:calc(100% - 16px);
+    justify-content:flex-end;
+  }
   body.pdfLoaded .mobileTopMenuBtn{
     position:absolute;
     top:8px;
