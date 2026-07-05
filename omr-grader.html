@@ -4252,7 +4252,7 @@ function toggleSubCompleted(sub){
   const normalizedSub = normalizeSubValue(sub);
   const willComplete = !qrec.completedSubs?.[normalizedSub];
   if(willComplete && !hasScoreRubricSelection(qrec, activeQuestion(), normalizedSub)){
-    showToast("가점용 루브릭에 표시된 항목이 없어 채점 완료로 표시할 수 없습니다.");
+    showToast("체크되지 않은 가점 요소가 있어 완료로 표시할 수 없습니다.");
     return;
   }
   snapshotCurrentQuestion("소문항 채점 완료 변경");
@@ -4865,7 +4865,7 @@ function scoreRubricItems(question=activeQuestion(), sub=null){
 function hasScoreRubricSelection(qrec, question=activeQuestion(), sub=null){
   const items = scoreRubricItems(question, sub);
   if(!items.length) return true;
-  return items.some(item => itemHasSelection(qrec, item));
+  return items.every(item => itemHasSelection(qrec, item));
 }
 
 function markAllSubsCompleted(qrec=currentQuestionRecord(), question=activeQuestion()){
@@ -4930,7 +4930,7 @@ function enforceCompletionScoreRule(){
 function cleanupAllRecords(){
   const unsetCount = enforceCompletionScoreRule();
   Object.keys(state.records).forEach(cleanupRecord);
-  if(unsetCount > 0) showToast(`가점용 루브릭에 표시된 항목이 없어 ${unsetCount}건의 채점 완료가 해제되었습니다.`);
+  if(unsetCount > 0) showToast(`체크되지 않은 가점 요소가 있어 ${unsetCount}건의 채점 완료가 해제되었습니다.`);
 }
 
 function snapshotCurrentQuestion(label="채점 변경"){
@@ -5073,7 +5073,7 @@ function setCompletedFlag(completed){
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   if(completed && !hasScoreRubricSelection(qrec, activeQuestion())){
-    showToast("가점용 루브릭에 표시된 항목이 없어 채점 완료로 표시할 수 없습니다.");
+    showToast("체크되지 않은 가점 요소가 있어 채점 완료로 표시할 수 없습니다.");
     return false;
   }
   if(completed && !confirmCompletionIfNeeded()) return false;
