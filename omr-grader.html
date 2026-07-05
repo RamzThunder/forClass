@@ -3612,16 +3612,6 @@ function loadRecordIntoForm(){
 }
 
 function renderRubric(){
-  if(state.editingRubricId){
-    const activeEditor = els.rubricList.querySelector(".inlineRubricEditor");
-    if(activeEditor){
-      const nextItem = readInlineRubricEditor(activeEditor);
-      if(nextItem){
-        const idx = activeQuestion().rubric.findIndex(r => r.id === state.editingRubricId);
-        if(idx >= 0) activeQuestion().rubric[idx] = nextItem;
-      }
-    }
-  }
   const qrec = currentQuestionRecord();
   const scores = qrec?.scores || {};
   const keywordHits = qrec?.keywordHits || {};
@@ -6573,13 +6563,14 @@ function applyInlineRubricItem(editor){
   const index = question.rubric.findIndex(item => item.id === nextItem.id);
   if(index < 0) return;
   const previousItem = question.rubric[index];
+  const aliases = {...keywordAliasesByPosition(previousItem, nextItem), ...keywordAliases};
   const itemToSave = shouldApplyDeductTemplate(previousItem, nextItem)
     ? deductTemplateItem(nextItem.id, nextItem.sub)
     : nextItem;
   question.rubric[index] = itemToSave;
   Object.values(state.records).forEach(rec => {
     const qrec = rec.answers?.[state.activeQuestion];
-    if(qrec) reconcileRubricItemRecord(qrec, previousItem, itemToSave, keywordAliases);
+    if(qrec) reconcileRubricItemRecord(qrec, previousItem, itemToSave, aliases);
   });
   state.editingRubricId = "";
   persist();
@@ -6718,6 +6709,20 @@ function keywordAliasesFromEditor(editor){
   return Object.fromEntries([...editor.querySelectorAll(".keywordEditChip")]
     .map(chip => [chip.dataset.keyword || "", keywordValueFromChip(chip)])
     .filter(([before, after]) => before && after));
+}
+
+function keywordAliasesByPosition(previousItem, nextItem){
+  const aliases = {};
+  if(!previousItem || !nextItem) return aliases;
+  ["accept","reject"].forEach(type => {
+    const previousKeywords = splitKeywords(previousItem[type]);
+    const nextKeywords = splitKeywords(nextItem[type]);
+    const limit = Math.min(previousKeywords.length, nextKeywords.length);
+    for(let i = 0; i < limit; i++){
+      if(previousKeywords[i] && nextKeywords[i]) aliases[previousKeywords[i]] = nextKeywords[i];
+    }
+  });
+  return aliases;
 }
 
 function addKeywordToZone(zone){
@@ -6880,12 +6885,13 @@ function bindRubricDragHandlers(list, options={}){
 function reconcileRubricItemRecord(qrec, previousItem, nextItem, keywordAliases={}){
   if(!qrec.scores) qrec.scores = {};
   if(!qrec.keywordHits) qrec.keywordHits = {};
+  const aliases = {...keywordAliasesByPosition(previousItem, nextItem), ...keywordAliases};
   const oldHits = qrec.keywordHits[nextItem.id] || {};
   const nextHits = {accept:[], partial:[], reject:[]};
   const hadOldHits = ["accept","partial","reject"].some(type => oldHits[type]?.length);
   ["accept","partial","reject"].forEach(type => {
     (Array.isArray(oldHits[type]) ? oldHits[type] : []).forEach(keyword => {
-      const nextKeyword = keywordAliases[keyword] || keyword;
+      const nextKeyword = aliases[keyword] || keyword;
       const nextType = keywordTypeForItem(nextItem, nextKeyword);
       if(!nextType) return;
       if(!nextHits[nextType].includes(nextKeyword)) nextHits[nextType].push(nextKeyword);
