@@ -5394,12 +5394,20 @@ function openKeywordPopup(){
 <title>메모 & 논의 & 키워드별 모아보기</title>
 <style>
 ${styleText}
-body{margin:0;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.keywordPopupWrap{padding:14px;display:grid;gap:10px}
+html{height:100%;overflow:hidden}
+body{margin:0;height:100vh;overflow:hidden;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.keywordPopupWrap{height:100vh;min-height:0;padding:14px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px}
 .keywordPopupHead{position:sticky;top:0;z-index:4;background:#fbfcfe;border:1px solid #d9dee8;border-radius:8px;padding:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.keywordPopupBody{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(360px,1.15fr);gap:12px;align-items:start}
-.keywordPopupBody .panel{margin-bottom:0}
-@media (max-width:760px){.keywordPopupBody{grid-template-columns:1fr}.keywordModalList,.keywordModalStudents{max-height:none}}
+.keywordPopupBody{min-height:0;display:grid;grid-template-columns:minmax(260px,.85fr) minmax(360px,1.15fr);gap:12px;align-items:stretch}
+.keywordPopupBody .panel{min-height:0;margin-bottom:0;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+.keywordPopupBody .keywordModalList,.keywordPopupBody .keywordModalStudents{max-height:none;min-height:0;overflow:auto}
+@media (max-width:760px){
+  html,body{height:auto;min-height:100%;overflow:auto}
+  .keywordPopupWrap{height:auto;min-height:100vh}
+  .keywordPopupBody{grid-template-columns:1fr}
+  .keywordPopupBody .panel{overflow:visible}
+  .keywordPopupBody .keywordModalList,.keywordPopupBody .keywordModalStudents{max-height:none;overflow:visible}
+}
 </style>
 </head>
 <body>
