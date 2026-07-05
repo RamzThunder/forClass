@@ -185,8 +185,7 @@ textarea{min-height:72px;resize:vertical}
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tab{min-height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:850}
 .rubricList{display:grid;gap:9px}
-.rubricList.locked{opacity:.68}
-.rubricList.locked .criterion,.rubricList.locked .subRubricTitle{background:#f4f6f8}
+.rubricList.locked .keywordChip,.rubricList.locked .subCompleteBtn,.rubricList.locked .subUnwrittenBtn{opacity:.55}
 .subRubricGroup{display:grid;gap:7px}
 .subRubricTitle{position:sticky;top:0;z-index:1;background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:12px;font-weight:900;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px}
 .subRubricGroup.unwritten .subRubricTitle{border-color:#d5a13b;background:#fffaf0}
@@ -305,10 +304,12 @@ textarea{min-height:72px;resize:vertical}
 .keywordDropZone.dragOver{outline:2px solid var(--accent);outline-offset:2px}
 .keywordEditList{display:grid;align-content:start;gap:5px}
 .keywordEditChip{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:7px 8px;font-size:12px;font-weight:750;line-height:1.5;display:grid;grid-template-columns:minmax(0,1fr) 70px 22px;gap:6px;align-items:start;word-break:keep-all;overflow-wrap:anywhere;cursor:grab}
+.keywordEditChip.combo{grid-template-columns:minmax(0,1fr) 70px minmax(96px,.55fr) 22px}
 .keywordEditChip:active{cursor:grabbing}
 .keywordEditInput{min-height:44px;border:0;background:transparent;padding:0;text-align:left;font-size:12px;font-weight:750;line-height:1.5;resize:vertical;overflow:hidden}
 .keywordEditInput:focus{outline:0}
 .keywordScoreInput{min-height:36px;padding:5px 6px;font-size:12px;font-weight:900;text-align:center}
+.keywordCategoryInput{min-height:36px;padding:5px 7px;font-size:12px;font-weight:800}
 .keywordRemoveBtn{border:0;background:transparent;color:var(--muted);font-weight:900;line-height:1;padding:2px}
 .keywordAddBtn{margin-top:4px;width:100%}
 .total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:12px;background:var(--soft);border:1px solid #c6e3ec;border-radius:8px;margin-top:10px}
@@ -1206,10 +1207,12 @@ textarea{min-height:72px;resize:vertical}
         <div class="compactBtns" style="justify-content:flex-start;margin:-4px 0 8px">
           <button class="btn mini" id="openReviewAssistFromSettingsBtn" type="button">검토 열기</button>
         </div>
-        <label class="field">
-          <span class="label">인정 문구 허용 조합/카테고리</span>
-          <textarea id="reviewAssistRulesInput" placeholder="가점 요소 1 = 내재(론), 절대론&#10;가점 요소 2 = 고난, 희망&#10;또는&#10;내재(론) + 절대론"></textarea>
-          <span class="statusLine">여기에 적은 조합이나 서로 다른 카테고리의 인정 문구 조합은 검토 대상에서 제외합니다.</span>
+        <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
+          <span>
+            <span class="label">조합형 만점</span>
+            <span class="statusLine">루브릭 안에서 인정 키워드별 조합 카테고리를 설정합니다. 검토 보조에서만 사용합니다.</span>
+          </span>
+          <input id="comboFullCreditEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
@@ -1249,6 +1252,7 @@ textarea{min-height:72px;resize:vertical}
     <div class="modalHead">
       <h2 class="panelTitle" id="reviewAssistTitle">검토 보조</h2>
       <div class="modalHeadActions">
+        <button class="btn mini" id="openReviewAssistPopupBtn" type="button">팝업으로 보기</button>
         <button class="btn mini" id="refreshReviewAssistBtn" type="button">다시 검사</button>
         <button class="btn mini" id="closeReviewAssistBtn" type="button">닫기</button>
       </div>
@@ -1404,7 +1408,7 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, reviewAssistRules:"", unwrittenOcrEnabled:false, unwrittenOcrIncludeShort:false, deductTemplate:structuredClone(defaultDeductTemplate)}
+  settings:{autoAssistEnabled:false, comboFullCreditEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, unwrittenOcrEnabled:false, unwrittenOcrIncludeShort:false, deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
@@ -1460,9 +1464,8 @@ const els = {
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"),
   oneHandPrevKeyBtn:$("oneHandPrevKeyBtn"), oneHandNextKeyBtn:$("oneHandNextKeyBtn"), oneHandUnwrittenKeyBtn:$("oneHandUnwrittenKeyBtn"), openRubricWindowBtn:$("openRubricWindowBtn"),
   unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
-  reviewAssistPanel:$("reviewAssistPanel"), reviewAssistEnabledInput:$("reviewAssistEnabledInput"), openReviewAssistBtn:$("openReviewAssistBtn"), openReviewAssistFromSettingsBtn:$("openReviewAssistFromSettingsBtn"),
-  reviewAssistRulesInput:$("reviewAssistRulesInput"),
-  reviewAssistQuickStatus:$("reviewAssistQuickStatus"), reviewAssistModal:$("reviewAssistModal"), closeReviewAssistBtn:$("closeReviewAssistBtn"), refreshReviewAssistBtn:$("refreshReviewAssistBtn"),
+  reviewAssistPanel:$("reviewAssistPanel"), reviewAssistEnabledInput:$("reviewAssistEnabledInput"), comboFullCreditEnabledInput:$("comboFullCreditEnabledInput"), openReviewAssistBtn:$("openReviewAssistBtn"), openReviewAssistFromSettingsBtn:$("openReviewAssistFromSettingsBtn"),
+  reviewAssistQuickStatus:$("reviewAssistQuickStatus"), reviewAssistModal:$("reviewAssistModal"), closeReviewAssistBtn:$("closeReviewAssistBtn"), refreshReviewAssistBtn:$("refreshReviewAssistBtn"), openReviewAssistPopupBtn:$("openReviewAssistPopupBtn"),
   reviewAssistSummary:$("reviewAssistSummary"), reviewAssistList:$("reviewAssistList"),
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), jpgPdfFolderInput:$("jpgPdfFolderInput"), jpgPdfSelectedStatus:$("jpgPdfSelectedStatus"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
   rosterFileInput:$("rosterFileInput"),
@@ -1487,6 +1490,7 @@ const memoSaveTimers = new Map();
 let rubricPopupWindow = null;
 let rubricWindowActive = false;
 let keywordPopupWindow = null;
+let reviewAssistPopupWindow = null;
 let selectedKeywordModalKey = "";
 let sourceHighlightRanges = [];
 let tesseractLoadPromise = null;
@@ -1808,6 +1812,7 @@ function applyAppTitle(){
 function applySettings(){
   normalizeSettings();
   const enabled = Boolean(state.settings?.autoAssistEnabled);
+  const comboFullCreditEnabled = Boolean(state.settings?.comboFullCreditEnabled);
   const unwrittenOcrEnabled = Boolean(state.settings?.unwrittenOcrEnabled);
   const reviewAssistEnabled = Boolean(state.settings?.reviewAssistEnabled);
   const multiWindowEnabled = Boolean(state.settings?.multiWindowEnabled);
@@ -1815,9 +1820,9 @@ function applySettings(){
   if(els.unwrittenOcrPanel) els.unwrittenOcrPanel.classList.toggle("hidden", !unwrittenOcrEnabled);
   if(els.reviewAssistPanel) els.reviewAssistPanel.classList.toggle("hidden", !reviewAssistEnabled);
   if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
+  if(els.comboFullCreditEnabledInput) els.comboFullCreditEnabledInput.checked = comboFullCreditEnabled;
   if(els.unwrittenOcrEnabledInput) els.unwrittenOcrEnabledInput.checked = unwrittenOcrEnabled;
   if(els.reviewAssistEnabledInput) els.reviewAssistEnabledInput.checked = reviewAssistEnabled;
-  if(els.reviewAssistRulesInput) els.reviewAssistRulesInput.value = state.settings?.reviewAssistRules || "";
   if(els.unwrittenOcrShortInput) els.unwrittenOcrShortInput.checked = Boolean(state.settings?.unwrittenOcrIncludeShort);
   if(els.multiWindowEnabledInput) els.multiWindowEnabledInput.checked = multiWindowEnabled;
   if(els.oneHandGradingInput) els.oneHandGradingInput.checked = Boolean(state.settings?.oneHandGradingEnabled);
@@ -1939,6 +1944,7 @@ function normalizeSettings(){
   state.settings = {
     ...settings,
     autoAssistEnabled:Boolean(settings.autoAssistEnabled),
+    comboFullCreditEnabled:Boolean(settings.comboFullCreditEnabled),
     incompleteOnly:Boolean(settings.incompleteOnly),
     multiWindowEnabled:Boolean(settings.multiWindowEnabled),
     oneHandGradingEnabled:Boolean(settings.oneHandGradingEnabled),
@@ -1950,7 +1956,6 @@ function normalizeSettings(){
     unwrittenOcrEnabled:Boolean(settings.unwrittenOcrEnabled),
     unwrittenOcrIncludeShort:Boolean(settings.unwrittenOcrIncludeShort),
     reviewAssistEnabled:Boolean(settings.reviewAssistEnabled),
-    reviewAssistRules:String(settings.reviewAssistRules || ""),
     pagesPerStudent:Math.max(1, Math.floor(nonNegativeNumber(settings.pagesPerStudent) || 1)),
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
@@ -2054,6 +2059,8 @@ function normalizeRubric(rubric){
       pt,
       accept:item.accept || item.acceptText || item.include || "",
       acceptScores:item.acceptScores || {},
+      comboFullCredit:Boolean(item.comboFullCredit),
+      acceptCategories:item.acceptCategories && typeof item.acceptCategories === "object" ? {...item.acceptCategories} : {},
       partial:item.partial || item.partialText || "",
       partialPt:Number.isFinite(partialPt) ? partialPt : Math.max(0, pt - (Number.isFinite(legacyPartialDeduct) ? legacyPartialDeduct : 1)),
       reject:item.reject || item.rejectText || item.exclude || "",
@@ -2379,6 +2386,14 @@ function guardRubricUnlocked(){
   if(!isRubricLocked()) return true;
   showToast("채점 완료된 답안입니다. 수정하려면 채점 완료를 해제해주세요.");
   return false;
+}
+function selectedKeywordRecords(itemId, type, keyword, questionId=state.activeQuestion){
+  return Object.values(state.records || {})
+    .filter(rec => {
+      const hits = rec.answers?.[questionId]?.keywordHits?.[itemId]?.[type] || [];
+      return hits.includes(keyword);
+    })
+    .sort((a,b) => Number(a.page) - Number(b.page));
 }
 function blankScores(){return Object.fromEntries(activeRubric().map(item => [item.id, 0]))}
 
@@ -3516,18 +3531,23 @@ function updateKeywordFilterNotice(){
     ? memoRecords().length > 0
     : kind === "discussion"
       ? discussionRecords().length > 0
-      : keywordEntries().some(entry =>
-          entry.item.id === state.keywordFilter.itemId &&
-          entry.type === state.keywordFilter.type &&
-          entry.keyword === state.keywordFilter.keyword
-        );
+      : kind === "reviewIssue"
+        ? reviewIssueRecords(state.keywordFilter.issueKey).length > 0
+        : kind === "reviewAll"
+          ? reviewAllRecords().length > 0
+        : keywordEntries().some(entry =>
+            entry.item.id === state.keywordFilter.itemId &&
+            entry.type === state.keywordFilter.type &&
+            entry.keyword === state.keywordFilter.keyword
+          );
   if(!stillExists){
     state.keywordFilter = null;
     els.keywordFilterNotice.classList.add("hidden");
     return;
   }
   const count = keywordFilterPages().length;
-  els.keywordFilterText.textContent = `모아보기 필터 적용 중: ${keywordFilterLabel()} · ${count}명`;
+  const reasons = kind === "reviewAll" ? reviewReasonsForPage(state.page) : [];
+  els.keywordFilterText.textContent = `모아보기 필터 적용 중: ${keywordFilterLabel()} · ${count}명${reasons.length ? ` · 현재: ${reasons.join(" / ")}` : ""}`;
 }
 
 function updateStudentCropButtons(){
@@ -3685,9 +3705,9 @@ function renderRubric(){
     const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
     renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
   });
-  els.rubricList.querySelectorAll(".keywordChip,.subCompleteBtn,.subUnwrittenBtn,.criterionEditBtn,.keywordAddBtn,.keywordRemoveBtn,.inlineRubricApplyBtn,.inlineRubricDeleteBtn,.rubricTypeInput,.keywordScoreInput,.subSourceCheckBtn")
+  els.rubricList.querySelectorAll(".keywordChip,.subCompleteBtn,.subUnwrittenBtn,.subSourceCheckBtn")
     .forEach(control => { control.disabled = locked; });
-  els.rubricList.querySelectorAll(".subExampleAnswerInput,.keywordEditInput,.rubricNameInput,.rubricAcceptInput,.rubricRejectInput,.subSourceCheckInput")
+  els.rubricList.querySelectorAll(".subExampleAnswerInput,.subSourceCheckInput")
     .forEach(control => { control.readOnly = locked; });
   updateTotal();
   updateKeywordSummary();
@@ -3837,7 +3857,7 @@ body.popupCompleted .popupLockBanner{display:block}
     }
     const removeKeywordBtn = evt.target.closest(".keywordRemoveBtn");
     if(removeKeywordBtn){
-      removeKeywordBtn.closest(".keywordEditChip").remove();
+      removeKeywordChipWithGuard(removeKeywordBtn);
       return;
     }
     const subSourceCheckBtn = evt.target.closest(".subSourceCheckBtn");
@@ -3846,7 +3866,7 @@ body.popupCompleted .popupLockBanner{display:block}
       checkSubSourceTextKeywords(sub, subSourceCheckBtn.closest(".subSourceCheckRow")?.querySelector(".subSourceCheckInput"));
       return;
     }
-    if(evt.target.closest(".keywordEditInput,.keywordScoreInput")) return;
+    if(evt.target.closest(".keywordEditInput,.keywordScoreInput,.keywordCategoryInput,.rubricComboFullCreditInput")) return;
     const cancelInlineBtn = evt.target.closest(".inlineRubricCancelBtn");
     if(cancelInlineBtn){
       state.editingRubricId = "";
@@ -3889,6 +3909,12 @@ body.popupCompleted .popupLockBanner{display:block}
     const typeInput = evt.target.closest(".rubricTypeInput");
     if(typeInput){
       applyInlineRubricItem(typeInput.closest(".inlineRubricEditor"));
+      syncRubricPopup();
+      return;
+    }
+    const comboInput = evt.target.closest(".rubricComboFullCreditInput");
+    if(comboInput){
+      applyInlineRubricItem(comboInput.closest(".inlineRubricEditor"));
       syncRubricPopup();
     }
   });
@@ -3967,7 +3993,7 @@ function syncRubricPopup(){
   if(title) title.textContent = `${activeQuestion().label} 루브릭`;
   const meta = doc.getElementById("popupMeta");
   if(meta){
-    const status = completed ? "채점 완료 · 루브릭 잠김" : "채점 중";
+    const status = completed ? "채점 완료" : "채점 중";
     meta.textContent = `${currentStudentText()} · ${status} · ${formatScore(rubricTotal(activeRubric(), currentQuestionRecord()?.scores || {}))}점`;
   }
 }
@@ -4479,6 +4505,9 @@ function inlineRubricEditor(item){
       </select>
       <button class="btn mini inlineRubricCancelBtn" type="button" title="닫기">×</button>
       <textarea class="rubricNameInput" placeholder="루브릭 제목">${escapeHtml(item.name)}</textarea>
+      <label class="checkField${item.type === "deduct" || !state.settings?.comboFullCreditEnabled ? " hidden" : ""}" style="grid-column:1 / -1;margin:0">
+        <input class="rubricComboFullCreditInput" type="checkbox"${item.comboFullCredit ? " checked" : ""}> 조합형 만점
+      </label>
       <div class="rubricKeywordRow">
         <label class="field"><span class="label">점수 인정 문구</span><textarea class="rubricAcceptInput" placeholder="답안에 이 표현이나 의미가 있으면 점수 인정">${escapeHtml(item.accept || "")}</textarea></label>
         <label class="field"><span class="label">${item.type === "deduct" ? "감점 문구" : "미인정 문구"}</span><textarea class="rubricRejectInput" placeholder="미인정 또는 감점할 표현">${escapeHtml(item.reject || "")}</textarea></label>
@@ -4515,10 +4544,13 @@ function subSelectHtml(value, className="rubricSubInput"){
 }
 
 function keywordEditChipHtml(item, type, keyword){
+  const comboCategory = type === "accept" && item.comboFullCredit && state.settings?.comboFullCreditEnabled;
+  const category = item.acceptCategories?.[keyword] || "";
   return `
-    <div class="keywordEditChip" draggable="true" data-keyword="${escapeHtml(keyword)}">
+    <div class="keywordEditChip${comboCategory ? " combo" : ""}" draggable="true" data-keyword="${escapeHtml(keyword)}">
       <textarea class="keywordEditInput" title="키워드 수정">${escapeHtml(keyword)}</textarea>
       <input class="keywordScoreInput" type="number" step="1" min="0" value="${escapeHtml(keywordScore(item, type, keyword))}" title="점수">
+      ${comboCategory ? `<input class="keywordCategoryInput" type="text" value="${escapeHtml(category)}" placeholder="카테고리" title="조합 카테고리">` : ""}
       <button class="keywordRemoveBtn" type="button" title="삭제">×</button>
     </div>
   `;
@@ -4925,41 +4957,30 @@ function normalizedKeywordKey(value){
   return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-function reviewAssistRules(){
-  const categoryByKeyword = new Map();
-  const combos = [];
-  String(state.settings?.reviewAssistRules || "").split(/\n+/).forEach(line => {
-    const text = line.trim();
-    if(!text) return;
-    const eqIndex = text.indexOf("=");
-    if(eqIndex > 0){
-      const category = text.slice(0, eqIndex).trim();
-      text.slice(eqIndex + 1).split(",")
-        .map(normalizedKeywordKey)
-        .filter(Boolean)
-        .forEach(keyword => categoryByKeyword.set(keyword, category));
-      return;
-    }
-    const combo = text.split("+").map(normalizedKeywordKey).filter(Boolean);
-    if(combo.length > 1) combos.push(combo.sort());
-  });
-  return {categoryByKeyword, combos};
+function acceptCategoryForKeyword(item, keyword){
+  const categories = item?.acceptCategories || {};
+  return String(categories[keyword] || categories[normalizedKeywordKey(keyword)] || "").trim();
 }
 
-function reviewAcceptNeedsCheck(accept){
+function acceptCategoryDetail(item, keywords){
+  return keywords.map(keyword => {
+    const category = acceptCategoryForKeyword(item, keyword);
+    return category ? `${keyword}(${category})` : `${keyword}(카테고리 없음)`;
+  }).join(", ");
+}
+
+function reviewAcceptNeedsCheck(item, accept){
   if(accept.length <= 1) return false;
-  const selected = accept.map(normalizedKeywordKey).filter(Boolean).sort();
-  const rules = reviewAssistRules();
-  const exactAllowed = rules.combos.some(combo => combo.length === selected.length && combo.every((keyword, index) => keyword === selected[index]));
-  if(exactAllowed) return false;
-  const categories = selected.map(keyword => rules.categoryByKeyword.get(keyword)).filter(Boolean);
-  if(categories.length === selected.length && new Set(categories).size === categories.length) return false;
+  if(!state.settings?.comboFullCreditEnabled) return true;
+  if(!item?.comboFullCredit) return true;
+  const categories = accept.map(keyword => acceptCategoryForKeyword(item, keyword)).filter(Boolean);
+  if(categories.length === accept.length && new Set(categories).size === categories.length) return false;
   return true;
 }
 
 function reviewAssistIssues(){
   const issues = [];
-  state.questions.forEach(question => {
+  [activeQuestion()].forEach(question => {
     (question.rubric || [])
       .filter(item => item.type !== "deduct")
       .forEach(item => {
@@ -4989,14 +5010,14 @@ function reviewAssistIssues(){
               detail:reject.join(", ")
             });
           }
-          if(reviewAcceptNeedsCheck(accept)){
+          if(reviewAcceptNeedsCheck(item, accept)){
             issues.push({
               severity:"notice",
               type:"인정 문구 조합 확인",
               message:"점수 인정 문구가 여러 개 선택되어 있습니다. 만점 조합으로 의도한 것인지 확인하세요.",
               page, questionId:question.id, questionLabel:question.label, item,
               studentText:studentLabelForRecord(rec),
-              detail:accept.join(", ")
+              detail:item.comboFullCredit ? acceptCategoryDetail(item, accept) : accept.join(", ")
             });
           }
         });
@@ -5006,6 +5027,53 @@ function reviewAssistIssues(){
     const rank = {warn:0, notice:1};
     return (rank[a.severity] ?? 9) - (rank[b.severity] ?? 9) || a.page - b.page || String(a.questionLabel).localeCompare(String(b.questionLabel));
   });
+}
+
+function reviewIssueKey(issue){
+  return [issue.type, issue.questionId, issue.item?.id || "", issue.detail || ""].join("|||");
+}
+
+function reviewAssistEntries(){
+  const groups = new Map();
+  reviewAssistIssues().forEach(issue => {
+    const key = reviewIssueKey(issue);
+    if(!groups.has(key)){
+      groups.set(key, {
+        kind:"reviewIssue",
+        key:`reviewIssue|||${key}`,
+        issueKey:key,
+        title:issue.type,
+        severity:issue.severity,
+        questionId:issue.questionId,
+        meta:"",
+        detail:`${issue.questionLabel} · ${normalizeSubValue(issue.item.sub || "공통", state.questions.find(q => q.id === issue.questionId) || activeQuestion())} · ${issue.item.name || "루브릭"}${issue.detail ? ` · ${issue.detail}` : ""}`,
+        issues:[]
+      });
+    }
+    groups.get(key).issues.push(issue);
+  });
+  return [...groups.values()].map(entry => ({...entry, meta:`${entry.issues.length}명`}));
+}
+
+function reviewIssueRecords(issueKey){
+  return reviewAssistIssues()
+    .filter(issue => reviewIssueKey(issue) === issueKey)
+    .map(issue => state.records[recordKey(issue.page)] || recordShellForPage(issue.page))
+    .filter((rec, index, records) => records.findIndex(other => recordKey(other.page) === recordKey(rec.page)) === index)
+    .sort((a,b) => Number(a.page) - Number(b.page));
+}
+
+function reviewAllRecords(){
+  return reviewAssistIssues()
+    .map(issue => state.records[recordKey(issue.page)] || recordShellForPage(issue.page))
+    .filter((rec, index, records) => records.findIndex(other => recordKey(other.page) === recordKey(rec.page)) === index)
+    .sort((a,b) => Number(a.page) - Number(b.page));
+}
+
+function reviewReasonsForPage(page){
+  return reviewAssistIssues()
+    .filter(issue => recordKey(issue.page) === recordKey(page))
+    .map(issue => `${issue.type}: ${issue.questionLabel} · ${issue.item?.name || "루브릭"}${issue.detail ? ` · ${issue.detail}` : ""}`);
 }
 
 function reviewAssistSummaryText(issues=reviewAssistIssues()){
@@ -5026,23 +5094,40 @@ function updateReviewAssistStatus(){
 
 function renderReviewAssist(){
   const issues = reviewAssistIssues();
+  const entries = reviewAssistEntries();
   if(els.reviewAssistSummary) els.reviewAssistSummary.textContent = reviewAssistSummaryText(issues);
   if(!els.reviewAssistList) return;
-  els.reviewAssistList.innerHTML = issues.length ? issues.map((issue, index) => `
-    <div class="reviewAssistItem ${escapeHtml(issue.severity)}">
+  els.reviewAssistList.innerHTML = issues.length ? `
+    <div class="reviewAssistItem warn">
       <div>
         <div class="reviewAssistTitle">
-          <span class="reviewAssistBadge ${escapeHtml(issue.severity)}">${escapeHtml(issue.type)}</span>
-          ${escapeHtml(issue.studentText)}
+          <span class="reviewAssistBadge warn">전체</span>
+          검토가 필요한 학생 모아보기
         </div>
-        <div class="reviewAssistMeta">${escapeHtml(issue.questionLabel)} · ${escapeHtml(normalizeSubValue(issue.item.sub || "공통", state.questions.find(q => q.id === issue.questionId) || activeQuestion()))} · ${escapeHtml(issue.item.name || "루브릭")}</div>
-        <div class="reviewAssistMeta">${escapeHtml(issue.message)}<br>${escapeHtml(issue.detail || "")}</div>
+        <div class="reviewAssistMeta">${escapeHtml(reviewAllRecords().length)}명 · 하단 이동 버튼으로 넘기며 확인할 수 있습니다.</div>
       </div>
-      <button class="btn mini" type="button" data-review-go="${index}">OMR 보기</button>
+      <div class="compactBtns">
+        <button class="btn mini primary" type="button" data-review-all-filter>필터 적용</button>
+      </div>
     </div>
-  `).join("") : `<div class="statusLine">지금은 검토할 항목이 없습니다.</div>`;
-  els.reviewAssistList.dataset.issues = JSON.stringify(issues.map(issue => ({page:issue.page, questionId:issue.questionId})));
+    ${entries.map((entry, index) => `
+      <div class="reviewAssistItem ${escapeHtml(entry.severity)}">
+        <div>
+          <div class="reviewAssistTitle">
+            <span class="reviewAssistBadge ${escapeHtml(entry.severity)}">${escapeHtml(entry.severity === "warn" ? "경고" : "확인")}</span>
+            ${escapeHtml(entry.title)}
+          </div>
+          <div class="reviewAssistMeta">${escapeHtml(entry.meta)} · ${escapeHtml(entry.detail)}</div>
+        </div>
+        <div class="compactBtns">
+          <button class="btn mini" type="button" data-review-entry-filter="${index}">이 사유만</button>
+        </div>
+      </div>
+    `).join("")}
+  ` : `<div class="statusLine">지금은 검토할 항목이 없습니다.</div>`;
+  els.reviewAssistList.dataset.entries = JSON.stringify(entries.map(entry => ({issueKey:entry.issueKey, title:entry.title})));
   updateReviewAssistStatus();
+  syncReviewAssistPopup();
 }
 
 function openReviewAssist(){
@@ -5057,6 +5142,177 @@ async function goReviewAssistIssue(index){
   els.reviewAssistModal.classList.add("hidden");
   if(issue.questionId && state.activeQuestion !== issue.questionId) setQuestion(issue.questionId);
   await goPage(Number(issue.page) || state.page);
+}
+
+async function applyReviewAssistFilter(index, options={}){
+  const entries = JSON.parse(els.reviewAssistList?.dataset.entries || "[]");
+  const entry = entries[index];
+  if(!entry) return;
+  await applyKeywordFilter({kind:"reviewIssue", issueKey:entry.issueKey, title:entry.title}, null, options);
+}
+
+async function applyReviewAllFilter(options={}){
+  await applyKeywordFilter({kind:"reviewAll", title:"검토가 필요한 학생"}, null, options);
+}
+
+function reviewAssistEntryListHtml(entries, selectedKey){
+  if(!entries.length) return `<div class="statusLine">검토할 항목이 없습니다.</div>`;
+  return entries.map((entry, index) => {
+    const on = entry.key === selectedKey ? " on" : "";
+    return `
+      <button class="keywordModalBtn${on}" type="button" data-review-entry-index="${index}">
+        <div class="keywordModalKind">${escapeHtml(entry.severity === "warn" ? "경고" : "확인")}</div>
+        <div class="keywordSummaryTop">
+          <div class="keywordSummaryText">${escapeHtml(entry.title)}</div>
+          <div class="keywordSummaryMeta">${escapeHtml(entry.meta)}</div>
+        </div>
+        <div class="keywordStudentMeta">${escapeHtml(entry.detail)}</div>
+      </button>
+    `;
+  }).join("");
+}
+
+function reviewAssistStudentDetailHtml(entry){
+  if(!entry) return `<div class="statusLine">선택된 검토 항목이 없습니다.</div>`;
+  if(entry.kind === "reviewAll"){
+    const records = reviewAllRecords();
+    if(!records.length) return `<div class="statusLine">검토가 필요한 학생이 없습니다.</div>`;
+    return records.map(rec => {
+      const reasons = reviewReasonsForPage(rec.page);
+      return `
+        <div class="keywordStudentRow">
+          <div>
+            <div class="keywordStudentName">${escapeHtml(studentLabelForRecord(rec))}</div>
+            <div class="keywordStudentMeta">${escapeHtml(reasons.join(" / ") || "검토 필요")} · ${escapeHtml(String(rec.page))}쪽</div>
+          </div>
+          <button class="btn mini reviewGoStudentBtn" type="button" data-page="${escapeHtml(rec.page)}" data-issue-kind="reviewAll" data-issue-title="검토가 필요한 학생">OMR 보기</button>
+        </div>
+      `;
+    }).join("");
+  }
+  if(!entry.issues.length) return `<div class="statusLine">이 검토 항목에 해당하는 학생이 없습니다.</div>`;
+  return entry.issues.map(issue => `
+    <div class="keywordStudentRow">
+      <div>
+        <div class="keywordStudentName">${escapeHtml(issue.studentText)}</div>
+        <div class="keywordStudentMeta">${escapeHtml(issue.questionLabel)} · ${escapeHtml(issue.detail || issue.message)} · ${escapeHtml(String(issue.page))}쪽</div>
+      </div>
+      <button class="btn mini reviewGoStudentBtn" type="button" data-page="${escapeHtml(issue.page)}" data-question-id="${escapeHtml(issue.questionId)}" data-issue-key="${escapeHtml(reviewIssueKey(issue))}" data-issue-title="${escapeHtml(issue.type)}">OMR 보기</button>
+    </div>
+  `).join("");
+}
+
+function openReviewAssistPopup(){
+  if(reviewAssistPopupWindow && !reviewAssistPopupWindow.closed){
+    reviewAssistPopupWindow.focus();
+    renderReviewAssistPopup();
+    return;
+  }
+  reviewAssistPopupWindow = window.open("", "omrReviewAssistWindow", "width=760,height=820");
+  if(!reviewAssistPopupWindow){
+    alert("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.");
+    return;
+  }
+  const styleText = document.querySelector("style")?.textContent || "";
+  reviewAssistPopupWindow.document.open();
+  reviewAssistPopupWindow.document.write(`<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>검토 보조</title>
+<style>
+${styleText}
+html{height:100%;overflow:hidden}
+body{margin:0;height:100vh;overflow:hidden;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.keywordPopupWrap{height:100vh;min-height:0;padding:14px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px}
+.keywordPopupHead{position:sticky;top:0;z-index:4;background:#fbfcfe;border:1px solid #d9dee8;border-radius:8px;padding:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.keywordPopupBody{min-height:0;display:grid;grid-template-columns:minmax(260px,.85fr) minmax(360px,1.15fr);gap:12px;align-items:stretch}
+.keywordPopupBody .panel{min-height:0;margin-bottom:0;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+.keywordPopupBody .keywordModalList,.keywordPopupBody .keywordModalStudents{max-height:none;min-height:0;overflow:auto}
+@media (max-width:760px){
+  html,body{height:auto;min-height:100%;overflow:auto}
+  .keywordPopupWrap{height:auto;min-height:100vh}
+  .keywordPopupBody{grid-template-columns:1fr}
+  .keywordPopupBody .panel{overflow:visible}
+  .keywordPopupBody .keywordModalList,.keywordPopupBody .keywordModalStudents{max-height:none;overflow:visible}
+}
+</style>
+</head>
+<body>
+<main class="keywordPopupWrap">
+  <div class="keywordPopupHead">
+    <div>
+      <h1 style="margin:0;font-size:18px">검토 보조</h1>
+      <div class="meta" id="reviewPopupMeta"></div>
+    </div>
+    <button class="btn mini" id="reviewPopupCloseBtn" type="button">닫기</button>
+  </div>
+  <div class="keywordPopupBody">
+    <section class="panel">
+      <div class="panelHead"><h2 class="panelTitle">검토 항목</h2></div>
+      <div class="keywordModalList" id="reviewPopupList"></div>
+    </section>
+    <section class="panel">
+      <div class="panelHead"><h2 class="panelTitle" id="reviewPopupStudentTitle">학생 명렬</h2></div>
+      <div class="keywordModalStudents" id="reviewPopupStudentDetail"></div>
+    </section>
+  </div>
+</main>
+</body>
+</html>`);
+  reviewAssistPopupWindow.document.close();
+  reviewAssistPopupWindow.document.addEventListener("click", async evt => {
+    if(evt.target.closest("#reviewPopupCloseBtn")){
+      reviewAssistPopupWindow.close();
+      return;
+    }
+    const entryBtn = evt.target.closest("[data-review-entry-index]");
+    if(entryBtn){
+      const entry = reviewAssistEntries()[Number(entryBtn.dataset.reviewEntryIndex)];
+      if(entry){
+        renderReviewAssistPopup(entry.key);
+        await applyKeywordFilter(entry, null, {closeModal:false, navigate:false});
+      }
+      return;
+    }
+    const goBtn = evt.target.closest(".reviewGoStudentBtn");
+    if(goBtn){
+      const page = Number(goBtn.dataset.page);
+      const questionId = goBtn.dataset.questionId || state.activeQuestion;
+      if(questionId && state.activeQuestion !== questionId) setQuestion(questionId);
+      const entry = goBtn.dataset.issueKind === "reviewAll"
+        ? {kind:"reviewAll", title:goBtn.dataset.issueTitle}
+        : {kind:"reviewIssue", issueKey:goBtn.dataset.issueKey, title:goBtn.dataset.issueTitle};
+      await applyKeywordFilter(entry, page);
+      window.focus();
+    }
+  });
+  reviewAssistPopupWindow.addEventListener("beforeunload", () => {
+    reviewAssistPopupWindow = null;
+  });
+  renderReviewAssistPopup();
+  reviewAssistPopupWindow.focus();
+}
+
+function renderReviewAssistPopup(selectedKey=""){
+  if(!reviewAssistPopupWindow || reviewAssistPopupWindow.closed) return;
+  const doc = reviewAssistPopupWindow.document;
+  const entries = [{kind:"reviewAll", key:"reviewAll", title:"검토가 필요한 학생", severity:"warn", meta:`${reviewAllRecords().length}명`, detail:"모든 검토 사유를 한 번에 넘기며 확인", issues:[]}].concat(reviewAssistEntries());
+  const selected = entries.find(entry => entry.key === selectedKey) || entries[0] || null;
+  const list = doc.getElementById("reviewPopupList");
+  const title = doc.getElementById("reviewPopupStudentTitle");
+  const detail = doc.getElementById("reviewPopupStudentDetail");
+  const meta = doc.getElementById("reviewPopupMeta");
+  if(meta) meta.textContent = reviewAssistSummaryText();
+  if(!list || !title || !detail) return;
+  list.innerHTML = reviewAssistEntryListHtml(entries, selected?.key || "");
+  title.textContent = selected ? selected.title : "학생 명렬";
+  detail.innerHTML = reviewAssistStudentDetailHtml(selected);
+}
+
+function syncReviewAssistPopup(){
+  if(reviewAssistPopupWindow && !reviewAssistPopupWindow.closed) renderReviewAssistPopup();
 }
 
 function markAllSubsCompleted(qrec=currentQuestionRecord(), question=activeQuestion()){
@@ -5254,7 +5510,7 @@ function updateCompleteButton(){
   els.completeBtn.setAttribute("aria-pressed", completed ? "true" : "false");
   els.markAllUnwrittenBtn.disabled = !state.pdf || completed;
   els.clearCurrentBtn.disabled = !state.pdf || completed;
-  if(els.addRubricBottomBtn) els.addRubricBottomBtn.disabled = !state.pdf || completed;
+  if(els.addRubricBottomBtn) els.addRubricBottomBtn.disabled = !state.pdf;
   if(els.autoDetectBtn) els.autoDetectBtn.disabled = !state.pdf || completed;
   syncRubricPopup();
 }
@@ -5472,14 +5728,16 @@ function keywordHubEntries(){
     meta:`${discussions.length}명`,
     detail:"논의 필요로 표시된 학생"
   }];
-  entries.push(...keywordEntries().map(entry => ({
-    kind:"keyword",
-    key:`keyword|||${keywordEntryKey(entry)}`,
-    entry,
-    title:entry.keyword,
-    meta:`${keywordTypeLabel(entry.item, entry.type, entry.keyword)} · ${keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length}명`,
-    detail:`${entry.item.sub || "공통"} · ${entry.item.name}`
-  })));
+  keywordEntries().forEach(entry => {
+    entries.push({
+      kind:"keyword",
+      key:`keyword|||${keywordEntryKey(entry)}`,
+      entry,
+      title:entry.keyword,
+      meta:`${keywordTypeLabel(entry.item, entry.type, entry.keyword)} · ${keywordStudentRecords(entry.item.id, entry.type, entry.keyword).length}명`,
+      detail:`${entry.item.sub || "공통"} · ${entry.item.name}`
+    });
+  });
   return entries;
 }
 
@@ -5503,7 +5761,7 @@ function renderKeywordModal(selectedKey=""){
 function keywordModalListHtml(entries, selectedKey){
   return entries.map((entry, index) => {
     const on = entry.key === selectedKey ? " on" : "";
-    const kindLabel = entry.kind === "keyword" ? "키워드" : entry.kind === "memo" ? "메모" : "논의";
+    const kindLabel = entry.kind === "keywordMissing" ? "미선택" : entry.kind === "keyword" ? "키워드" : entry.kind === "memo" ? "메모" : "논의";
     return `
       <button class="keywordModalBtn${on}" type="button" data-entry-index="${index}">
         <div class="keywordModalKind">${kindLabel}</div>
@@ -5519,6 +5777,7 @@ function keywordModalListHtml(entries, selectedKey){
 
 function keywordStudentTitleText(entry){
   if(!entry) return "학생 명렬";
+  if(entry.kind === "keywordMissing") return `${entry.entry.keyword} 미선택 학생`;
   if(entry.kind === "keyword") return `${entry.entry.item.sub || "공통"} · ${keywordTypeLabel(entry.entry.item, entry.entry.type, entry.entry.keyword)}`;
   return entry.title;
 }
@@ -5543,19 +5802,26 @@ function keywordStudentDetailHtml(entry){
   if(entry.kind === "memo") return memoStudentDetailHtml(memoRecords(), "메모가 있는 학생이 아직 없습니다.");
   if(entry.kind === "discussion") return memoStudentDetailHtml(discussionRecords(), "현재 문항에서 논의 표시된 학생이 없습니다.", "논의 필요 표시");
   const {item, type, keyword} = entry.entry;
-  const records = keywordStudentRecords(item.id, type, keyword);
+  const missing = entry.kind === "keywordMissing";
+  const records = missing ? keywordMissingStudentRecords(item.id, type, keyword) : keywordStudentRecords(item.id, type, keyword);
   if(!records.length){
-    return `<div class="statusLine">이 키워드로 표시한 학생이 아직 없습니다.</div>`;
+    return `
+      ${!missing ? `<button class="btn mini primary keywordMissingBtn" type="button" data-entry-key="${escapeHtml(keywordEntryKey({item, type, keyword}))}">이 키워드 미선택 학생 모아보기</button>` : ""}
+      <div class="statusLine">${escapeHtml(missing ? "이 키워드를 선택하지 않은 학생이 없습니다." : "이 키워드로 표시한 학생이 아직 없습니다.")}</div>
+    `;
   }
-  return records.map(rec => `
+  return `
+    ${!missing ? `<button class="btn mini primary keywordMissingBtn" type="button" data-entry-key="${escapeHtml(keywordEntryKey({item, type, keyword}))}">이 키워드 미선택 학생 모아보기</button>` : ""}
+    ${records.map(rec => `
     <div class="keywordStudentRow">
       <div>
         <div class="keywordStudentName">${escapeHtml(studentLabelForRecord(rec))}</div>
-        <div class="keywordStudentMeta">${rec.page}쪽 · ${escapeHtml(keyword)}</div>
+        <div class="keywordStudentMeta">${rec.page}쪽 · ${escapeHtml(missing ? `${keyword} 미선택` : keyword)}</div>
       </div>
-      <button class="btn mini keywordGoStudentBtn" type="button" data-page="${escapeHtml(rec.page)}" data-entry-key="${escapeHtml(keywordEntryKey({item, type, keyword}))}">OMR 보기</button>
+      <button class="btn mini keywordGoStudentBtn" type="button" data-page="${escapeHtml(rec.page)}" data-entry-kind="${missing ? "keywordMissing" : "keyword"}" data-entry-key="${escapeHtml(keywordEntryKey({item, type, keyword}))}">OMR 보기</button>
     </div>
-  `).join("");
+  `).join("")}
+  `;
 }
 
 function renderKeywordStudentDetail(entry){
@@ -5639,9 +5905,18 @@ body{margin:0;height:100vh;overflow:hidden;background:#f6f7f9;color:#172033;font
       }
       return;
     }
+    const missingBtn = evt.target.closest(".keywordMissingBtn");
+    if(missingBtn){
+      const entry = keywordEntryFromKey(missingBtn.dataset.entryKey || "");
+      if(entry) await applyKeywordFilter({kind:"keywordMissing", entry});
+      return;
+    }
     const goBtn = evt.target.closest(".keywordGoStudentBtn");
     if(goBtn){
-      const entry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
+      const baseEntry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
+      const entry = baseEntry && goBtn.dataset.entryKind === "keywordMissing"
+        ? {kind:"keywordMissing", entry:baseEntry}
+        : baseEntry;
       if(entry) await applyKeywordFilter(entry, Number(goBtn.dataset.page));
       else{
         const page = Number(goBtn.dataset.page);
@@ -5706,6 +5981,15 @@ function filterFromHubEntry(entry){
   if(entry.kind === "keyword" && entry.entry){
     return {kind:"keyword", itemId:entry.entry.item.id, type:entry.entry.type, keyword:entry.entry.keyword};
   }
+  if(entry.kind === "keywordMissing" && entry.entry){
+    return {kind:"keywordMissing", itemId:entry.entry.item.id, type:entry.entry.type, keyword:entry.entry.keyword};
+  }
+  if(entry.kind === "reviewIssue"){
+    return {kind:"reviewIssue", issueKey:entry.issueKey, title:entry.title};
+  }
+  if(entry.kind === "reviewAll"){
+    return {kind:"reviewAll", title:entry.title || "검토가 필요한 학생"};
+  }
   if(entry.item && entry.type && entry.keyword){
     return {kind:"keyword", itemId:entry.item.id, type:entry.type, keyword:entry.keyword};
   }
@@ -5721,6 +6005,28 @@ function keywordStudentRecords(itemId, type, keyword){
     .sort((a,b) => Number(a.page) - Number(b.page));
 }
 
+function keywordMissingStudentRecords(itemId, type, keyword){
+  const pages = baseProgressPages();
+  return pages.map(page => state.records[recordKey(page)] || recordShellForPage(page))
+    .filter(rec => {
+      const hits = rec.answers?.[state.activeQuestion]?.keywordHits?.[itemId]?.[type] || [];
+      return !hits.includes(keyword);
+    })
+    .sort((a,b) => Number(a.page) - Number(b.page));
+}
+
+function recordShellForPage(page){
+  const student = studentForPage(page);
+  return {
+    page,
+    studentIndex:studentIndexForPage(page),
+    className:student?.className || "",
+    number:student?.number || "",
+    name:student?.name || "",
+    answers:{}
+  };
+}
+
 function keywordFilterPages(filter=state.keywordFilter){
   if(!filter) return [];
   const kind = filter.kind || "keyword";
@@ -5728,7 +6034,13 @@ function keywordFilterPages(filter=state.keywordFilter){
     ? memoRecords()
     : kind === "discussion"
       ? discussionRecords()
-      : keywordStudentRecords(filter.itemId, filter.type, filter.keyword);
+      : kind === "keywordMissing"
+        ? keywordMissingStudentRecords(filter.itemId, filter.type, filter.keyword)
+        : kind === "reviewIssue"
+          ? reviewIssueRecords(filter.issueKey)
+          : kind === "reviewAll"
+            ? reviewAllRecords()
+            : keywordStudentRecords(filter.itemId, filter.type, filter.keyword);
   return records
     .map(rec => firstPageForStudentIndex(Number(rec.studentIndex) || studentIndexForPage(rec.page)))
     .filter((page, index, pages) => page > 0 && pages.indexOf(page) === index)
@@ -5740,8 +6052,11 @@ function keywordFilterLabel(filter=state.keywordFilter){
   const kind = filter.kind || "keyword";
   if(kind === "memo") return "메모 있는 학생";
   if(kind === "discussion") return "논의 필요 학생";
+  if(kind === "reviewAll") return filter.title || "검토가 필요한 학생";
+  if(kind === "reviewIssue") return filter.title || "검토 보조";
   const item = activeRubric().find(entry => entry.id === filter.itemId);
   const typeLabel = item ? keywordTypeLabel(item, filter.type, filter.keyword) : filter.type;
+  if(kind === "keywordMissing") return `${filter.keyword} 미선택 · ${typeLabel}`;
   return `${filter.keyword} · ${typeLabel}`;
 }
 
@@ -6752,7 +7067,6 @@ function formatSignedScore(value){
 }
 
 function applyInlineRubricItem(editor){
-  if(!guardRubricUnlocked()) return;
   const nextItem = readInlineRubricEditor(editor);
   if(!nextItem){
     alert("루브릭 항목 설명과 점수를 확인해주세요.");
@@ -6763,6 +7077,11 @@ function applyInlineRubricItem(editor){
   const index = question.rubric.findIndex(item => item.id === nextItem.id);
   if(index < 0) return;
   const previousItem = question.rubric[index];
+  const blockedDeletion = blockedKeywordDeletion(previousItem, nextItem, keywordAliases);
+  if(blockedDeletion.length){
+    alert(`이미 선택된 키워드는 삭제할 수 없습니다.\n\n${blockedDeletion.map(entry => `${entry.keyword} (${entry.count}명 선택)`).join("\n")}\n\n먼저 해당 학생들의 선택을 해제한 뒤 다시 삭제해주세요.`);
+    return;
+  }
   const itemToSave = shouldApplyDeductTemplate(previousItem, nextItem)
     ? deductTemplateItem(nextItem.id, nextItem.sub)
     : nextItem;
@@ -6778,10 +7097,16 @@ function applyInlineRubricItem(editor){
 }
 
 function deleteInlineRubricItem(editor){
-  if(!guardRubricUnlocked()) return;
   const id = editor.querySelector(".rubricEditRow")?.dataset.id;
   if(!id) return;
   const item = activeRubric().find(entry => entry.id === id);
+  const selectedKeywords = ["accept","reject"].flatMap(type =>
+    splitKeywords(item?.[type]).map(keyword => ({type, keyword, count:selectedKeywordRecords(id, type, keyword).length}))
+  ).filter(entry => entry.count);
+  if(selectedKeywords.length){
+    alert(`이미 선택된 키워드가 있는 루브릭 항목은 삭제할 수 없습니다.\n\n${selectedKeywords.map(entry => `${entry.keyword} (${entry.count}명 선택)`).join("\n")}\n\n먼저 해당 학생들의 선택을 해제한 뒤 다시 삭제해주세요.`);
+    return;
+  }
   const label = item?.name ? `\n\n${item.name}` : "";
   if(!confirm(`이 루브릭 항목을 삭제할까요?${label}`)) return;
   activeQuestion().rubric = activeRubric().filter(entry => entry.id !== id);
@@ -6799,8 +7124,24 @@ function deleteInlineRubricItem(editor){
   updateProgress();
 }
 
+function removeKeywordChipWithGuard(removeButton){
+  const chip = removeButton.closest(".keywordEditChip");
+  const zone = removeButton.closest(".keywordDropZone");
+  const editor = removeButton.closest(".inlineRubricEditor");
+  const itemId = editor?.querySelector(".rubricEditRow")?.dataset.id || "";
+  const type = zone?.dataset.type || "";
+  const keyword = chip?.dataset.keyword || keywordValueFromChip(chip);
+  if(itemId && type && keyword){
+    const records = selectedKeywordRecords(itemId, type, keyword);
+    if(records.length){
+      alert(`이미 선택된 키워드는 삭제할 수 없습니다.\n\n${keyword} (${records.length}명 선택)\n\n먼저 해당 학생들의 선택을 해제한 뒤 다시 삭제해주세요.`);
+      return;
+    }
+  }
+  chip?.remove();
+}
+
 function addInlineRubricItem(type="score", sub=subOptions()[0]){
-  if(!guardRubricUnlocked()) return;
   const item = type === "deduct" ? deductTemplateItem(createRubricId(), sub) : {
     id:createRubricId(),
     type,
@@ -6861,6 +7202,8 @@ function readInlineRubricEditor(editor){
     pt:0,
     accept:keywordsFromZone(editor, "accept").join("\n"),
     acceptScores:keywordScoresFromZone(editor, "accept"),
+    comboFullCredit:row.querySelector(".rubricTypeInput").value !== "deduct" && Boolean(row.querySelector(".rubricComboFullCreditInput")?.checked),
+    acceptCategories:keywordCategoriesFromZone(editor, "accept"),
     partial:"",
     partialPt:0,
     reject:keywordsFromZone(editor, "reject").join("\n"),
@@ -6896,6 +7239,18 @@ function keywordScoresFromZone(editor, type){
     .filter(([keyword]) => keyword));
 }
 
+function keywordCategoriesFromZone(editor, type){
+  const zone = editor.querySelector(`.keywordDropZone[data-type="${type}"]`);
+  if(!zone) return {};
+  return Object.fromEntries([...zone.querySelectorAll(".keywordEditChip")]
+    .map(chip => {
+      const keyword = keywordValueFromChip(chip);
+      const category = String(chip.querySelector(".keywordCategoryInput")?.value || "").trim();
+      return [keyword, category];
+    })
+    .filter(([keyword, category]) => keyword && category));
+}
+
 function normalizeKeywordText(text){
   return String(text || "")
     .split("\n")
@@ -6908,6 +7263,20 @@ function keywordAliasesFromEditor(editor){
   return Object.fromEntries([...editor.querySelectorAll(".keywordEditChip")]
     .map(chip => [chip.dataset.keyword || "", keywordValueFromChip(chip)])
     .filter(([before, after]) => before && after));
+}
+
+function blockedKeywordDeletion(previousItem, nextItem, keywordAliases={}){
+  if(!previousItem || !nextItem) return [];
+  const blocked = [];
+  ["accept","reject"].forEach(type => {
+    splitKeywords(previousItem[type]).forEach(keyword => {
+      const mapped = keywordAliases[keyword] || keyword;
+      if(keywordTypeForItem(nextItem, mapped)) return;
+      const records = selectedKeywordRecords(previousItem.id, type, keyword);
+      if(records.length) blocked.push({type, keyword, count:records.length});
+    });
+  });
+  return blocked;
 }
 
 function keywordAliasesByPosition(previousItem, nextItem){
@@ -8112,9 +8481,18 @@ els.keywordModal.addEventListener("click", async evt => {
     }
     return;
   }
+  const missingBtn = evt.target.closest(".keywordMissingBtn");
+  if(missingBtn){
+    const entry = keywordEntryFromKey(missingBtn.dataset.entryKey || "");
+    if(entry) await applyKeywordFilter({kind:"keywordMissing", entry}, null, {closeModal:true, navigate:true});
+    return;
+  }
   const goBtn = evt.target.closest(".keywordGoStudentBtn");
   if(goBtn){
-    const entry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
+    const baseEntry = keywordEntryFromKey(goBtn.dataset.entryKey || "");
+    const entry = baseEntry && goBtn.dataset.entryKind === "keywordMissing"
+      ? {kind:"keywordMissing", entry:baseEntry}
+      : baseEntry;
     if(entry) await applyKeywordFilter(entry, Number(goBtn.dataset.page), {closeModal:true, navigate:true});
     else{
       els.keywordModal.classList.add("hidden");
@@ -8238,13 +8616,18 @@ els.reviewAssistEnabledInput.addEventListener("change", () => {
   applySettings();
   persist();
 });
-els.reviewAssistRulesInput.addEventListener("input", () => {
-  state.settings.reviewAssistRules = els.reviewAssistRulesInput.value;
-  updateReviewAssistStatus();
+els.comboFullCreditEnabledInput.addEventListener("change", () => {
+  state.settings.comboFullCreditEnabled = Boolean(els.comboFullCreditEnabledInput.checked);
+  applySettings();
   persist();
+  renderRubric();
 });
 els.openReviewAssistBtn.addEventListener("click", openReviewAssist);
 els.openReviewAssistFromSettingsBtn.addEventListener("click", openReviewAssist);
+els.openReviewAssistPopupBtn.addEventListener("click", () => {
+  openReviewAssistPopup();
+  els.reviewAssistModal.classList.add("hidden");
+});
 els.closeReviewAssistBtn.addEventListener("click", () => els.reviewAssistModal.classList.add("hidden"));
 els.refreshReviewAssistBtn.addEventListener("click", renderReviewAssist);
 els.reviewAssistModal.addEventListener("click", async evt => {
@@ -8252,8 +8635,20 @@ els.reviewAssistModal.addEventListener("click", async evt => {
     els.reviewAssistModal.classList.add("hidden");
     return;
   }
-  const goBtn = evt.target.closest("[data-review-go]");
-  if(goBtn) await goReviewAssistIssue(Number(goBtn.dataset.reviewGo));
+  const filterBtn = evt.target.closest("[data-review-filter]");
+  if(filterBtn){
+    await applyReviewAssistFilter(Number(filterBtn.dataset.reviewFilter), {closeModal:false, navigate:false});
+    return;
+  }
+  const entryFilterBtn = evt.target.closest("[data-review-entry-filter]");
+  if(entryFilterBtn){
+    await applyReviewAssistFilter(Number(entryFilterBtn.dataset.reviewEntryFilter), {closeModal:false, navigate:false});
+    return;
+  }
+  if(evt.target.closest("[data-review-all-filter]")){
+    els.reviewAssistModal.classList.add("hidden");
+    await applyReviewAllFilter({navigate:true});
+  }
 });
 els.unwrittenOcrShortInput.addEventListener("change", () => {
   state.settings.unwrittenOcrIncludeShort = Boolean(els.unwrittenOcrShortInput.checked);
@@ -8427,7 +8822,7 @@ els.rubricList.addEventListener("click", evt => {
   }
   const removeKeywordBtn = evt.target.closest(".keywordRemoveBtn");
   if(removeKeywordBtn){
-    removeKeywordBtn.closest(".keywordEditChip").remove();
+    removeKeywordChipWithGuard(removeKeywordBtn);
     return;
   }
   const subSourceCheckBtn = evt.target.closest(".subSourceCheckBtn");
@@ -8477,6 +8872,8 @@ els.rubricList.addEventListener("input", evt => {
 els.rubricList.addEventListener("change", evt => {
   const typeInput = evt.target.closest(".rubricTypeInput");
   if(typeInput) applyInlineRubricItem(typeInput.closest(".inlineRubricEditor"));
+  const comboInput = evt.target.closest(".rubricComboFullCreditInput");
+  if(comboInput) applyInlineRubricItem(comboInput.closest(".inlineRubricEditor"));
 });
 els.rubricList.addEventListener("keydown", evt => {
   if(evt.key !== "Enter" || !evt.ctrlKey) return;
