@@ -1221,6 +1221,34 @@ textarea{min-height:72px;resize:vertical}
           </span>
           <input id="multiWindowEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
+        <div class="settingsToolSection">
+          <h3 class="settingsToolTitle">외부 점수 합산</h3>
+          <div class="statusLine" style="margin-bottom:8px">엑셀 파일로 선택형 점수와 오프라인으로 채점한 나머지 서술형 점수를 가져와 총점에 더합니다.</div>
+          <div class="row">
+            <label class="field">
+              <span class="label">선택형 만점</span>
+              <input id="externalSelectedMaxInput" type="number" min="0" step="1" value="0">
+            </label>
+            <label class="field">
+              <span class="label">서술형 만점</span>
+              <input id="externalWrittenMaxInput" type="number" min="0" step="1" value="0">
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">오프라인 서술형 문제 수</span>
+            <input id="offlineWrittenCountInput" type="number" min="1" max="30" step="1" value="1">
+          </label>
+          <div class="field">
+            <span class="label">오프라인 서술형 문항별 설정</span>
+            <div class="questionSettingsList" id="offlineWrittenSettingsList" style="max-height:260px"></div>
+          </div>
+          <div class="compactBtns" style="justify-content:flex-start">
+            <button class="btn mini" id="downloadExternalScoreTemplateBtn" type="button">엑셀 양식 다운로드</button>
+            <label class="btn mini" style="cursor:pointer">엑셀 업로드<input id="externalScoreInput" type="file" accept=".xlsx,.csv,text/csv" class="hidden"></label>
+            <button class="btn mini danger" id="clearExternalScoresBtn" type="button">외부 점수 지우기</button>
+          </div>
+          <div class="statusLine" id="externalScoreStatus" style="margin-top:8px">현재 외부 점수 없음</div>
+        </div>
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
             <span class="label">한 손 채점</span>
@@ -1291,6 +1319,7 @@ textarea{min-height:72px;resize:vertical}
         <div class="statusLine" id="shareScopeStatus">반을 선택하면 선택한 반만 내보냅니다.</div>
         <label class="checkField"><input id="shareSeparateClassFilesInput" type="checkbox"> 반별로 개별 PDF 저장</label>
         <div class="compactBtns">
+          <button class="btn" id="openStudentScoreScreenBtn" type="button">학생용 화면 열기</button>
           <button class="btn primary" id="createShareReportBtn" type="button">내보내기</button>
         </div>
       </section>
@@ -1451,7 +1480,7 @@ const els = {
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   openKeywordPopupBtn:$("openKeywordPopupBtn"), closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
-  createShareReportBtn:$("createShareReportBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
+  createShareReportBtn:$("createShareReportBtn"), openStudentScoreScreenBtn:$("openStudentScoreScreenBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
   shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"), shareIncludeHighlightInput:$("shareIncludeHighlightInput"),
   shareScopeAllInput:$("shareScopeAllInput"), shareSeparateClassFilesInput:$("shareSeparateClassFilesInput"),
   shareClassList:$("shareClassList"), shareScopeStatus:$("shareScopeStatus"),
@@ -1469,6 +1498,7 @@ const els = {
   reviewAssistSummary:$("reviewAssistSummary"), reviewAssistList:$("reviewAssistList"),
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), jpgPdfFolderInput:$("jpgPdfFolderInput"), jpgPdfSelectedStatus:$("jpgPdfSelectedStatus"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
   rosterFileInput:$("rosterFileInput"),
+  externalSelectedMaxInput:$("externalSelectedMaxInput"), externalWrittenMaxInput:$("externalWrittenMaxInput"), offlineWrittenCountInput:$("offlineWrittenCountInput"), offlineWrittenSettingsList:$("offlineWrittenSettingsList"), downloadExternalScoreTemplateBtn:$("downloadExternalScoreTemplateBtn"), externalScoreInput:$("externalScoreInput"), clearExternalScoresBtn:$("clearExternalScoresBtn"), externalScoreStatus:$("externalScoreStatus"),
   mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
   mergeJsonInput:$("mergeJsonInput"), mergeJsonConflictSelect:$("mergeJsonConflictSelect"), mergeJsonBtn:$("mergeJsonBtn"), exportMergedJsonBtn:$("exportMergedJsonBtn"), mergeJsonStatus:$("mergeJsonStatus"),
   chooseSaveDirectoryBtn:$("chooseSaveDirectoryBtn"), clearSaveDirectoryBtn:$("clearSaveDirectoryBtn"), saveDirectoryStatus:$("saveDirectoryStatus"), resetAllDataBtn:$("resetAllDataBtn"),
@@ -1533,6 +1563,7 @@ function loadSavedState(){
   updateClassControls();
   applyAppTitle();
   applySettings();
+  updateExternalScoreStatus();
   loadExamCapture();
 }
 
@@ -1829,6 +1860,10 @@ function applySettings(){
   updateOneHandShortcutButtons();
   if(els.openRubricWindowBtn) els.openRubricWindowBtn.classList.toggle("hidden", !multiWindowEnabled);
   if(els.pagesPerStudentInput) els.pagesPerStudentInput.value = pagesPerStudent();
+  if(els.externalSelectedMaxInput) els.externalSelectedMaxInput.value = externalSelectedMaxScore();
+  if(els.externalWrittenMaxInput) els.externalWrittenMaxInput.value = externalWrittenMaxScore();
+  if(els.offlineWrittenCountInput) els.offlineWrittenCountInput.value = externalOfflineWrittenCount();
+  renderOfflineWrittenSettingsList();
   if(!multiWindowEnabled){
     if(rubricPopupWindow && !rubricPopupWindow.closed) rubricPopupWindow.close();
     setRubricWindowActive(false);
@@ -1957,6 +1992,11 @@ function normalizeSettings(){
     unwrittenOcrIncludeShort:Boolean(settings.unwrittenOcrIncludeShort),
     reviewAssistEnabled:Boolean(settings.reviewAssistEnabled),
     pagesPerStudent:Math.max(1, Math.floor(nonNegativeNumber(settings.pagesPerStudent) || 1)),
+    externalSelectedMaxScore:nonNegativeNumber(settings.externalSelectedMaxScore),
+    externalWrittenMaxScore:nonNegativeNumber(settings.externalWrittenMaxScore),
+    externalOfflineWrittenCount:Math.max(1, Math.min(30, Math.floor(nonNegativeNumber(settings.externalOfflineWrittenCount) || 1))),
+    externalOfflineWrittenTitles:Array.isArray(settings.externalOfflineWrittenTitles) ? settings.externalOfflineWrittenTitles.map(title => String(title || "").trim()).filter(Boolean).slice(0, 30) : [],
+    externalOfflineWrittenMaxScores:Array.isArray(settings.externalOfflineWrittenMaxScores) ? settings.externalOfflineWrittenMaxScores.map(nonNegativeNumber).slice(0, 30) : [],
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
       keywords:normalizeKeywordText(savedTemplate.keywords || savedTemplate.keyword || ""),
@@ -2144,6 +2184,7 @@ function normalizeRecords(){
     const rec = state.records[key];
     if(!rec.cropOverrides || typeof rec.cropOverrides !== "object") rec.cropOverrides = {};
     if(!rec.cropAreaCounts || typeof rec.cropAreaCounts !== "object") rec.cropAreaCounts = {};
+    rec.externalScores = normalizeExternalScores(rec.externalScores);
     const normalizedOverrides = {};
     Object.entries(rec.cropOverrides).forEach(([cropOverrideKey, crop]) => {
       const normalized = normalizeCropOverride(crop, cropOverrideKey);
@@ -2408,6 +2449,7 @@ function ensureRecord(key=recordKey()){
   if(!state.records[key].answers) state.records[key].answers = {};
   if(!state.records[key].cropOverrides) state.records[key].cropOverrides = {};
   if(!state.records[key].cropAreaCounts) state.records[key].cropAreaCounts = {};
+  state.records[key].externalScores = normalizeExternalScores(state.records[key].externalScores);
 }
 
 function ensureQuestionRecord(key=recordKey()){
@@ -3994,7 +4036,7 @@ function syncRubricPopup(){
   const meta = doc.getElementById("popupMeta");
   if(meta){
     const status = completed ? "채점 완료" : "채점 중";
-    meta.textContent = `${currentStudentText()} · ${status} · ${formatScore(rubricTotal(activeRubric(), currentQuestionRecord()?.scores || {}))}점`;
+    meta.textContent = `${currentStudentText()} · ${status} · ${formatScore(Math.max(0, rubricTotal(activeRubric(), currentQuestionRecord()?.scores || {})))}점`;
   }
 }
 
@@ -4578,7 +4620,7 @@ function updateTotal(){
     item.innerHTML = `<span>공통 영역 감점</span><strong style="color:var(--danger)">${escapeHtml(formatSignedScore(commonDeduct))}점</strong>`;
     els.subTotalList.appendChild(item);
   }
-  const current = Object.values(totals).reduce((sum, value) => sum + value, 0);
+  const current = Math.max(0, Object.values(totals).reduce((sum, value) => sum + value, 0));
   els.totalScore.innerHTML = scoreFractionHtml(current, questionMaxScore());
 }
 
@@ -4883,6 +4925,7 @@ function savedRecordCount(){
 
 function recordHasData(rec){
   if(Object.keys(rec?.cropOverrides || {}).length) return true;
+  if(hasExternalScores(rec)) return true;
   return state.questions.some(question => questionRecordHasData(rec.answers?.[question.id], question));
 }
 
@@ -5619,22 +5662,25 @@ async function goScoped(delta){
 
 function updateResults(){
   const questionHeaders = state.questions.map(q => `<th>${escapeHtml(q.label)}</th>`).join("");
-  els.resultHead.innerHTML = `<tr><th>쪽</th><th>반</th><th>번호</th><th>이름</th><th>완료</th><th>논의</th>${questionHeaders}<th>합계</th></tr>`;
+  const offlineHeaders = offlineWrittenScoreHeaders().map(label => `<th>${escapeHtml(label.replace(" 점수", ""))}</th>`).join("");
+  els.resultHead.innerHTML = `<tr><th>쪽</th><th>반</th><th>번호</th><th>이름</th><th>완료</th><th>논의</th>${questionHeaders}<th>선택형</th>${offlineHeaders}<th>오프라인 서술형 합계</th><th>합계</th></tr>`;
   const rows = Object.values(state.records)
     .filter(recordHasData)
     .sort((a,b) => Number(a.page) - Number(b.page))
     .map(rec => {
       const totals = state.questions.map(q => questionTotal(rec, q));
-      const total = totals.reduce((sum, value) => sum + value, 0);
+      const external = normalizeExternalScores(rec.externalScores);
+      const total = grandTotal(rec);
       const completed = completedLabels(rec).join(", ");
       const discussion = discussionLabels(rec).join(", ");
       const questionCells = state.questions.map((q, index) => {
         const unwritten = unwrittenLabels(rec.answers?.[q.id]).join(", ");
         return `<td>${escapeHtml(totals[index])}${unwritten ? `<div class="statusLine">미작성: ${escapeHtml(unwritten)}</div>` : ""}</td>`;
       }).join("");
-      return `<tr><td>${rec.page}</td><td>${escapeHtml(rec.className || "")}</td><td>${escapeHtml(rec.number || "")}</td><td>${escapeHtml(rec.name || "")}</td><td>${escapeHtml(completed)}</td><td>${escapeHtml(discussion)}</td>${questionCells}<td>${total}</td></tr>`;
+      const offlineCells = offlineWrittenScoreHeaders().map((_, index) => `<td>${escapeHtml(formatScore(external.offlineWrittenScores[index] || 0))}</td>`).join("");
+      return `<tr><td>${rec.page}</td><td>${escapeHtml(rec.className || "")}</td><td>${escapeHtml(rec.number || "")}</td><td>${escapeHtml(rec.name || "")}</td><td>${escapeHtml(completed)}</td><td>${escapeHtml(discussion)}</td>${questionCells}<td>${escapeHtml(formatScore(external.selected))}</td>${offlineCells}<td>${escapeHtml(formatScore(external.offlineWritten))}</td><td>${escapeHtml(formatScore(total))}</td></tr>`;
     }).join("");
-  els.resultBody.innerHTML = rows || `<tr><td colspan="${7 + state.questions.length}">저장된 결과 없음</td></tr>`;
+  els.resultBody.innerHTML = rows || `<tr><td colspan="${9 + state.questions.length + externalOfflineWrittenCount()}">저장된 결과 없음</td></tr>`;
 }
 
 function completedLabels(rec){
@@ -6159,7 +6205,122 @@ function studentLabelForRecord(rec){
 
 function questionTotal(rec, question){
   const scores = rec.answers?.[question.id]?.scores || {};
-  return rubricTotal(question.rubric, scores, question);
+  return Math.max(0, rubricTotal(question.rubric, scores, question));
+}
+
+function normalizeExternalScores(scores){
+  const count = externalOfflineWrittenCount();
+  const rawDetails = Array.isArray(scores?.offlineWrittenScores)
+    ? scores.offlineWrittenScores
+    : Array.isArray(scores?.writtenScores)
+      ? scores.writtenScores
+      : null;
+  const detailCount = Math.max(count, 1);
+  const offlineWrittenScores = rawDetails
+    ? Array.from({length:detailCount}, (_, index) => externalScoreNumber(rawDetails[index]))
+    : [externalScoreNumber(scores?.offlineWritten ?? scores?.written ?? scores?.essay ?? 0)];
+  const selected = externalScoreNumber(scores?.selected ?? scores?.choice ?? scores?.multipleChoice ?? 0);
+  const offlineWritten = offlineWrittenScores.reduce((sum, value) => sum + value, 0);
+  return {selected, offlineWritten, offlineWrittenScores, imported:Boolean(scores?.imported)};
+}
+
+function externalScoreNumber(value){
+  if(typeof value === "number") return nonNegativeNumber(value);
+  const text = String(value ?? "").trim();
+  if(!text) return 0;
+  const match = text.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  return match ? nonNegativeNumber(match[0]) : 0;
+}
+
+function externalScoreTotal(rec){
+  const scores = normalizeExternalScores(rec?.externalScores);
+  return scores.selected + scores.offlineWritten;
+}
+
+function hasExternalScores(rec){
+  const scores = normalizeExternalScores(rec?.externalScores);
+  return scores.imported || scores.selected > 0 || scores.offlineWritten > 0;
+}
+
+function gradedQuestionTotal(rec){
+  return state.questions.reduce((sum, question) => sum + questionTotal(rec, question), 0);
+}
+
+function grandTotal(rec){
+  return gradedQuestionTotal(rec) + externalScoreTotal(rec);
+}
+
+function externalScoreSummary(rec){
+  const scores = normalizeExternalScores(rec?.externalScores);
+  if(scores.imported) return `선택형 ${formatScore(scores.selected)} · 오프라인 서술형 ${formatScore(scores.offlineWritten)}`;
+  const parts = [];
+  if(scores.selected) parts.push(`선택형 ${formatScore(scores.selected)}`);
+  if(scores.offlineWritten) parts.push(`오프라인 서술형 ${formatScore(scores.offlineWritten)}`);
+  return parts.join(" · ");
+}
+
+function externalOfflineWrittenCount(){
+  const raw = state.settings?.externalOfflineWrittenCount;
+  return Math.max(1, Math.min(30, Math.floor(nonNegativeNumber(raw) || 1)));
+}
+
+function externalSelectedMaxScore(){
+  return nonNegativeNumber(state.settings?.externalSelectedMaxScore);
+}
+
+function externalWrittenMaxScore(){
+  return nonNegativeNumber(state.settings?.externalWrittenMaxScore);
+}
+
+function externalOfflineWrittenCountFromInput(){
+  return Math.max(1, Math.min(30, Math.floor(nonNegativeNumber(els.offlineWrittenCountInput?.value) || 1)));
+}
+
+function externalOfflineWrittenTitles(){
+  const saved = Array.isArray(state.settings?.externalOfflineWrittenTitles) ? state.settings.externalOfflineWrittenTitles : [];
+  return Array.from({length:externalOfflineWrittenCount()}, (_, index) => String(saved[index] || "").trim() || `오프라인 서술형 ${index + 1}`);
+}
+
+function externalOfflineWrittenMaxScores(){
+  const saved = Array.isArray(state.settings?.externalOfflineWrittenMaxScores) ? state.settings.externalOfflineWrittenMaxScores : [];
+  return Array.from({length:externalOfflineWrittenCount()}, (_, index) => nonNegativeNumber(saved[index]));
+}
+
+function externalOfflineWrittenSettingsFromInputs(){
+  const rows = [...(els.offlineWrittenSettingsList?.querySelectorAll(".offlineWrittenSettingsRow") || [])];
+  return {
+    titles:rows.map((row, index) => row.querySelector(".offlineWrittenTitleInput")?.value.trim() || `오프라인 서술형 ${index + 1}`).slice(0, 30),
+    maxScores:rows.map(row => nonNegativeNumber(row.querySelector(".offlineWrittenMaxInput")?.value)).slice(0, 30)
+  };
+}
+
+function renderOfflineWrittenSettingsList(){
+  if(!els.offlineWrittenSettingsList) return;
+  const titles = externalOfflineWrittenTitles();
+  const maxScores = externalOfflineWrittenMaxScores();
+  els.offlineWrittenSettingsList.innerHTML = titles.map((title, index) => `
+    <div class="questionEditCard offlineWrittenSettingsRow" data-index="${index}">
+      <div class="questionEditTop" style="grid-template-columns:minmax(0,1fr) 110px">
+        <label class="field" style="margin-bottom:0">
+          <span class="label">문항 제목</span>
+          <input class="offlineWrittenTitleInput" type="text" value="${escapeHtml(title)}" placeholder="예: ${index + 8}번 서술형">
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="label">총점</span>
+          <input class="offlineWrittenMaxInput" type="number" min="0" step="1" value="${escapeHtml(maxScores[index] || "")}" placeholder="총점">
+        </label>
+      </div>
+    </div>
+  `).join("");
+}
+
+function offlineWrittenScoreHeaders(){
+  return externalOfflineWrittenTitles().map(title => `${title} 점수`);
+}
+
+function scoreWithMaxText(score, max){
+  const value = formatScore(score);
+  return max > 0 ? `${value}점 / ${formatScore(max)}점` : `${value}점`;
 }
 
 function exportCsv(){
@@ -6168,19 +6329,20 @@ function exportCsv(){
     q.rubric.forEach((r, index) => headers.push(`${q.label}_${r.sub || "공통"}_${index + 1}_${r.name}`));
     headers.push(`${q.label}_total`, `${q.label}_completed`, `${q.label}_unwritten`, `${q.label}_memo`);
   });
-  headers.push("total");
+  headers.push("selected_score", ...offlineWrittenScoreHeaders().map((_, index) => `offline_written_${index + 1}_score`), "offline_written_total_score", "total");
   const lines = [headers.map(csvCell).join(",")];
   Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page)).forEach(rec => {
     const row = [rec.page, rec.className || "", rec.number || "", rec.name || "", completedLabels(rec).join("; "), discussionLabels(rec).join("; ")];
-    let total = 0;
     state.questions.forEach(q => {
       const qrec = rec.answers?.[q.id] || {};
       q.rubric.forEach(item => row.push(scoreValue(qrec.scores || {}, item) || ""));
       const qtotal = questionTotal(rec, q);
-      total += qtotal;
       row.push(qtotal, qrec.completed ? "완료" : "", unwrittenLabels(qrec).join("; "), [qrec.needsDiscussion ? "논의 필요" : "", qrec.memo || ""].filter(Boolean).join(" / "));
     });
-    row.push(total);
+    const external = normalizeExternalScores(rec.externalScores);
+    row.push(external.imported || external.selected ? external.selected : "");
+    offlineWrittenScoreHeaders().forEach((_, index) => row.push(external.imported || external.offlineWrittenScores[index] ? external.offlineWrittenScores[index] || 0 : ""));
+    row.push(external.imported || external.offlineWritten ? external.offlineWritten : "", grandTotal(rec));
     lines.push(row.map(csvCell).join(","));
   });
   download(`OMR_서술형_채점_${dateStamp()}.csv`, "text/csv;charset=utf-8", "\ufeff" + lines.join("\n"));
@@ -6191,13 +6353,13 @@ function shareReportRecordClassName(rec){
   return String(rec.className || rosterStudent?.className || "").trim();
 }
 
-async function createShareReport(){
+function selectedShareReportPayload(){
   cleanupAllRecords();
   const allRecords = Object.values(state.records).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
   let records = [...allRecords];
   if(!records.length){
     alert("내보낼 채점 기록이 없습니다.");
-    return;
+    return null;
   }
   const selectedClasses = new Set([...els.shareClassList?.querySelectorAll("input:checked") || []].map(input => input.value));
   const availableClasses = classNames();
@@ -6205,14 +6367,14 @@ async function createShareReport(){
   const separateByClass = Boolean(els.shareSeparateClassFilesInput?.checked);
   if(availableClasses.length && !selectedClasses.size){
     alert("내보낼 반을 하나 이상 선택해주세요.");
-    return;
+    return null;
   }
   const scope = selectedClasses.size && !allClassesSelected ? "classes" : "all";
   if(scope === "classes"){
     records = records.filter(rec => selectedClasses.has(shareReportRecordClassName(rec)));
     if(!records.length){
       alert("선택한 반에 해당하는 채점 기록이 없습니다.");
-      return;
+      return null;
     }
   }
   const options = {
@@ -6223,6 +6385,13 @@ async function createShareReport(){
     scope,
     titleSuffix:scope === "classes" ? [...selectedClasses].join(", ") : ""
   };
+  return {allRecords, records, selectedClasses, availableClasses, separateByClass, options};
+}
+
+async function createShareReport(){
+  const payload = selectedShareReportPayload();
+  if(!payload) return;
+  const {allRecords, records, selectedClasses, availableClasses, separateByClass, options} = payload;
   const originalText = els.createShareReportBtn.textContent;
   els.createShareReportBtn.disabled = true;
   els.createShareReportBtn.textContent = options.includeHighlight && state.pdf ? "형광펜 캡처 중..." : "PDF 만드는 중...";
@@ -6436,18 +6605,301 @@ setTimeout(fitStudentPages, 120);
 </html>`;
 }
 
+async function openStudentScoreScreen(){
+  const payload = selectedShareReportPayload();
+  if(!payload) return;
+  const popup = window.open("", "_blank");
+  if(!popup){
+    alert("새 창을 열 수 없습니다. 브라우저의 팝업 차단을 해제해 주세요.");
+    return;
+  }
+  popup.document.open();
+  popup.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>학생용 점수 확인</title></head><body style="font-family:system-ui,sans-serif;padding:24px">학생용 화면을 준비하는 중입니다...</body></html>`);
+  popup.document.close();
+  try{
+    const html = await buildStudentScoreScreenHtml(payload.records, payload.options);
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
+  }catch(err){
+    console.error(err);
+    popup.document.body.innerHTML = `<p style="font-family:system-ui,sans-serif;padding:24px">학생용 화면을 만들 수 없습니다.</p>`;
+  }
+}
+
+async function buildStudentScoreScreenHtml(records, options){
+  const exportedAt = new Date().toLocaleString("ko-KR");
+  const reportTitle = `${state.appTitle}${options.titleSuffix ? ` · ${options.titleSuffix}` : ""} 학생용 점수 확인`;
+  const studentNavHtml = records.map((rec, index) => studentScoreNavButtonHtml(rec, index)).join("");
+  const studentHtml = (await Promise.all(records.map((rec, index) => studentScoreCardHtml(rec, options, index)))).join("");
+  const oneHandKeys = state.settings?.oneHandKeys || defaultOneHandKeys;
+  const studentNavKeys = {
+    prev:state.settings?.oneHandGradingEnabled ? oneHandKeys.prev : "",
+    next:state.settings?.oneHandGradingEnabled ? oneHandKeys.next : ""
+  };
+  return `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(reportTitle)}</title>
+<style>
+  *{box-sizing:border-box}
+  body{height:100vh;margin:0;overflow:hidden;background:#f6f7f9;color:#172033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}
+  .wrap{height:100vh;max-width:980px;margin:0 auto;padding:26px 16px 24px;display:flex;flex-direction:column;min-height:0}
+  .reportHead{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:18px}
+  h1{margin:0;font-size:24px;line-height:1.32}
+  .meta{color:#647085;font-size:12px;line-height:1.5}
+  .studentShell{display:grid;grid-template-columns:250px minmax(0,1fr);gap:14px;align-items:stretch;flex:1;min-height:0}
+  .studentMain{min-height:0;overflow:auto;padding-right:2px}
+  .studentPicker{position:sticky;top:14px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;height:100%;max-height:100%;overflow:hidden;border:1px solid #d9dee8;border-radius:10px;background:#fff;padding:10px;box-shadow:0 10px 26px rgba(23,32,51,.06)}
+  .pickerHead{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 2px 8px;border-bottom:1px solid #eef1f5}
+  .pickerTitle{font-size:13px;font-weight:950}
+  .studentNav{display:grid;align-content:start;gap:6px;min-height:0;overflow:auto;padding-right:2px}
+  .studentNavBtn{display:grid;gap:2px;width:100%;min-height:48px;text-align:left;border:1px solid #d9dee8;background:#fff;color:#172033;border-radius:8px;padding:8px 9px;font-weight:850;cursor:pointer}
+  .studentNavBtn.on{border-color:#176b87;background:#edf7fa;color:#176b87}
+  .studentNavBtnName{font-size:13px;font-weight:950;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .studentNavBtnMeta{font-size:11px;color:#647085;line-height:1.25}
+  .studentControls{display:flex;gap:8px;justify-content:space-between;margin-bottom:10px}
+  .studentCounter{display:grid;place-items:center;color:#647085;font-size:12px;font-weight:900}
+  .student{display:none;background:#fff;border:1px solid #d9dee8;border-radius:10px;margin:0 0 16px;overflow:hidden;box-shadow:0 10px 26px rgba(23,32,51,.08)}
+  .student.active{display:block}
+  .studentHead{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px 16px;background:#fbfcfe;border-bottom:1px solid #d9dee8}
+  .studentName{font-size:18px;font-weight:950}
+  .totalScore{font-size:24px;font-weight:950;color:#176b87;white-space:nowrap}
+  .scoreGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:14px 16px;border-bottom:1px solid #eef1f5}
+  .scoreBox{border:1px solid #d9dee8;border-radius:8px;background:#fbfcfe;padding:11px}
+  .scoreLabel{color:#647085;font-size:12px;font-weight:850;margin-bottom:4px}
+  .scoreValue{font-size:22px;font-weight:950;color:#172033}
+  .scoreValue.accent{color:#176b87}
+  .section{padding:14px 16px}
+  .sectionTitle{margin:0 0 10px;font-size:15px;font-weight:950}
+  .questionList{display:grid;gap:8px}
+  details.questionDetail{border:1px solid #d9dee8;border-radius:8px;background:#fff;overflow:hidden}
+  details.questionDetail[open]{background:#fbfcfe}
+  summary.questionSummary{list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 13px;cursor:pointer;font-weight:900}
+  summary.questionSummary::-webkit-details-marker{display:none}
+  summary.questionSummary::before{content:"▸";color:#647085;font-size:13px}
+  details[open] summary.questionSummary::before{content:"▾"}
+  .summaryTitle{display:flex;align-items:center;gap:8px;min-width:0}
+  .summaryScore{white-space:nowrap;color:#176b87;font-weight:950}
+  .offlineLine{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid #d9dee8;border-radius:8px;background:#fbfcfe;padding:12px 13px;font-weight:900}
+  .detailBody{border-top:1px solid #eef1f5;padding:12px}
+  .subGroup{display:grid;grid-template-columns:94px minmax(0,1fr) 78px;gap:0;border:1px solid #d9dee8;border-radius:8px;margin:9px 0;background:#fff;overflow:hidden}
+  .subGroup.unwritten{border-color:#d5a13b;background:#fffaf0}
+  .subLabel{display:grid;place-items:center;background:#f8fafc;border-right:1px solid #d9dee8;font-size:13px;font-weight:950;text-align:center;padding:8px}
+  .subItems{display:grid;gap:8px;padding:9px}
+  .subScore{display:grid;place-items:center;border-left:1px solid #d9dee8;color:#176b87;font-weight:950;white-space:nowrap}
+  .subScore.negative{color:#a33a35}
+  .item{border:1px solid #d9dee8;border-radius:8px;padding:9px;background:#fbfcfe}
+  .item.deduct{border-color:#edcfcb;background:#fff7f6}
+  .itemTitle{display:flex;justify-content:space-between;gap:10px;font-weight:900;line-height:1.45;margin-bottom:7px}
+  .itemScore{white-space:nowrap;color:#176b87}
+  .item.deduct .itemScore{color:#a33a35}
+  .chips{display:grid;gap:6px}
+  .chip{border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:7px 8px;font-size:12px;line-height:1.5;white-space:pre-wrap}
+  .chip.accept{border-color:#c9e7d2;background:#f4fbf7}
+  .chip.reject,.chip.deduct{border-color:#edcfcb;background:#fffafa}
+  .empty{color:#647085;font-size:12px;padding:8px 0}
+  .memo{margin-top:10px;border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap}
+  .highlightReport{margin-top:10px;border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:10px;display:grid;gap:8px}
+  .highlightReportTitle{font-size:12px;font-weight:900}
+  .highlightReportList{display:grid;gap:8px}
+  .highlightReportItem{display:grid;grid-template-columns:minmax(160px,220px) minmax(0,1fr);gap:10px;align-items:start;border:1px solid #eef1f5;border-radius:8px;padding:8px;background:#fbfcfe}
+  .highlightCapture{width:100%;max-width:220px;border:1px solid #d9dee8;border-radius:6px;background:#fff;display:block}
+  .highlightMiniMap{position:relative;width:86px;aspect-ratio:1 / 1.32;border:1px solid #d9dee8;border-radius:6px;background:linear-gradient(#fff,#f8fafc);overflow:hidden}
+  .highlightMiniBox{position:absolute;border:2px solid var(--highlight-border,#d38e00);background:var(--highlight-bg,rgba(255,224,79,.34));border-radius:3px}
+  .highlightMiniBox.yellow{--highlight-border:rgba(211,142,0,.85);--highlight-bg:rgba(255,224,79,.38)}
+  .highlightMiniBox.red{--highlight-border:rgba(198,56,48,.86);--highlight-bg:rgba(255,107,100,.34)}
+  .highlightMiniBox.green{--highlight-border:rgba(42,133,68,.88);--highlight-bg:rgba(98,215,123,.34)}
+  .highlightReportMeta{font-size:11px;font-weight:900;color:#647085;margin-bottom:5px}
+  .highlightReportMemo{font-size:12px;line-height:1.55;white-space:pre-wrap}
+  .badge{display:inline-block;border:1px solid #c9e7d2;border-radius:999px;background:#f4fbf7;color:#1f7a45;padding:2px 7px;font-size:11px;font-weight:900}
+  .badge.warn{border-color:#edcfcb;background:#fff7f6;color:#a33a35}
+  .tools{display:flex;justify-content:flex-end;margin-bottom:12px}
+  button{border:1px solid #d9dee8;background:#fff;color:#172033;border-radius:8px;min-height:36px;padding:7px 11px;font-weight:850;cursor:pointer}
+  @media (max-width:720px){
+    body{height:auto;min-height:100vh;overflow:auto}
+    .wrap{height:auto;min-height:100vh}
+    .reportHead,.studentHead{align-items:flex-start;flex-direction:column}
+    .studentShell{grid-template-columns:1fr;height:auto;min-height:0}
+    .studentPicker{position:static;height:auto;max-height:45vh}
+    .scoreGrid{grid-template-columns:1fr}
+    .subGroup{grid-template-columns:1fr}
+    .subLabel,.subScore{border:0;border-bottom:1px solid #d9dee8;padding:8px}
+    .highlightReportItem{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="reportHead">
+    <div>
+      <h1>${escapeHtml(reportTitle)}</h1>
+      <div class="meta">학생 확인용 화면 · ${escapeHtml(exportedAt)} · ${records.length}명</div>
+    </div>
+    <div class="meta">문항을 클릭하면 이 채점기로 채점한 내용이 펼쳐집니다.</div>
+  </div>
+  <div class="tools"><button type="button" onclick="window.print()">인쇄</button></div>
+  <div class="studentShell">
+    <aside class="studentPicker" aria-label="학생 목록">
+      <div class="pickerHead">
+        <div>
+          <div class="pickerTitle">학생 목록</div>
+          <div class="meta">이름을 클릭해 이동</div>
+        </div>
+        <div class="meta">${records.length}명</div>
+      </div>
+      <div class="studentNav">${studentNavHtml}</div>
+    </aside>
+    <section class="studentMain">
+      <div class="studentControls">
+        <button type="button" id="prevStudentBtn">이전</button>
+        <div class="studentCounter" id="studentCounter"></div>
+        <button type="button" id="nextStudentBtn">다음</button>
+      </div>
+      ${studentHtml}
+    </section>
+  </div>
+</main>
+<script>
+(function(){
+  const cards = Array.from(document.querySelectorAll(".student[data-student-index]"));
+  const buttons = Array.from(document.querySelectorAll(".studentNavBtn[data-student-index]"));
+  const counter = document.getElementById("studentCounter");
+  const navKeys = ${JSON.stringify(studentNavKeys)};
+  let active = 0;
+  function isTypingTarget(target){
+    const tag = String(target?.tagName || "").toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
+  }
+  function showStudent(index){
+    if(!cards.length) return;
+    active = Math.max(0, Math.min(cards.length - 1, Number(index) || 0));
+    cards.forEach((card, cardIndex) => card.classList.toggle("active", cardIndex === active));
+    buttons.forEach((button, buttonIndex) => {
+      const on = buttonIndex === active;
+      button.classList.toggle("on", on);
+      button.setAttribute("aria-current", on ? "true" : "false");
+      if(on) button.scrollIntoView({block:"nearest"});
+    });
+    if(counter) counter.textContent = (active + 1) + " / " + cards.length;
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+  buttons.forEach((button, index) => button.addEventListener("click", () => showStudent(index)));
+  document.getElementById("prevStudentBtn")?.addEventListener("click", () => showStudent(active - 1));
+  document.getElementById("nextStudentBtn")?.addEventListener("click", () => showStudent(active + 1));
+  document.addEventListener("keydown", event => {
+    if(isTypingTarget(event.target)) return;
+    const prev = event.key === "ArrowLeft" || (navKeys.prev && event.code === navKeys.prev);
+    const next = event.key === "ArrowRight" || (navKeys.next && event.code === navKeys.next);
+    if(prev || next) event.preventDefault();
+    if(prev) showStudent(active - 1);
+    if(next) showStudent(active + 1);
+  });
+  showStudent(0);
+})();
+<\/script>
+</body>
+</html>`;
+}
+
+function studentScoreNavButtonHtml(rec, index){
+  return `<button class="studentNavBtn" type="button" data-student-index="${index}">
+    <span class="studentNavBtnName">${escapeHtml(studentLabelForRecord(rec))}</span>
+    <span class="studentNavBtnMeta">OMR ${escapeHtml(rec.page || "")}쪽</span>
+  </button>`;
+}
+
+async function studentScoreCardHtml(rec, options, index=0){
+  const external = normalizeExternalScores(rec.externalScores);
+  const selectedScore = external.selected;
+  const writtenScore = gradedQuestionTotal(rec) + external.offlineWritten;
+  const total = selectedScore + writtenScore;
+  const selectedMax = externalSelectedMaxScore();
+  const writtenMax = externalWrittenMaxScore();
+  const totalMax = selectedMax > 0 && writtenMax > 0 ? selectedMax + writtenMax : 0;
+  const questionRows = [
+    ...(await Promise.all(state.questions.map(question => studentScoreGradedQuestionHtml(rec, question, options)))),
+    ...external.offlineWrittenScores.map((score, index) => studentScoreOfflineQuestionHtml(score, index))
+  ].join("");
+  return `<section class="student" data-student-index="${index}">
+    <div class="studentHead">
+      <div>
+        <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
+        <div class="meta">OMR ${escapeHtml(rec.page || "")}쪽</div>
+      </div>
+      <div class="totalScore">국어 총점 ${escapeHtml(scoreWithMaxText(total, totalMax))}</div>
+    </div>
+    <div class="scoreGrid">
+      <div class="scoreBox">
+        <div class="scoreLabel">선택형 점수</div>
+        <div class="scoreValue">${escapeHtml(scoreWithMaxText(selectedScore, selectedMax))}</div>
+      </div>
+      <div class="scoreBox">
+        <div class="scoreLabel">서술형 점수</div>
+        <div class="scoreValue">${escapeHtml(scoreWithMaxText(writtenScore, writtenMax))}</div>
+      </div>
+      <div class="scoreBox">
+        <div class="scoreLabel">국어 총점</div>
+        <div class="scoreValue accent">${escapeHtml(scoreWithMaxText(total, totalMax))}</div>
+      </div>
+    </div>
+    <div class="section">
+      <h2 class="sectionTitle">문항별 점수</h2>
+      <div class="questionList">${questionRows || `<div class="empty">표시할 문항 점수가 없습니다.</div>`}</div>
+    </div>
+  </section>`;
+}
+
+async function studentScoreGradedQuestionHtml(rec, question, options){
+  const qrec = rec.answers?.[question.id] || {};
+  const qtotal = questionTotal(rec, question);
+  const qmax = questionMaxScore(question);
+  const groups = shareReportSubGroupsHtml(question, qrec);
+  const memo = options.includeMemo && String(qrec.memo || "").trim() ? `<div class="memo"><strong>문항 메모</strong>\n${escapeHtml(qrec.memo)}</div>` : "";
+  const highlights = options.includeHighlight ? await shareReportHighlightsHtml(rec, question, qrec) : "";
+  const badges = [
+    qrec.completed ? `<span class="badge">채점 완료</span>` : "",
+    options.includeDiscussion && qrec.needsDiscussion ? `<span class="badge warn">논의 필요</span>` : ""
+  ].filter(Boolean).join("");
+  return `<details class="questionDetail">
+    <summary class="questionSummary">
+      <span class="summaryTitle"><span>${escapeHtml(question.label)}</span>${badges}</span>
+      <span class="summaryScore">${escapeHtml(formatScore(Math.max(0, qtotal)))}점 / ${escapeHtml(formatScore(qmax))}점</span>
+    </summary>
+    <div class="detailBody">
+      ${groups || `<div class="empty">이 채점기로 표시한 채점 근거가 없습니다.</div>`}
+      ${memo}
+      ${highlights}
+    </div>
+  </details>`;
+}
+
+function studentScoreOfflineQuestionHtml(score, index){
+  const max = externalOfflineWrittenMaxScores()[index] || 0;
+  return `<div class="offlineLine">
+    <span>${escapeHtml(externalOfflineWrittenTitles()[index] || `오프라인 서술형 ${index + 1}`)}</span>
+    <span class="summaryScore">${escapeHtml(scoreWithMaxText(score || 0, max))}</span>
+  </div>`;
+}
+
 async function shareReportStudentHtml(rec, options){
-  const total = state.questions.reduce((sum, question) => sum + questionTotal(rec, question), 0);
+  const total = grandTotal(rec);
   const maxTotal = state.questions.reduce((sum, question) => sum + questionMaxScore(question), 0);
+  const externalSummary = externalScoreSummary(rec);
+  const scoreText = externalSummary
+    ? `${formatScore(Math.max(0, total))}점`
+    : `${formatScore(Math.max(0, total))}점 / ${formatScore(maxTotal)}점`;
   return `<section class="printPage">
     <div class="studentScale">
       <section class="student">
         <div class="studentHead">
           <div>
             <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
-            <div class="meta">OMR ${escapeHtml(rec.page || "")}쪽</div>
+            <div class="meta">OMR ${escapeHtml(rec.page || "")}쪽${externalSummary ? ` · ${escapeHtml(externalSummary)}` : ""}</div>
           </div>
-          <div class="score">${escapeHtml(formatScore(Math.max(0, total)))}점 / ${escapeHtml(formatScore(maxTotal))}점</div>
+          <div class="score">${escapeHtml(scoreText)}</div>
         </div>
         ${(await Promise.all(state.questions.map(question => shareReportQuestionHtml(rec, question, options)))).join("")}
       </section>
@@ -8221,6 +8673,290 @@ function parseRosterFromCsv(text){
   }).filter(Boolean).join("\n");
 }
 
+function externalScoreTemplateRows(){
+  const emptyScores = Array.from({length:externalOfflineWrittenCount()}, () => "");
+  const rows = [["쪽","반","번호","이름","선택형 점수", ...offlineWrittenScoreHeaders()]];
+  const entries = visibleRosterEntries();
+  if(entries.length){
+    entries.forEach((entry, index) => {
+      const studentIndex = index + 1;
+      const student = entry.student || {};
+      rows.push([firstPageForStudentIndex(studentIndex), student.className || "", student.number || "", student.name || "", ...emptyScores]);
+    });
+    return rows;
+  }
+  const records = Object.values(state.records || {}).filter(recordHasData).sort((a,b) => Number(a.page) - Number(b.page));
+  records.forEach(rec => rows.push([rec.page || firstPageForStudentIndex(rec.studentIndex), rec.className || "", rec.number || "", rec.name || "", ...emptyScores]));
+  if(rows.length === 1) rows.push(["", "", "", "", "", ...emptyScores]);
+  return rows;
+}
+
+async function downloadExternalScoreTemplate(){
+  try{
+    const blob = await simpleXlsxBlob(externalScoreTemplateRows(), "외부점수");
+    downloadBlob(`외부점수_입력양식_${dateStamp()}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", blob);
+  }catch(err){
+    console.warn(err);
+    const csv = externalScoreTemplateRows().map(row => row.map(csvCell).join(",")).join("\n");
+    download(`외부점수_입력양식_${dateStamp()}.csv`, "text/csv;charset=utf-8", "\ufeff" + csv);
+    showToast("엑셀 양식 생성에 실패해 CSV 양식으로 내려받았습니다.");
+  }
+}
+
+function xmlEscape(value){
+  return String(value ?? "").replace(/[<>&"']/g, ch => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&apos;"}[ch]));
+}
+
+function xlsxColumnName(index){
+  let name = "";
+  let current = index + 1;
+  while(current > 0){
+    const mod = (current - 1) % 26;
+    name = String.fromCharCode(65 + mod) + name;
+    current = Math.floor((current - mod) / 26);
+  }
+  return name;
+}
+
+async function simpleXlsxBlob(rows, sheetName="Sheet1"){
+  const zip = new JSZip();
+  const sheetRows = rows.map((row, rowIndex) => {
+    const cells = row.map((value, colIndex) => {
+      const ref = `${xlsxColumnName(colIndex)}${rowIndex + 1}`;
+      const isNumber = typeof value === "number" && Number.isFinite(value);
+      return isNumber
+        ? `<c r="${ref}"><v>${value}</v></c>`
+        : `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
+    }).join("");
+    return `<row r="${rowIndex + 1}">${cells}</row>`;
+  }).join("");
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`);
+  zip.folder("_rels").file(".rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  zip.folder("xl").file("workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xmlEscape(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`);
+  zip.folder("xl").folder("_rels").file("workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`);
+  const lastCol = Math.max(6, rows[0]?.length || 6);
+  zip.folder("xl").folder("worksheets").file("sheet1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="8" customWidth="1"/><col min="2" max="4" width="14" customWidth="1"/><col min="5" max="5" width="14" customWidth="1"/><col min="6" max="${lastCol}" width="22" customWidth="1"/></cols><sheetData>${sheetRows}</sheetData></worksheet>`);
+  return zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+
+function parseDelimitedRows(text){
+  const clean = text.replace(/^\ufeff/, "").replace(/\r/g, "");
+  const delim = clean.split("\n")[0]?.includes("\t") ? "\t" : ",";
+  const rows = [];
+  let row = [], cell = "", quoted = false;
+  for(let i = 0; i < clean.length; i++){
+    const ch = clean[i];
+    if(quoted){
+      if(ch === '"' && clean[i + 1] === '"'){ cell += '"'; i++; }
+      else if(ch === '"') quoted = false;
+      else cell += ch;
+    }else if(ch === '"'){
+      quoted = true;
+    }else if(ch === delim){
+      row.push(cell.trim()); cell = "";
+    }else if(ch === "\n"){
+      row.push(cell.trim()); rows.push(row); row = []; cell = "";
+    }else{
+      cell += ch;
+    }
+  }
+  row.push(cell.trim());
+  if(row.some(Boolean)) rows.push(row);
+  return rows.filter(line => line.some(cell => String(cell || "").trim()));
+}
+
+function xmlText(node){
+  return node ? String(node.textContent || "") : "";
+}
+
+function xlsxCellColumnIndex(ref){
+  const letters = String(ref || "").match(/[A-Z]+/i)?.[0]?.toUpperCase() || "A";
+  return [...letters].reduce((sum, ch) => sum * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+}
+
+async function rowsFromSimpleXlsx(buffer){
+  const zip = await JSZip.loadAsync(buffer);
+  const workbookXml = await zip.file("xl/workbook.xml")?.async("text");
+  if(!workbookXml) throw new Error("xlsx 통합문서를 읽을 수 없습니다.");
+  const parser = new DOMParser();
+  const workbookDoc = parser.parseFromString(workbookXml, "application/xml");
+  const firstSheet = workbookDoc.querySelector("sheet");
+  const relId = firstSheet?.getAttribute("r:id") || "rId1";
+  let sheetPath = "xl/worksheets/sheet1.xml";
+  const relsXml = await zip.file("xl/_rels/workbook.xml.rels")?.async("text");
+  if(relsXml){
+    const relsDoc = parser.parseFromString(relsXml, "application/xml");
+    const rel = [...relsDoc.querySelectorAll("Relationship")].find(item => item.getAttribute("Id") === relId);
+    const target = rel?.getAttribute("Target");
+    if(target) sheetPath = `xl/${target.replace(/^\/?xl\//, "")}`;
+  }
+  const sharedStringsXml = await zip.file("xl/sharedStrings.xml")?.async("text");
+  const sharedStrings = sharedStringsXml
+    ? [...parser.parseFromString(sharedStringsXml, "application/xml").querySelectorAll("si")].map(si => [...si.querySelectorAll("t")].map(xmlText).join(""))
+    : [];
+  const sheetXml = await zip.file(sheetPath)?.async("text");
+  if(!sheetXml) throw new Error("첫 번째 시트를 찾을 수 없습니다.");
+  const sheetDoc = parser.parseFromString(sheetXml, "application/xml");
+  return [...sheetDoc.querySelectorAll("sheetData row")].map(rowEl => {
+    const row = [];
+    [...rowEl.querySelectorAll("c")].forEach(cellEl => {
+      const colIndex = xlsxCellColumnIndex(cellEl.getAttribute("r"));
+      const type = cellEl.getAttribute("t");
+      const valueText = xmlText(cellEl.querySelector("v"));
+      let value = valueText;
+      if(type === "s") value = sharedStrings[Number(valueText)] ?? "";
+      else if(type === "inlineStr") value = [...cellEl.querySelectorAll("is t")].map(xmlText).join("");
+      row[colIndex] = value;
+    });
+    return row.map(value => value ?? "");
+  }).filter(row => row.some(cell => String(cell || "").trim()));
+}
+
+async function externalScoreRowsFromFile(file){
+  const name = file.name.toLowerCase();
+  if(name.endsWith(".csv") || file.type === "text/csv"){
+    return parseDelimitedRows(await file.text());
+  }
+  if(name.endsWith(".xlsx")) return rowsFromSimpleXlsx(await file.arrayBuffer());
+  throw new Error("xlsx 또는 csv 파일을 사용해 주세요.");
+}
+
+function normalizedHeaderKey(value){
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, "").replace(/[()_\-]/g, "");
+}
+
+function externalScoreRowObjects(rows){
+  if(!rows.length) return [];
+  const aliases = {
+    page:["쪽","page","페이지"],
+    studentIndex:["학생순번","omr","omr순번","studentindex","index"],
+    className:["반","class","classroom"],
+    number:["번호","number","num","번"],
+    name:["이름","성명","학생","name"],
+    selected:["선택형점수","선택형","객관식","객관식점수","selectedscore","choicescore","multiplechoicescore"],
+    offlineWritten:["오프라인서술형점수","오프라인서술형","나머지서술형점수","나머지서술형","서술형추가점수","offlinewrittenscore","writtenscore","essayscore"]
+  };
+  const first = rows[0].map(normalizedHeaderKey);
+  let offlineDetailIndexes = first
+    .map((col, index) => ({col, index}))
+    .filter(entry => /^오프라인서술형\d+점수$/.test(entry.col) || /^offlinewritten\d+score$/.test(entry.col) || /^writtenscore\d+$/.test(entry.col))
+    .sort((a,b) => {
+      const aNum = Number(a.col.match(/\d+/)?.[0] || a.index);
+      const bNum = Number(b.col.match(/\d+/)?.[0] || b.index);
+      return aNum - bNum;
+    })
+    .map(entry => entry.index);
+  const hasHeader = offlineDetailIndexes.length || Object.values(aliases).some(keys => keys.some(key => first.includes(normalizedHeaderKey(key))));
+  const headerMap = {};
+  if(hasHeader){
+    Object.entries(aliases).forEach(([field, keys]) => {
+      headerMap[field] = first.findIndex(col => keys.some(key => col === normalizedHeaderKey(key)));
+    });
+    if(!offlineDetailIndexes.length && headerMap.offlineWritten < 0){
+      const selectedIndex = headerMap.selected >= 0 ? headerMap.selected : 4;
+      offlineDetailIndexes = first
+        .map((col, index) => ({col, index}))
+        .filter(entry => entry.index > selectedIndex && entry.index < selectedIndex + 1 + externalOfflineWrittenCount() && entry.col.includes("점수"))
+        .map(entry => entry.index);
+    }
+  }
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+  return dataRows.map(row => {
+    const value = (field, fallbackIndex) => {
+      const index = hasHeader ? headerMap[field] : fallbackIndex;
+      return index >= 0 ? row[index] : "";
+    };
+    const next = {
+      page:value("page", 0),
+      studentIndex:value("studentIndex", -1),
+      className:String(value("className", 1) || "").trim(),
+      number:String(value("number", 2) || "").trim(),
+      name:String(value("name", 3) || "").trim(),
+      selected:externalScoreNumber(value("selected", 4)),
+      offlineWritten:externalScoreNumber(value("offlineWritten", 5))
+    };
+    if(offlineDetailIndexes.length) next.offlineWrittenScores = offlineDetailIndexes.map(index => externalScoreNumber(row[index]));
+    else if(!hasHeader) next.offlineWrittenScores = Array.from({length:externalOfflineWrittenCount()}, (_, index) => externalScoreNumber(row[index + 5]));
+    return next;
+  }).filter(row => row.page || row.studentIndex || row.className || row.number || row.name);
+}
+
+function recordKeyForExternalScoreRow(row){
+  const page = Math.floor(externalScoreNumber(row.page));
+  if(page > 0) return recordKey(page);
+  const studentIndex = Math.floor(externalScoreNumber(row.studentIndex));
+  if(studentIndex > 0) return String(studentIndex);
+  const className = String(row.className || "").trim();
+  const number = String(row.number || "").trim();
+  const name = String(row.name || "").trim();
+  const entryIndex = visibleRosterEntries().findIndex(entry => {
+    const student = entry.student || {};
+    const classOk = !className || String(student.className || "").trim() === className;
+    const numberOk = !number || String(student.number || "").trim() === number;
+    const nameOk = !name || String(student.name || "").trim() === name;
+    return classOk && numberOk && nameOk && (number || name);
+  });
+  if(entryIndex >= 0) return String(entryIndex + 1);
+  const existing = Object.entries(state.records || {}).find(([, rec]) => {
+    const classOk = !className || String(rec.className || "").trim() === className;
+    const numberOk = !number || String(rec.number || "").trim() === number;
+    const nameOk = !name || String(rec.name || "").trim() === name;
+    return classOk && numberOk && nameOk && (number || name);
+  });
+  return existing?.[0] || "";
+}
+
+function applyExternalScoreRow(row){
+  const key = recordKeyForExternalScoreRow(row);
+  if(!key) return false;
+  ensureRecord(key);
+  const rec = state.records[key];
+  const student = rosterEntryForOmrIndex(Number(key))?.student || {};
+  rec.page = firstPageForStudentIndex(key);
+  rec.studentIndex = Number(key);
+  rec.className = student.className || row.className || rec.className || "";
+  rec.number = student.number || row.number || rec.number || "";
+  rec.name = student.name || row.name || rec.name || "";
+  rec.externalScores = {...normalizeExternalScores(row), imported:true};
+  return true;
+}
+
+async function importExternalScores(file){
+  const rows = externalScoreRowObjects(await externalScoreRowsFromFile(file));
+  let imported = 0;
+  rows.forEach(row => { if(applyExternalScoreRow(row)) imported++; });
+  cleanupAllRecords();
+  persist();
+  updateResults();
+  updateExternalScoreStatus();
+  showToast(`외부 점수 ${imported}명 가져왔습니다.`);
+  return {imported, skipped:rows.length - imported};
+}
+
+function clearExternalScores(){
+  Object.values(state.records || {}).forEach(rec => { delete rec.externalScores; });
+  cleanupAllRecords();
+  persist();
+  updateResults();
+  updateExternalScoreStatus();
+  showToast("외부 점수를 지웠습니다.");
+}
+
+function updateExternalScoreStatus(){
+  if(!els.externalScoreStatus) return;
+  const records = Object.values(state.records || {}).filter(hasExternalScores);
+  const selected = records.reduce((sum, rec) => sum + normalizeExternalScores(rec.externalScores).selected, 0);
+  const offlineWritten = records.reduce((sum, rec) => sum + normalizeExternalScores(rec.externalScores).offlineWritten, 0);
+  els.externalScoreStatus.textContent = records.length
+    ? `${records.length}명 · 선택형 ${formatScore(selected)}점 · 오프라인 서술형 ${externalOfflineWrittenCount()}문제 ${formatScore(offlineWritten)}점`
+    : `현재 외부 점수 없음 · 오프라인 서술형 ${externalOfflineWrittenCount()}문제`;
+}
+
 async function mergePdfsAndDownload(){
   const f1 = [...(els.mergePdfInput.files || [])].filter(f => f.name.toLowerCase().endsWith(".pdf"));
   const f2 = [...(els.mergePdfFolderInput.files || [])].filter(f => f.name.toLowerCase().endsWith(".pdf"));
@@ -8508,6 +9244,7 @@ els.keywordModal.addEventListener("click", async evt => {
     }
   }
 });
+els.openStudentScoreScreenBtn.addEventListener("click", openStudentScoreScreen);
 els.createShareReportBtn.addEventListener("click", createShareReport);
 els.openMergeJsonBtn.addEventListener("click", () => {
   els.mergeJsonStatus.textContent = "병합할 JSON 파일을 선택하세요.";
@@ -8702,6 +9439,43 @@ els.rosterFileInput.addEventListener("change", async () => {
   persist();
   showToast(`명렬 ${state.roster.length}명을 가져왔습니다.`);
   els.rosterFileInput.value = "";
+});
+els.downloadExternalScoreTemplateBtn.addEventListener("click", downloadExternalScoreTemplate);
+function persistExternalScoreSettings(){
+  const offlineSettings = externalOfflineWrittenSettingsFromInputs();
+  state.settings.externalSelectedMaxScore = nonNegativeNumber(els.externalSelectedMaxInput?.value);
+  state.settings.externalWrittenMaxScore = nonNegativeNumber(els.externalWrittenMaxInput?.value);
+  state.settings.externalOfflineWrittenCount = externalOfflineWrittenCountFromInput();
+  state.settings.externalOfflineWrittenTitles = offlineSettings.titles;
+  state.settings.externalOfflineWrittenMaxScores = offlineSettings.maxScores;
+  applySettings();
+  persist();
+  updateResults();
+  updateExternalScoreStatus();
+}
+els.externalSelectedMaxInput.addEventListener("change", persistExternalScoreSettings);
+els.externalWrittenMaxInput.addEventListener("change", persistExternalScoreSettings);
+els.offlineWrittenCountInput.addEventListener("change", () => {
+  persistExternalScoreSettings();
+});
+els.offlineWrittenSettingsList.addEventListener("change", persistExternalScoreSettings);
+els.externalScoreInput.addEventListener("change", async () => {
+  const file = els.externalScoreInput.files?.[0];
+  if(!file) return;
+  els.externalScoreStatus.textContent = "외부 점수 파일을 읽는 중...";
+  try{
+    const result = await importExternalScores(file);
+    els.externalScoreStatus.textContent += result.skipped ? ` · 매칭 실패 ${result.skipped}행` : "";
+  }catch(err){
+    console.error(err);
+    alert(`외부 점수 파일을 읽을 수 없습니다: ${err.message}`);
+    updateExternalScoreStatus();
+  }finally{
+    els.externalScoreInput.value = "";
+  }
+});
+els.clearExternalScoresBtn.addEventListener("click", () => {
+  if(confirm("가져온 선택형/오프라인 서술형 외부 점수를 모두 지울까요?")) clearExternalScores();
 });
 els.settingsModal.addEventListener("change", evt => {
   const card = evt.target.closest(".questionEditCard");
