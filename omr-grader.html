@@ -217,11 +217,20 @@ textarea{min-height:72px;resize:vertical}
 .criterion.editLocked{opacity:.42;filter:grayscale(.35)}
 .criterion.deduct{border-color:#edcfcb;background:#fffafa}
 .criterion.deduct.on{border-color:#b2453e;background:#fff7f6}
+.criterion.reviewWarn{border:3px solid #d6453d;background:#fff5f4;box-shadow:0 0 0 3px rgba(214,69,61,.16),0 8px 22px rgba(159,45,39,.16)}
+.criterion.reviewNotice{border:3px solid #d88916;background:#fff9ed;box-shadow:0 0 0 3px rgba(216,137,22,.14),0 8px 22px rgba(151,93,10,.13)}
+.criterionReviewFlag{display:flex;align-items:flex-start;gap:7px;padding:8px 10px;font-size:12px;font-weight:900;line-height:1.45}
+.criterionReviewFlag.warn{background:#d6453d;color:#fff}
+.criterionReviewFlag.notice{background:#d88916;color:#fff}
+.criterionReviewFlagLabel{flex:none;border:1px solid rgba(255,255,255,.62);border-radius:999px;padding:1px 6px;font-size:10px;line-height:1.4;white-space:nowrap}
+.criterionReviewFlagText{min-width:0;overflow-wrap:anywhere}
 .criterionHead{display:grid;grid-template-columns:minmax(0,1fr) 58px;align-items:stretch}
 .criterionTitle{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:8px;align-items:start;padding:11px;background:#fbfcfe}
 .criterion.on .criterionTitle{background:#eef8fb}
 .criterion.deduct .criterionTitle{background:#fff7f6}
 .criterion.deduct.on .criterionTitle{background:#fee9e7}
+.criterion.reviewWarn .criterionTitle{background:#fee9e7}
+.criterion.reviewNotice .criterionTitle{background:#fff1cf}
 .criterionEditBtn{border:0;border-left:1px solid var(--line);background:#fbfcfe;color:var(--muted);font-size:12px;font-weight:850}
 .criterionEditBtn.on{background:var(--accent);color:#fff}
 .criterion.deduct .criterionEditBtn{background:#fff7f6}
@@ -284,6 +293,27 @@ textarea{min-height:72px;resize:vertical}
 .reviewAssistMeta{font-size:11px;font-weight:800;color:var(--muted);line-height:1.45;margin-top:4px;word-break:keep-all;overflow-wrap:anywhere}
 .reviewAssistBadge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:950;background:#e9f6fa;color:var(--accent)}
 .reviewAssistBadge.warn{background:#fdecea;color:#bd4a43}
+.restorePdfDialog{max-width:480px;padding:0;overflow:hidden;border:1px solid #d8dee9;box-shadow:0 24px 70px rgba(23,32,51,.28)}
+.restorePdfHead{padding:22px 24px 16px;border-bottom:0;background:linear-gradient(145deg,#f8fcfd 0%,#fff 64%)}
+.restorePdfHeading{display:flex;align-items:center;gap:12px}
+.restorePdfIcon{width:42px;height:42px;flex:none;display:grid;place-items:center;border-radius:12px;background:var(--accent);color:#fff;box-shadow:0 8px 20px rgba(23,107,135,.22)}
+.restorePdfIcon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.restorePdfTitleWrap{min-width:0;display:grid;gap:3px}
+.restorePdfTitle{font-size:20px;line-height:1.3}
+.restorePdfEyebrow{color:var(--accent);font-size:11px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+.restorePdfBody{padding:4px 24px 22px;display:grid;gap:12px}
+.restorePdfDescription{color:var(--muted);font-size:13px;font-weight:750;line-height:1.55}
+.restorePdfFile{display:flex;align-items:center;gap:11px;min-width:0;border:1px solid #d8e6eb;border-radius:10px;background:#f5fafc;padding:12px 14px;color:var(--ink)}
+.restorePdfFileBadge{flex:none;border-radius:6px;background:#d94b45;color:#fff;padding:4px 6px;font-size:10px;font-weight:950;letter-spacing:.04em}
+.restorePdfFileName{min-width:0;font-size:14px;font-weight:900;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.restorePdfActions{margin:0;padding:14px 24px 20px;border-top:1px solid #edf0f4;background:#fbfcfe;display:flex;justify-content:flex-end;gap:8px}
+.restorePdfActions .btn{min-height:38px;padding:7px 14px;font-size:13px}
+@media(max-width:520px){
+  .restorePdfDialog{width:calc(100% - 24px)}
+  .restorePdfHead{padding:18px 18px 14px}
+  .restorePdfBody{padding:2px 18px 18px}
+  .restorePdfActions{padding:12px 18px 16px}
+}
 .rubricEditorRows{display:grid;gap:8px;margin-bottom:10px}
 .rubricEditRow{display:grid;grid-template-columns:220px 220px minmax(0,1fr) 34px;gap:8px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fbfcfe}
 .rubricEditRow textarea{min-height:54px}
@@ -849,7 +879,8 @@ textarea{min-height:72px;resize:vertical}
         <div class="empty" id="empty">
           <h2>PDF를 선택하세요</h2>
           <p>상단에서 문항 번호와 소문항 개수를 설정한 뒤, 문항별 답란 영역을 지정하고 채점할 수 있습니다.</p>
-          <input type="file" id="pdfInput" accept="application/pdf">
+          <button class="btn primary" id="choosePdfBtn" type="button">PDF 선택</button>
+          <input class="hidden" type="file" id="pdfInput" accept="application/pdf">
         </div>
         <button class="btn danger canvasActionBtn hidden" id="clearStudentCropBtn" type="button" disabled>설정된 학생 영역 삭제</button>
         <button class="btn primary canvasActionBtn hidden" id="saveCropBtn" type="button" disabled>영역 저장</button>
@@ -890,6 +921,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="panelHead">
         <h2 class="panelTitle">답안 텍스트 (자동 채점 보조)</h2>
         <div class="compactBtns">
+          <button class="btn mini" id="answerOcrBtn" type="button">OCR 읽어오기</button>
           <button class="btn mini" id="autoDetectBtn" type="button">키워드 자동 탐지</button>
         </div>
       </div>
@@ -1132,7 +1164,7 @@ textarea{min-height:72px;resize:vertical}
         <div class="panelHead"><h2 class="panelTitle">PDF 병합</h2></div>
         <div class="settingsToolSection">
           <h3 class="settingsToolTitle">PDF 병합</h3>
-          <div class="statusLine" style="margin-bottom:10px">반별 PDF 여러 개를 선택하면 파일명 순으로 정렬해 하나로 합쳐 다운로드합니다. 이후 채점 화면에서 불러오세요.</div>
+          <div class="statusLine" style="margin-bottom:10px">반별 PDF 여러 개를 선택하면 파일명 순으로 정렬해 하나로 합칩니다. 병합본은 다운로드되고 채점 화면에도 바로 열립니다.</div>
           <div class="field">
             <span class="label">PDF 파일 선택 (다중 선택 가능)</span>
             <input id="mergePdfInput" type="file" accept=".pdf,application/pdf" multiple>
@@ -1141,7 +1173,7 @@ textarea{min-height:72px;resize:vertical}
             <span class="label">또는 폴더 전체 선택</span>
             <input id="mergePdfFolderInput" type="file" accept=".pdf,application/pdf" webkitdirectory>
           </div>
-          <button class="btn mini primary" id="mergePdfBtn" type="button">PDF 병합 및 다운로드</button>
+          <button class="btn mini primary" id="mergePdfBtn" type="button">PDF 병합 후 바로 열기</button>
           <div class="statusLine" id="mergePdfStatus" style="margin-top:8px">PDF를 선택하면 파일명 기준으로 정렬해 병합합니다.</div>
         </div>
         <div class="settingsToolSection">
@@ -1386,6 +1418,28 @@ textarea{min-height:72px;resize:vertical}
   </section>
 </div>
 
+<div class="modalBackdrop hidden" id="restorePdfModal" role="dialog" aria-modal="true" aria-labelledby="restorePdfTitle">
+  <div class="modal restorePdfDialog">
+    <div class="restorePdfHead">
+      <div class="restorePdfHeading">
+        <span class="restorePdfIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2.75h8l4 4V21.25H6z"/><path d="M14 2.75v4h4M8.5 16.5h7M8.5 13h7"/></svg></span>
+        <div class="restorePdfTitleWrap">
+          <span class="restorePdfEyebrow">Recent document</span>
+          <h2 class="panelTitle restorePdfTitle" id="restorePdfTitle">이어서 채점할까요?</h2>
+        </div>
+      </div>
+    </div>
+    <div class="restorePdfBody">
+      <div class="restorePdfDescription">직전에 사용한 PDF가 있습니다. 파일을 다시 열어 마지막 채점 위치부터 이어갈 수 있습니다.</div>
+      <div class="restorePdfFile"><span class="restorePdfFileBadge">PDF</span><span class="restorePdfFileName" id="restorePdfMessage"></span></div>
+    </div>
+    <div class="restorePdfActions">
+      <button class="btn" id="restorePdfCancelBtn" type="button">나중에</button>
+      <button class="btn primary" id="restorePdfConfirmBtn" type="button">PDF 열기</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
@@ -1398,6 +1452,8 @@ const LEGACY_KEY = "publicOmrEssayGraderState.legacy";
 const SIDEBAR_WIDTH_KEY = "publicOmrEssayGraderSidebarWidth.v1";
 const MOBILE_VIEWER_HEIGHT_KEY = "publicOmrEssayGraderMobileViewerHeight.v1";
 const EXAM_CAPTURE_KEY = "publicOmrEssayGraderExamCapture.v1";
+const FILE_HANDLE_DB = "publicOmrEssayGraderFiles.v1";
+const LAST_PDF_HANDLE_KEY = "lastPdfHandle";
 const EXAM_CAPTURE_PREFIX = `${EXAM_CAPTURE_KEY}.`;
 const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
 const defaultRubric = [
@@ -1445,7 +1501,7 @@ const els = {
   app:document.querySelector(".app"), sideResizer:$("sideResizer"),
   appTitleText:$("appTitleText"), appTitleInput:$("appTitleInput"), applyTitleBtn:$("applyTitleBtn"),
   deductTemplateNameInput:$("deductTemplateNameInput"), deductTemplateKeywordsInput:$("deductTemplateKeywordsInput"), deductTemplateScoreInput:$("deductTemplateScoreInput"),
-  pdfInput:$("pdfInput"), changePdfBtn:$("changePdfBtn"), fileMeta:$("fileMeta"), empty:$("empty"),
+  pdfInput:$("pdfInput"), choosePdfBtn:$("choosePdfBtn"), changePdfBtn:$("changePdfBtn"), fileMeta:$("fileMeta"), empty:$("empty"),
   pageWrap:$("pageWrap"), cropView:$("cropView"), canvasShell:$("canvasShell"), pdfCanvas:$("pdfCanvas"), cropCanvas:$("cropCanvas"),
   fullPageCompanion:$("fullPageCompanion"), fullPageCompanionCanvas:$("fullPageCompanionCanvas"), fullPageCompanionLabel:$("fullPageCompanionLabel"), pageSideLabel:$("pageSideLabel"),
   examCaptureBtn:$("examCaptureBtn"), examCapturePanel:$("examCapturePanel"), closeExamCaptureBtn:$("closeExamCaptureBtn"),
@@ -1460,6 +1516,7 @@ const els = {
   tutorialBtn:$("tutorialBtn"), settingsTutorialBtn:$("settingsTutorialBtn"),
   tutorialStartModal:$("tutorialStartModal"), closeTutorialStartBtn:$("closeTutorialStartBtn"),
   tutorialChoosePdfBtn:$("tutorialChoosePdfBtn"), tutorialWithoutPdfBtn:$("tutorialWithoutPdfBtn"),
+  restorePdfModal:$("restorePdfModal"), restorePdfMessage:$("restorePdfMessage"), restorePdfConfirmBtn:$("restorePdfConfirmBtn"), restorePdfCancelBtn:$("restorePdfCancelBtn"),
   tutorialLayer:$("tutorialLayer"), tutorialSpotlight:$("tutorialSpotlight"), tutorialCard:$("tutorialCard"),
   tutorialStepText:$("tutorialStepText"), tutorialTitle:$("tutorialTitle"), tutorialText:$("tutorialText"),
   tutorialSkipBtn:$("tutorialSkipBtn"), tutorialPrevBtn:$("tutorialPrevBtn"), tutorialNextBtn:$("tutorialNextBtn"),
@@ -1505,7 +1562,7 @@ const els = {
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
   answerText:$("answerText"),
-  autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus"),
+  answerOcrBtn:$("answerOcrBtn"), autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus"),
   sourceHighlightModal:$("sourceHighlightModal"), sourceHighlightModalBody:$("sourceHighlightModalBody"), closeSourceHighlightModalBtn:$("closeSourceHighlightModalBtn")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
   mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText"),
@@ -1731,7 +1788,7 @@ function startTutorial(options={}){
 function chooseTutorialPdf(){
   tutorial.startAfterPdf = true;
   closeTutorialSurfaces();
-  els.pdfInput.click();
+  chooseAndOpenPdf();
 }
 
 function endTutorial(){
@@ -2690,7 +2747,109 @@ function persistQuestionSettings(){
   updateChrome();
 }
 
-async function openPdf(file){
+function pdfHandleStore(mode="readonly"){
+  return new Promise((resolve, reject) => {
+    if(!window.indexedDB){ reject(new Error("브라우저 저장소를 사용할 수 없습니다.")); return; }
+    const request = indexedDB.open(FILE_HANDLE_DB, 1);
+    request.onupgradeneeded = () => {
+      if(!request.result.objectStoreNames.contains("handles")) request.result.createObjectStore("handles");
+    };
+    request.onerror = () => reject(request.error || new Error("브라우저 저장소를 열 수 없습니다."));
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction("handles", mode);
+      const store = tx.objectStore("handles");
+      resolve({db, tx, store});
+    };
+  });
+}
+
+async function savedPdfHandle(){
+  try{
+    const {db, store} = await pdfHandleStore();
+    const handle = await new Promise((resolve, reject) => {
+      const request = store.get(LAST_PDF_HANDLE_KEY);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return handle;
+  }catch(err){
+    console.warn(err);
+    return null;
+  }
+}
+
+async function storePdfHandle(handle){
+  try{
+    const {db, tx, store} = await pdfHandleStore("readwrite");
+    if(handle) store.put(handle, LAST_PDF_HANDLE_KEY);
+    else store.delete(LAST_PDF_HANDLE_KEY);
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    db.close();
+  }catch(err){
+    console.warn("PDF 파일 위치를 기억하지 못했습니다.", err);
+  }
+}
+
+async function chooseAndOpenPdf(){
+  if(typeof window.showOpenFilePicker !== "function"){
+    els.pdfInput.click();
+    return;
+  }
+  try{
+    const [handle] = await window.showOpenFilePicker({
+      multiple:false,
+      types:[{description:"PDF 문서", accept:{"application/pdf":[".pdf"]}}]
+    });
+    if(!handle) return;
+    const file = await handle.getFile();
+    await openPdf(file, {handle});
+    if(tutorial.startAfterPdf) startTutorial({withoutPdf:true});
+  }catch(err){
+    if(err?.name !== "AbortError") alert(`PDF를 열 수 없습니다: ${err.message}`);
+    else tutorial.startAfterPdf = false;
+  }
+}
+
+async function offerLastPdfRestore(){
+  if(!state.lastPdfName || typeof window.showOpenFilePicker !== "function") return;
+  const handle = await savedPdfHandle();
+  if(!handle || handle.name !== state.lastPdfName) return;
+  els.restorePdfMessage.textContent = handle.name;
+  els.restorePdfModal.classList.remove("hidden");
+}
+
+async function restoreLastPdf(){
+  const handle = await savedPdfHandle();
+  if(!handle){
+    els.restorePdfModal.classList.add("hidden");
+    showToast("기억된 PDF 파일을 찾을 수 없습니다.");
+    return;
+  }
+  els.restorePdfConfirmBtn.disabled = true;
+  els.restorePdfConfirmBtn.textContent = "여는 중…";
+  try{
+    let permission = await handle.queryPermission({mode:"read"});
+    if(permission !== "granted") permission = await handle.requestPermission({mode:"read"});
+    if(permission !== "granted") throw new Error("파일 접근 권한이 허용되지 않았습니다.");
+    const file = await handle.getFile();
+    await openPdf(file, {handle});
+    els.restorePdfModal.classList.add("hidden");
+    showToast(`${file.name}을 다시 열었습니다.`);
+  }catch(err){
+    alert(`직전 PDF를 열 수 없습니다: ${err.message}`);
+  }finally{
+    els.restorePdfConfirmBtn.disabled = false;
+    els.restorePdfConfirmBtn.textContent = "PDF 열기";
+  }
+}
+
+async function openPdf(file, options={}){
   const buffer = await file.arrayBuffer();
   const isRememberedPdf = Boolean(state.lastPdfName && state.lastPdfName === file.name);
   state.pdf = await pdfjsLib.getDocument({data:buffer}).promise;
@@ -2713,6 +2872,7 @@ async function openPdf(file){
   if(!isRememberedPdf) await requestPagesPerStudentConfirmation();
   await renderCurrentPage();
   persist();
+  await storePdfHandle(options.handle || null);
 }
 
 async function renderCurrentPage(){
@@ -3743,9 +3903,20 @@ function renderRubric(){
   els.rubricList.classList.toggle("locked", locked);
   els.rubricList.innerHTML = "";
   const question = activeQuestion();
+  const reviewIssuesByItem = new Map();
+  if(state.settings?.reviewAssistEnabled){
+    reviewAssistIssues()
+      .filter(issue => issue.questionId === question.id && recordKey(issue.page) === recordKey(state.page))
+      .forEach(issue => {
+        const itemId = issue.item?.id;
+        if(!itemId) return;
+        if(!reviewIssuesByItem.has(itemId)) reviewIssuesByItem.set(itemId, []);
+        reviewIssuesByItem.get(itemId).push(issue);
+      });
+  }
   subOptions().forEach(sub => {
     const items = activeRubric().filter(item => normalizeSubValue(item.sub || "공통") === sub);
-    renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0);
+    renderRubricSubGroup(sub, items, scores, keywordHits, subTotals[sub] || 0, reviewIssuesByItem);
   });
   els.rubricList.querySelectorAll(".keywordChip,.subCompleteBtn,.subUnwrittenBtn,.subSourceCheckBtn")
     .forEach(control => { control.disabled = locked; });
@@ -3829,6 +4000,7 @@ body.popupCompleted .popupLockBanner{display:block}
     <div class="panelHead">
       <h2 class="panelTitle">답안 텍스트 (자동 채점 보조)</h2>
       <div class="compactBtns">
+        <button class="btn mini" id="popupAnswerOcrBtn" type="button">OCR 읽어오기</button>
         <button class="btn mini" id="popupAutoDetectBtn" type="button">키워드 자동 탐지</button>
       </div>
     </div>
@@ -3866,6 +4038,13 @@ body.popupCompleted .popupLockBanner{display:block}
       els.answerText.value = text;
       autoDetectKeywords(text, status);
       syncRubricPopup();
+      return;
+    }
+    const popupAnswerOcrBtn = evt.target.closest("#popupAnswerOcrBtn");
+    if(popupAnswerOcrBtn){
+      const answerEl = rubricPopupWindow.document.getElementById("popupAnswerText");
+      const statusEl = rubricPopupWindow.document.getElementById("popupAutoDetectStatus");
+      readCurrentAnswerWithOcr(answerEl, statusEl, popupAnswerOcrBtn);
       return;
     }
     if(evt.target.closest("#popupRubricList") && state.editingRubricId){
@@ -4024,6 +4203,8 @@ function syncRubricPopup(){
   if(popupAnswer && doc.activeElement !== popupAnswer) popupAnswer.value = els.answerText.value || "";
   const popupAutoDetectBtn = doc.getElementById("popupAutoDetectBtn");
   if(popupAutoDetectBtn) popupAutoDetectBtn.disabled = !state.pdf || isRubricLocked();
+  const popupAnswerOcrBtn = doc.getElementById("popupAnswerOcrBtn");
+  if(popupAnswerOcrBtn) popupAnswerOcrBtn.disabled = !state.pdf || isRubricLocked();
   list.innerHTML = els.rubricList.innerHTML;
   const subTotals = doc.getElementById("popupSubTotalList");
   if(subTotals) subTotals.innerHTML = els.subTotalList.innerHTML;
@@ -4187,7 +4368,7 @@ window.__omrRubricPopupSelect = async (kind, value) => {
   }
 };
 
-function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
+function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal, reviewIssuesByItem=new Map()){
   const qrec = currentQuestionRecord();
   const isCommonDeduct = isCommonDeductSub(sub);
   const isUnwritten = Boolean(qrec?.unwrittenSubs?.[sub]);
@@ -4234,6 +4415,17 @@ function renderRubricSubGroup(sub, items, scores, keywordHits, subTotal){
     if(state.editingRubricId && state.editingRubricId !== item.id) wrap.classList.add("editLocked");
     const selected = ["accept","reject"].some(type => keywordHits?.[item.id]?.[type]?.length);
     if(selected) wrap.classList.add("on");
+    const reviewIssues = reviewIssuesByItem.get(item.id) || [];
+    if(reviewIssues.length){
+      const severity = reviewIssues.some(issue => issue.severity === "warn") ? "warn" : "notice";
+      wrap.classList.add(severity === "warn" ? "reviewWarn" : "reviewNotice");
+      wrap.setAttribute("aria-label", `${item.name} · 검토 필요 · ${reviewIssues.map(issue => issue.type).join(", ")}`);
+      const reviewFlag = document.createElement("div");
+      reviewFlag.className = `criterionReviewFlag ${severity}`;
+      const reasons = [...new Set(reviewIssues.map(issue => issue.type))];
+      reviewFlag.innerHTML = `<span class="criterionReviewFlagLabel">검토 필요</span><span class="criterionReviewFlagText">${escapeHtml(reasons.join(" · "))}</span>`;
+      wrap.appendChild(reviewFlag);
+    }
     const head = document.createElement("div");
     head.className = "criterionHead";
     const title = document.createElement("div");
@@ -4740,6 +4932,51 @@ async function recognizeCropText(canvas, pageNumber, index, total){
     }
   });
   return result?.data?.text || "";
+}
+
+async function readCurrentAnswerWithOcr(answerEl=els.answerText, statusEl=els.autoDetectStatus, buttonEl=els.answerOcrBtn){
+  if(!state.pdf){
+    setAutoAssistStatus("PDF를 먼저 불러오세요.", true, statusEl);
+    return;
+  }
+  if(isRubricLocked()){
+    setAutoAssistStatus("채점 완료된 답안입니다. 수정하려면 채점 완료를 해제하세요.", true, statusEl);
+    return;
+  }
+  const originalLabel = buttonEl?.textContent || "OCR 읽어오기";
+  if(buttonEl){
+    buttonEl.disabled = true;
+    buttonEl.textContent = "OCR 읽는 중…";
+  }
+  setAutoAssistStatus("현재 답안 영역을 준비하는 중입니다.", false, statusEl);
+  try{
+    const canvas = await cropCanvasForPage(state.page);
+    const Tesseract = await loadTesseract();
+    const result = await Tesseract.recognize(canvas, "kor+eng", {
+      logger: message => {
+        if(message?.status === "recognizing text" && Number.isFinite(message.progress)){
+          setAutoAssistStatus(`답안 OCR 인식 중… ${Math.round(message.progress * 100)}%`, false, statusEl);
+        }
+      }
+    });
+    const text = String(result?.data?.text || "").trim();
+    if(answerEl) answerEl.value = text;
+    els.answerText.value = text;
+    if(rubricPopupWindow && !rubricPopupWindow.closed){
+      const popupAnswer = rubricPopupWindow.document.getElementById("popupAnswerText");
+      if(popupAnswer && popupAnswer !== answerEl) popupAnswer.value = text;
+    }
+    setAutoAssistStatus(text ? "OCR로 답안 텍스트를 읽었습니다. 내용을 확인한 뒤 키워드 자동 탐지를 실행하세요." : "OCR에서 텍스트를 찾지 못했습니다.", !text, statusEl);
+  }catch(err){
+    console.error(err);
+    setAutoAssistStatus(`답안 OCR을 완료하지 못했습니다: ${err.message}`, true, statusEl);
+    showToast("답안 OCR을 실행하지 못했습니다.");
+  }finally{
+    if(buttonEl){
+      buttonEl.disabled = !state.pdf || isRubricLocked();
+      buttonEl.textContent = originalLabel;
+    }
+  }
 }
 
 async function runUnwrittenOcrScan(){
@@ -5554,6 +5791,7 @@ function updateCompleteButton(){
   els.markAllUnwrittenBtn.disabled = !state.pdf || completed;
   els.clearCurrentBtn.disabled = !state.pdf || completed;
   if(els.addRubricBottomBtn) els.addRubricBottomBtn.disabled = !state.pdf;
+  if(els.answerOcrBtn) els.answerOcrBtn.disabled = !state.pdf || completed;
   if(els.autoDetectBtn) els.autoDetectBtn.disabled = !state.pdf || completed;
   syncRubricPopup();
 }
@@ -7198,6 +7436,7 @@ async function resetAllDataForNewExam(){
     return;
   }
   resetAppStateForNewExam();
+  await storePdfHandle(null);
   persist();
   applyAppTitle();
   applySettings();
@@ -8975,13 +9214,19 @@ async function mergePdfsAndDownload(){
       pages.forEach(p => merged.addPage(p));
     }
     const mergedBytes = await merged.save();
+    const filename = `merged_${dateStamp()}.pdf`;
     const blob = new Blob([mergedBytes], {type:"application/pdf"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `merged_${dateStamp()}.pdf`;
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    els.mergePdfStatus.textContent = `${files.length}개 PDF 병합 완료 · 다운로드된 파일을 채점 화면에서 불러오세요.`;
+    els.mergePdfStatus.textContent = `${files.length}개 PDF 병합 완료 · 채점 화면에 여는 중…`;
+    const mergedFile = new File([blob], filename, {type:"application/pdf", lastModified:Date.now()});
+    els.settingsModal.classList.add("hidden");
+    await openPdf(mergedFile);
+    els.mergePdfStatus.textContent = `${files.length}개 PDF 병합 완료 · 채점 화면에 바로 열었습니다.`;
+    showToast(`${files.length}개 PDF를 병합해 바로 열었습니다.`);
   }catch(err){
     console.error(err);
     alert(`PDF 병합 중 오류: ${err.message}`);
@@ -9095,7 +9340,8 @@ document.addEventListener("paste", async evt => {
     await saveExamCaptureFile(file);
   }
 });
-els.changePdfBtn.addEventListener("click", () => els.pdfInput.click());
+els.choosePdfBtn.addEventListener("click", chooseAndOpenPdf);
+els.changePdfBtn.addEventListener("click", chooseAndOpenPdf);
 els.calibrateBtn.addEventListener("click", () => setMode("calibrate"));
 els.fullPageBtn.addEventListener("click", toggleFullPage);
 els.studentCropBtn.addEventListener("click", toggleStudentCropMode);
@@ -9127,6 +9373,11 @@ els.settingsTutorialBtn.addEventListener("click", startTutorial);
 els.closeTutorialStartBtn.addEventListener("click", () => els.tutorialStartModal.classList.add("hidden"));
 els.tutorialChoosePdfBtn.addEventListener("click", chooseTutorialPdf);
 els.tutorialWithoutPdfBtn.addEventListener("click", () => startTutorial({withoutPdf:true}));
+els.restorePdfConfirmBtn.addEventListener("click", restoreLastPdf);
+els.restorePdfCancelBtn.addEventListener("click", () => els.restorePdfModal.classList.add("hidden"));
+els.restorePdfModal.addEventListener("click", evt => {
+  if(evt.target === els.restorePdfModal) els.restorePdfModal.classList.add("hidden");
+});
 els.tutorialStartModal.addEventListener("click", evt => {
   if(evt.target === els.tutorialStartModal) els.tutorialStartModal.classList.add("hidden");
 });
@@ -9351,6 +9602,7 @@ els.unwrittenOcrEnabledInput.addEventListener("change", () => {
 els.reviewAssistEnabledInput.addEventListener("change", () => {
   state.settings.reviewAssistEnabled = Boolean(els.reviewAssistEnabledInput.checked);
   applySettings();
+  renderRubric();
   persist();
 });
 els.comboFullCreditEnabledInput.addEventListener("change", () => {
@@ -9812,6 +10064,7 @@ window.addEventListener("keydown", evt => {
   handleGradingShortcut(evt);
 });
 
+els.answerOcrBtn.addEventListener("click", () => readCurrentAnswerWithOcr());
 els.autoDetectBtn.addEventListener("click", () => autoDetectKeywords());
 els.closeSourceHighlightModalBtn.addEventListener("click", () => els.sourceHighlightModal.classList.add("hidden"));
 els.sourceHighlightModal.addEventListener("click", evt => {
@@ -9829,6 +10082,7 @@ updateChrome();
 updateSaveDirectoryStatus();
 updateUndoButton();
 promptInitialSetupIfNeeded();
+if(!needsInitialSetup()) offerLastPdfRestore();
 </script>
 
 <div class="modalBackdrop hidden" id="sourceHighlightModal" role="dialog" aria-modal="true" aria-labelledby="sourceHighlightModalTitle">
