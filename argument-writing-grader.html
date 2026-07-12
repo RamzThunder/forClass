@@ -1963,7 +1963,7 @@ function studentRowHTML(st,i){
       <td class="name"><span class="studentName">${esc(st.name)||'(이름 없음)'}</span></td>
       <td>${criterionCellHTML(st,i,'clarity')}</td>
       <td>${criterionCellHTML(st,i,'validity')}</td>
-      <td>${sourceCellHTML(st,i)}</td>
+      <td class="sourceBox">${sourceCellHTML(st,i)}</td>
       <td>${criterionCellHTML(st,i,'structure')}</td>
       <td>${criterionCellHTML(st,i,'completion')}</td>
       <td class="totalCol"><div class="score ${totalClass(totalScore(st))}">${totalScore(st)}</div></td>
