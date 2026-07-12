@@ -2287,37 +2287,48 @@ function criterionMax(key){
 }
 
 function sourceScore(st){
-  const marks = st.sources.map(s => s.mark);
+  const cfg = sourceRubric;
+  const n = sourceRubricCount();
+  const marks = st.sources.slice(0,n).map(s => s.mark);
+  const noneScore = Number(cfg.scores.none)||0;
   const allBlank = marks.every(m => !m);
   const allX = marks.every(m => m === 'X');
-  if(allBlank || allX) return 5;
+  if(allBlank || allX) return noneScore;
 
   const oCount = marks.filter(m => m === 'O').length;
   const hasTriangle = marks.some(m => m === '△');
 
-  if(oCount === 3) return 20;
-  if(oCount === 2) return 15;
-  if(oCount >= 1 || hasTriangle) return 10;
+  if(oCount === n) return Number(cfg.scores.full)||0;
+  if(n >= 2 && oCount === n-1) return Number(cfg.scores.minusOne)||0;
+  if(oCount >= 1 || hasTriangle) return Number(cfg.scores.some)||0;
 
-  return 5;
+  return noneScore;
 }
 
 function sourceReason(st){
-  const marks = st.sources.map(s => s.mark);
+  const cfg = sourceRubric;
+  const n = sourceRubricCount();
+  const marks = st.sources.slice(0,n).map(s => s.mark);
   const oCount = marks.filter(m => m === 'O').length;
   const triCount = marks.filter(m => m === '△').length;
-  if(marks.every(m => m === 'X')) return '자료 미제출 · 5점';
-  if(marks.every(m => !m)) return '출처 미입력 · 5점';
-  if(oCount === 3) return 'O 3개 정확 표기 · 20점';
-  if(oCount === 2) return `O 2개 · 15점${triCount ? ` (△ ${triCount}개 점수 미반영)` : ''}`;
-  if(oCount >= 1) return `O ${oCount}개 · 10점${triCount ? ` (△ ${triCount}개 점수 미반영)` : ''}`;
-  if(triCount >= 1) return `△ ${triCount}개 출처 미비 기록 · 10점`;
-  return 'O·△ 없음 · 5점';
+  const fullPt = Number(cfg.scores.full)||0;
+  const minusOnePt = Number(cfg.scores.minusOne)||0;
+  const somePt = Number(cfg.scores.some)||0;
+  const nonePt = Number(cfg.scores.none)||0;
+  if(marks.every(m => m === 'X')) return `자료 미제출 · ${nonePt}점`;
+  if(marks.every(m => !m)) return `출처 미입력 · ${nonePt}점`;
+  if(oCount === n) return `O ${n}개 정확 표기 · ${fullPt}점`;
+  if(n >= 2 && oCount === n-1) return `O ${oCount}개 · ${minusOnePt}점${triCount ? ` (△ ${triCount}개 점수 미반영)` : ''}`;
+  if(oCount >= 1) return `O ${oCount}개 · ${somePt}점${triCount ? ` (△ ${triCount}개 점수 미반영)` : ''}`;
+  if(triCount >= 1) return `△ ${triCount}개 출처 미비 기록 · ${somePt}점`;
+  return `O·△ 없음 · ${nonePt}점`;
 }
 
 function totalScore(st){
   if(st && st.absent) return 40;
-  return criterionScore(st,'clarity') + criterionScore(st,'validity') + sourceScore(st) + criterionScore(st,'structure') + criterionScore(st,'completion');
+  let total = criterionScore(st,'clarity') + criterionScore(st,'validity') + criterionScore(st,'structure') + criterionScore(st,'completion');
+  if(sourceRubricEnabled()) total += sourceScore(st);
+  return total;
 }
 
 function totalClass(score){
