@@ -1507,6 +1507,7 @@ function normalizeState(raw){
     if(shared.rubric) writingRubric = normalizeRubric(shared.rubric);
     if(shared.criterionLabels) criterionLabels = {...criterionLabels, ...shared.criterionLabels};
     if(shared.memoPhrases) memoPhrases = normalizeMemoPhrases(shared.memoPhrases);
+    if(shared.sourceRubric) sourceRubric = normalizeSourceRubric(shared.sourceRubric);
     if(raw.savedAt) lastSavedAt = raw.savedAt;
     CLASSES.forEach(cls => {
       const arr = Array.isArray(raw.classes[cls]) ? raw.classes[cls] : [];
