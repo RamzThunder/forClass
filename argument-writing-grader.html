@@ -2395,7 +2395,7 @@ function renderStudentResult(){
     <div class="resultRows">
       ${studentCriterionHTML(st,'clarity')}
       ${studentCriterionHTML(st,'validity')}
-      ${studentSourceHTML(st)}
+      ${sourceRubricEnabled() ? studentSourceHTML(st) : ''}
       ${studentCriterionHTML(st,'structure')}
       ${studentCriterionHTML(st,'completion')}
     </div>
