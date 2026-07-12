@@ -3246,7 +3246,7 @@ function renderSettingsRubric(){
 }
 
 function saveRubricSettings(){
-  document.querySelectorAll('.rubricEdit').forEach(card => {
+  document.querySelectorAll('.rubricEdit[data-key]').forEach(card => {
     const key = card.dataset.key;
     criterionLabels[key] = card.querySelector('.rubricName').value.trim() || criterionLabels[key];
     writingRubric[key].base = Number(card.querySelector('.rubricBase').value) || 0;
@@ -3258,6 +3258,20 @@ function saveRubricSettings(){
       };
     });
   });
+
+  const sourceEnabledEl = document.getElementById('sourceRubricEnabled');
+  if(sourceEnabledEl){
+    sourceRubric.enabled = sourceEnabledEl.checked;
+    sourceRubric.count = Math.min(6, Math.max(1, Number(document.getElementById('sourceRubricCount').value) || sourceRubric.count));
+    sourceRubric.scores = {
+      full: Number(document.getElementById('sourceScoreFull').value) || 0,
+      minusOne: Number(document.getElementById('sourceScoreMinusOne').value) || 0,
+      some: Number(document.getElementById('sourceScoreSome').value) || 0,
+      none: Number(document.getElementById('sourceScoreNone').value) || 0
+    };
+    resizeAllSourcesToCount();
+  }
+
   document.querySelectorAll('.memoPhraseInput').forEach(input => {
     memoPhrases[input.dataset.phraseKey] = input.value
       .split(/\r?\n/)
