@@ -3002,6 +3002,9 @@ function markDirty(){
 }
 
 async function exportCSV(){
+  const srcCount = sourceRubricCount();
+  const srcHead = [];
+  for(let n=1;n<=srcCount;n++){ srcHead.push(`출처${n}`, `출처${n} 메모`); }
   const head = [
     '반','번호','이름','논의 필요','채점 완료','미응시',
     '주장의 명확성 점수','주장의 명확성 이유','주제 확인','주장의 명확성 메모',
@@ -3009,7 +3012,7 @@ async function exportCSV(){
     '근거1 타당성','근거1 적절한 자료','근거1 메모',
     '근거2 타당성','근거2 적절한 자료','근거2 메모',
     '근거3 타당성','근거3 적절한 자료','근거3 메모',
-    '출처1','출처1 메모','출처2','출처2 메모','출처3','출처3 메모','논거의 출처 점수','논거의 출처 이유',
+    ...srcHead,'논거의 출처 사용','논거의 출처 점수','논거의 출처 이유',
     '글의 짜임새 점수','글의 짜임새 이유','글의 짜임새 메모',
     '분량 도달 점수','분량 도달 이유','분량 도달 메모',
     '총점'
@@ -3019,15 +3022,18 @@ async function exportCSV(){
   CLASSES.forEach(cls => {
     state.classes[cls].forEach((st,i) => {
       if(!st) return;
+      const srcCells = [];
+      for(let n=0;n<srcCount;n++){
+        const src = st.sources[n] || {mark:'', memo:''};
+        srcCells.push(src.mark, src.memo);
+      }
       rows.push([
         cls, i+1, st.name, st.discuss ? 'Y' : '', st.complete ? 'Y' : '', st.absent ? 'Y' : '',
         criterionScore(st,'clarity'), scoreReason('clarity', criterionScore(st,'clarity'), st), clarityTopicLabel(st), st.clarity.memo,
         criterionScore(st,'validity'), scoreReason('validity', criterionScore(st,'validity'), st),
         ...validityCsvCells(st),
-        st.sources[0].mark, st.sources[0].memo,
-        st.sources[1].mark, st.sources[1].memo,
-        st.sources[2].mark, st.sources[2].memo,
-        sourceScore(st), sourceReason(st),
+        ...srcCells,
+        sourceRubricEnabled() ? 'Y' : '', sourceRubricEnabled() ? sourceScore(st) : '', sourceRubricEnabled() ? sourceReason(st) : '미사용',
         criterionScore(st,'structure'), scoreReason('structure', criterionScore(st,'structure'), st), st.structure.memo,
         criterionScore(st,'completion'), scoreReason('completion', criterionScore(st,'completion'), st), st.completion.memo,
         totalScore(st)
