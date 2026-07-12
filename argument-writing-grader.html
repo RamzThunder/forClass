@@ -2876,12 +2876,10 @@ function importCSVText(text){
     importCriterion(st, 'structure', row, idx, '글의 짜임새');
     importCriterion(st, 'completion', row, idx, '분량 도달', '글의 완결성');
 
-    st.sources[0].mark = normalizeMark(getCSV(row, idx, ['출처1','출처 1','자료1 출처','자료 1 출처']));
-    st.sources[0].memo = getCSV(row, idx, ['출처1 메모','출처 1 메모','출처1메모']) || '';
-    st.sources[1].mark = normalizeMark(getCSV(row, idx, ['출처2','출처 2','자료2 출처','자료 2 출처']));
-    st.sources[1].memo = getCSV(row, idx, ['출처2 메모','출처 2 메모','출처2메모']) || '';
-    st.sources[2].mark = normalizeMark(getCSV(row, idx, ['출처3','출처 3','자료3 출처','자료 3 출처']));
-    st.sources[2].memo = getCSV(row, idx, ['출처3 메모','출처 3 메모','출처3메모']) || '';
+    for(let n=0;n<st.sources.length;n++){
+      st.sources[n].mark = normalizeMark(getCSV(row, idx, [`출처${n+1}`,`출처 ${n+1}`,`자료${n+1} 출처`,`자료 ${n+1} 출처`]));
+      st.sources[n].memo = getCSV(row, idx, [`출처${n+1} 메모`,`출처 ${n+1} 메모`,`출처${n+1}메모`]) || '';
+    }
 
     next.classes[cls][num-1] = st;
     imported++;
