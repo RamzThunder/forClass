@@ -1945,7 +1945,7 @@ function renderTeacherTable(){
     ? singleStudentEditTarget.index
     : selectedTeacherIndex;
   const rows = [{st:students[index], i:index}].filter(x=>x.st);
-  tbody.innerHTML = rows.length ? rows.map(({st,i}) => studentRowHTML(st,i)).join('') : '<tr><td colspan="9"><div class="emptyState">선택할 학생 없음</div></td></tr>';
+  tbody.innerHTML = rows.length ? rows.map(({st,i}) => studentRowHTML(st,i)).join('') : `<tr><td colspan="${sourceRubricEnabled()?9:8}"><div class="emptyState">선택할 학생 없음</div></td></tr>`;
   autoGrowMemos(tbody);
 }
 
