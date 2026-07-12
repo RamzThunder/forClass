@@ -2047,7 +2047,7 @@ function sourceCellHTML(st,i){
   const allX = st.sources.every(s => s.mark === 'X');
   const blank = st.sources.every(s => !s.mark);
   return `
-    <div class="criterionScoreLine"><b>${sScore}점</b><span>기본 5점</span></div>
+    <div class="criterionScoreLine"><b>${sScore}점</b><span>기본 ${Number(sourceRubric.scores.none)||0}점</span></div>
     <div class="sourceTools">
       <button class="btn small danger" type="button" onclick="setAllSourcesX(${i})">전체 X</button>
       <button class="btn small" type="button" onclick="clearSources(${i})">출처 비우기</button>
