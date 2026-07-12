@@ -1483,12 +1483,12 @@ function normalizeStudent(st={}, num){
     base[k].score = criterionScore(base, k);
   });
   if(Array.isArray(st.sources)){
-    for(let i=0;i<3;i++){
+    for(let i=0;i<base.sources.length;i++){
       base.sources[i].mark = st.sources[i]?.mark ?? '';
       base.sources[i].memo = st.sources[i]?.memo ?? '';
     }
   } else if(Array.isArray(st.src)){
-    for(let i=0;i<3;i++){
+    for(let i=0;i<base.sources.length;i++){
       base.sources[i].mark = normalizeMark(st.src[i] ?? '');
       base.sources[i].memo = (st.srcMemos || st.memos || [])[i] ?? '';
     }
