@@ -3198,6 +3198,35 @@ function renderSettingsRubric(){
       </div>`).join('')}
     </div>`;
   }).join('') + `
+    <div class="rubricEdit">
+      <div class="rubricTop" style="grid-template-columns:1fr">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:900;color:#374151;font-size:13px">
+          <input type="checkbox" id="sourceRubricEnabled" style="width:auto" ${sourceRubricEnabled()?'checked':''}>
+          출처 제출 루브릭(논거의 출처) 사용
+        </label>
+      </div>
+      <div class="rubricOpt">
+        <input value="출처 개수" disabled>
+        <input type="number" id="sourceRubricCount" min="1" max="6" value="${sourceRubricCount()}">
+      </div>
+      <div class="rubricOpt">
+        <input value="전체 제출(O) 점수" disabled>
+        <input type="number" id="sourceScoreFull" value="${Number(sourceRubric.scores.full)||0}">
+      </div>
+      <div class="rubricOpt">
+        <input value="1개 부족(O) 점수" disabled>
+        <input type="number" id="sourceScoreMinusOne" value="${Number(sourceRubric.scores.minusOne)||0}">
+      </div>
+      <div class="rubricOpt">
+        <input value="일부 제출·△ 포함 점수" disabled>
+        <input type="number" id="sourceScoreSome" value="${Number(sourceRubric.scores.some)||0}">
+      </div>
+      <div class="rubricOpt">
+        <input value="미제출·미입력 점수" disabled>
+        <input type="number" id="sourceScoreNone" value="${Number(sourceRubric.scores.none)||0}">
+      </div>
+      <p class="settingHint" style="margin:8px 0 0">사용을 끄면 채점표와 학생 확인용 화면에서 이 영역이 숨겨지고 총점 계산에서 제외됩니다. 출처 개수를 줄이면 초과분 표기·메모는 저장에서 제외됩니다.</p>
+    </div>
     <div class="phraseSettings">
       <div class="settingHint" style="margin-bottom:8px">항목별 자주 쓰는 메모 문구를 한 줄에 하나씩 입력합니다.</div>
       ${[
