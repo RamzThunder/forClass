@@ -1256,6 +1256,58 @@ let criterionLabels = {
   completion:'분량 도달'
 };
 
+let sourceRubric = {
+  enabled:true,
+  count:3,
+  scores:{full:20, minusOne:15, some:10, none:5}
+};
+
+function sourceRubricEnabled(){
+  return sourceRubric.enabled !== false;
+}
+
+function sourceRubricCount(){
+  return Math.min(6, Math.max(1, Number(sourceRubric.count) || 3));
+}
+
+function normalizeSourceRubric(raw){
+  const base = JSON.parse(JSON.stringify(sourceRubric));
+  if(!raw || typeof raw !== 'object') return base;
+  base.enabled = raw.enabled !== false;
+  base.count = Math.min(6, Math.max(1, Number(raw.count) || base.count));
+  if(raw.scores && typeof raw.scores === 'object'){
+    ['full','minusOne','some','none'].forEach(k => {
+      if(raw.scores[k] !== undefined) base.scores[k] = Number(raw.scores[k]) || 0;
+    });
+  }
+  return base;
+}
+
+function resizeAllSourcesToCount(){
+  const count = sourceRubricCount();
+  CLASSES.forEach(cls => {
+    (state.classes[cls] || []).forEach(st => {
+      if(!st) return;
+      st.sources = Array.from({length:count}, (_,i) => st.sources[i] ? st.sources[i] : {mark:'', memo:''});
+    });
+  });
+}
+
+function sourceRubricTitle(){
+  const cfg = sourceRubric;
+  const n = sourceRubricCount();
+  const parts = [`${n}개 모두 O = ${Number(cfg.scores.full)||0}점`];
+  if(n >= 2) parts.push(`${n-1}개 O = ${Number(cfg.scores.minusOne)||0}점`);
+  parts.push(`일부 O 또는 △ 포함 = ${Number(cfg.scores.some)||0}점`);
+  parts.push(`전체 X·미입력 = ${Number(cfg.scores.none)||0}점`);
+  return parts.join(' / ') + '. △는 점수 미반영이나 미제출·미입력과 구분됨.';
+}
+
+function totalMaxScore(){
+  const base = ['clarity','validity','structure','completion'].reduce((sum,k)=>sum+criterionMax(k),0);
+  return sourceRubricEnabled() ? base + (Number(sourceRubric.scores.full)||0) : base;
+}
+
 const CLARITY_TOPICS = {
   topic1:{label:'주제1', text:'설정에서 주제 확인 문구를 수정하세요.'},
   topic2:{label:'주제2', text:'설정에서 주제 확인 문구를 수정하세요.'},
