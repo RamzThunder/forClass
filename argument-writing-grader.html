@@ -1625,6 +1625,21 @@ function applyAppTitle(){
     const th = document.getElementById(`head-${key}`);
     if(th) th.innerHTML = `${esc(criterionLabels[key])}<span style="font-weight:400">(${criterionMax(key)})</span>`;
   });
+  document.body.classList.toggle('sourceRubricOff', !sourceRubricEnabled());
+  const sourceTh = document.getElementById('head-source');
+  if(sourceTh){
+    sourceTh.title = sourceRubricTitle();
+    sourceTh.innerHTML = `논거의 출처<span style="font-weight:400">(${Number(sourceRubric.scores.full)||0})</span>`;
+  }
+  updateRulesText();
+}
+
+function updateRulesText(){
+  const el = document.getElementById('rulesDetail');
+  if(!el) return;
+  el.textContent = sourceRubricEnabled()
+    ? `각 영역 배점 합산 · 논거의 출처 포함 / 총 ${totalMaxScore()}점`
+    : `각 영역 배점 합산 · 논거의 출처 루브릭 사용 안 함 / 총 ${totalMaxScore()}점`;
 }
 
 function setView(nextView){
