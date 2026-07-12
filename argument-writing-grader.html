@@ -1393,11 +1393,7 @@ function defaultStudent(num){
     absent:false,
     clarity:{score:'', checks:[], memo:'', topic:''},
     validity:{score:'', checks:[], parts:[[false,false],[false,false],[false,false]], memo:'', reasonMemos:['','','']},
-    sources:[
-      {mark:'', memo:''},
-      {mark:'', memo:''},
-      {mark:'', memo:''}
-    ],
+    sources:Array.from({length:sourceRubricCount()}, () => ({mark:'', memo:''})),
     structure:{score:'', checks:[], memo:''},
     completion:{score:'', checks:[], memo:''}
   };
