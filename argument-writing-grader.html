@@ -1152,6 +1152,7 @@
       </section>
 
       <section class="settingPanel" id="setting-roster">
+        <div data-shared-roster-status></div>
         <p class="settingHint">반을 고른 뒤 명단을 붙여넣으세요. 번호가 있으면 번호 순서에 맞춰 들어가고, 이름만 있으면 1번부터 채웁니다.</p>
         <div class="rosterTabs" id="settingsRosterTabs"></div>
         <textarea id="settingsRosterText" placeholder="1 김민수&#10;2 이서연&#10;3 박지후"></textarea>
@@ -1195,10 +1196,11 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="shared-roster.js"></script>
 <script>
 const DEFAULT_CLASSES = ['1','2','3','4','5','6'];
 let CLASSES = [...DEFAULT_CLASSES];
-const STUDENTS_PER_CLASS = 31;
+let STUDENTS_PER_CLASS = 31;
 const LS_KEY = 'public_argument_writing_grader_v1';
 const LS_MIRROR = 'public_argument_writing_grader_v1_mirror';
 const LAST_BACKUP_KEY = 'public_argument_writing_grader_lastbackup';
@@ -1498,6 +1500,7 @@ function normalizeStudent(st={}, num){
 }
 
 function normalizeState(raw){
+  STUDENTS_PER_CLASS = Math.max(31, ...Object.values(raw?.classes || {}).map(list=>Array.isArray(list)?list.length:0));
   if(raw && raw.shared && raw.shared.classList){
     CLASSES = normalizeClassList(raw.shared.classList);
   }
@@ -1597,7 +1600,21 @@ function init(){
       }catch(e){ state = emptyState(); }
     }
   }
+  SharedRoster.connect(applySharedWritingRoster, ['#classListInput', '#settingsRosterText', '[onclick="saveRosterSettings()"]']);
+  singleStudentEditTarget = readLinkedStudentTarget();
   renderAll();
+}
+
+function applySharedWritingRoster(data){
+  SharedRoster.backup(LS_KEY, data.revision);
+  state.classes = SharedRoster.project(data, state.classes, s=>({...defaultStudent(s.number),name:s.name}), true);
+  CLASSES = Object.keys(state.classes);
+  STUDENTS_PER_CLASS = Math.max(31, ...data.students.map(s=>s.number));
+  if(!CLASSES.includes(activeClass)) activeClass = CLASSES[0];
+  studentClass = activeClass;
+  selectedTeacherIndex = firstPresentStudentIndex(activeClass);
+  selectedStudentIndex = null;
+  persistState();
 }
 
 function renderAll(){
@@ -2796,6 +2813,7 @@ function loadData(){
   }
   try{
     state = normalizeState(JSON.parse(raw));
+    if(SharedRoster.load()) applySharedWritingRoster(SharedRoster.load());
     showToast('저장 자료를 불러왔습니다');
     renderAll();
   }catch(e){
@@ -2887,6 +2905,7 @@ function importCSVText(text){
 
   if(!imported) throw new Error('No rows imported');
   state = next;
+  if(SharedRoster.load()) applySharedWritingRoster(SharedRoster.load());
   selectedStudentIndex = null;
 }
 
@@ -2992,6 +3011,7 @@ async function clearAll(){
   state = emptyState();
   localStorage.removeItem(LS_KEY);
   localStorage.removeItem(LS_MIRROR);
+  if(SharedRoster.load()) applySharedWritingRoster(SharedRoster.load());
   showToast('전체 초기화되었습니다');
   selectedStudentIndex = null;
   renderAll();
@@ -3299,6 +3319,7 @@ async function importBackupFile(event){
   try{
     const text = await file.text();
     state = normalizeState(JSON.parse(text));
+    if(SharedRoster.load()) applySharedWritingRoster(SharedRoster.load());
     saveData();
     renderAll();
     showToast('백업을 불러왔습니다');

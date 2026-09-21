@@ -1,3 +1,5 @@
 .DS_Store
 *.hwpx
 .claude/settings.local.json
+# Local student roster samples and exports
+/*.csv

@@ -1148,6 +1148,7 @@ textarea{min-height:72px;resize:vertical}
         <div class="questionSettingsList" id="questionSettingsList"></div>
       </section>
       <section class="panel settingsPane hidden" id="settingsRosterPane">
+        <div data-shared-roster-status></div>
         <div class="panelHead">
           <h2 class="panelTitle">학생 명렬</h2>
           <div class="compactBtns">
@@ -1440,6 +1441,7 @@ textarea{min-height:72px;resize:vertical}
   </div>
 </div>
 
+<script src="shared-roster.js"></script>
 <script type="module">
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
@@ -1599,6 +1601,7 @@ function loadSavedState(){
     if(saved.crop) state.questions[0].crop = saved.crop;
     if(Array.isArray(saved.rubric)) state.questions[0].rubric = saved.rubric;
     if(Array.isArray(saved.roster)) state.roster = saved.roster;
+    state.answerRoster = Array.isArray(saved.answerRoster) ? saved.answerRoster : null;
     if(Array.isArray(saved.missingRosterKeys)) state.missingRosterKeys = saved.missingRosterKeys;
     if(saved.records) state.records = saved.records;
     state.appTitle = saved.appTitle || saved.title || state.appTitle;
@@ -1613,6 +1616,7 @@ function loadSavedState(){
   normalizeQuestions();
   normalizeRecords();
   cleanupAllRecords();
+  SharedRoster.connect(applySharedOmrRoster, ["#rosterText", "#rosterFileInput", "#applyRosterBtn"]);
   applyRosterToRecords();
   els.rosterText.value = state.roster.map(formatRosterLine).join("\n");
   updateQuestionControls();
@@ -1883,6 +1887,7 @@ function persist(){
     lastPdfPageCount:state.pageCount || state.lastPdfPageCount || 0,
     questions:state.questions,
     roster:state.roster,
+    answerRoster:state.answerRoster || null,
     missingRosterKeys:state.missingRosterKeys,
     records:state.records,
     settings:state.settings
@@ -2164,7 +2169,7 @@ function normalizeRubric(rubric){
       rejectScores:item.rejectScores || {},
       rejectDeduct:Number(item.rejectDeduct ?? item.rejectPt ?? item.rejectScore ?? 0) || 0
     };
-  }).filter(item => item.name && (item.type === "deduct" || item.pt > 0 || item.accept || item.reject));
+  }).filter(item => item.name);
 }
 
 function normalizeQuestionSubs(question){
@@ -7388,6 +7393,8 @@ function buildJsonBackup(){
     sidebarWidth:sidebarWidth(),
     questions:structuredClone(state.questions),
     roster:structuredClone(state.roster),
+    answerRoster:structuredClone(state.answerRoster || null),
+    missingRosterKeys:structuredClone(state.missingRosterKeys || []),
     records:structuredClone(state.records),
     settings:structuredClone(state.settings)
   };
@@ -7414,7 +7421,9 @@ function resetAppStateForNewExam(){
   state.studentCropMode = false;
   state.activeStudentCropArea = 1;
   state.questions = structuredClone(defaultQuestions);
-  state.roster = [];
+  state.roster = (SharedRoster.load()?.students || []).map(s=>({className:s.className,number:String(s.number),name:s.name}));
+  state.answerRoster = null;
+  els.rosterText.value = state.roster.map(formatRosterLine).join("\n");
   state.records = {};
   cropDraft = null;
   cropCompositeMode = false;
@@ -7475,6 +7484,8 @@ function importJsonBackup(payload){
   if(data.crop) state.questions[0].crop = data.crop;
   if(Array.isArray(data.rubric)) state.questions[0].rubric = data.rubric;
   state.roster = nextRoster;
+  state.answerRoster = Array.isArray(data.answerRoster) ? data.answerRoster : null;
+  state.missingRosterKeys = Array.isArray(data.missingRosterKeys) ? data.missingRosterKeys : [];
   state.records = nextRecords;
   state.settings = {...state.settings, ...(data.settings || {})};
   state.activeQuestion = data.activeQuestion || state.questions[0]?.id || state.activeQuestion;
@@ -7484,6 +7495,7 @@ function importJsonBackup(payload){
   normalizeRecords();
   cleanupAllRecords();
   if(!state.questions.some(q => q.id === state.activeQuestion)) state.activeQuestion = state.questions[0].id;
+  if(SharedRoster.load()) applySharedOmrRoster(SharedRoster.load());
   els.rosterText.value = state.roster.map(formatRosterLine).join("\n");
   updateQuestionControls();
   updateRosterStatus();
@@ -7833,6 +7845,11 @@ function removeKeywordChipWithGuard(removeButton){
 }
 
 function addInlineRubricItem(type="score", sub=subOptions()[0]){
+  if(state.editingRubricId && activeRubric().some(item => item.id === state.editingRubricId)){
+    showToast("현재 편집 중인 루브릭을 먼저 적용하거나 닫아주세요.");
+    focusInlineRubricEditor();
+    return;
+  }
   const item = type === "deduct" ? deductTemplateItem(createRubricId(), sub) : {
     id:createRubricId(),
     type,
@@ -7852,6 +7869,17 @@ function addInlineRubricItem(type="score", sub=subOptions()[0]){
   persist();
   renderRubric();
   updateResults();
+  focusInlineRubricEditor();
+}
+
+function focusInlineRubricEditor(){
+  requestAnimationFrame(() => {
+    const input = els.rubricList.querySelector(".inlineRubricEditor .rubricNameInput");
+    if(!input) return;
+    input.scrollIntoView({block:"center", behavior:"instant"});
+    input.focus({preventScroll:true});
+    input.select();
+  });
 }
 
 function deductTemplateItem(id=createRubricId(), sub=subOptions()[0]){
@@ -8498,6 +8526,30 @@ function hashText(text){
   return Math.abs(hash).toString(36);
 }
 
+function applySharedOmrRoster(data){
+  SharedRoster.backup(STORAGE_KEY, data.revision);
+  const next = data.students.map(s=>({className:s.className,number:String(s.number),name:s.name}));
+  const oneGrade = new Set(data.students.map(s=>s.grade)).size === 1;
+  const canonical = student=>{
+    const match = data.students.find(s=>s.number === Number(student.number) && s.name === student.name &&
+      (s.className === student.className || (oneGrade && s.classNumber === String(student.className).replace(/반$/, ''))));
+    return match ? {className:match.className,number:String(match.number),name:match.name} : student;
+  };
+  // PDF pages keep their original student order, including historical students.
+  // A newly created exam uses the latest shared roster without this snapshot.
+  const previous = state.answerRoster || state.roster;
+  const mapped = previous.map(canonical);
+  if(previous.length && (Object.keys(state.records).length || state.lastPdfName) && JSON.stringify(mapped) !== JSON.stringify(next))
+    state.answerRoster = mapped;
+  else if(state.answerRoster) state.answerRoster = mapped;
+  const missing = new Set(state.missingRosterKeys || []);
+  state.missingRosterKeys = previous.filter(s=>missing.has(rosterStudentKey(s))).map(s=>rosterStudentKey(canonical(s)));
+  state.roster = next;
+  els.rosterText.value = next.map(formatRosterLine).join("\n");
+  applyRosterToRecords();
+  persist();
+}
+
 function parseRoster(text){
   return text.split(/\n+/).map(line => line.trim()).filter(Boolean).map(line => {
     const parts = line.includes(",") || line.includes("\t")
@@ -8543,7 +8595,7 @@ function isRosterStudentMissing(student){
 
 function visibleRosterEntries(){
   const missing = missingRosterKeySet();
-  return currentRoster()
+  return (state.answerRoster || currentRoster())
     .map((student, index) => ({student, rosterIndex:index + 1}))
     .filter(entry => !missing.has(rosterStudentKey(entry.student)));
 }
@@ -8573,14 +8625,14 @@ function updateRosterStatus(){
   const suffix = classCount ? ` · ${classCount}개 반` : "";
   const rosterLength = currentRoster().length;
   const missingCount = missingRosterKeySet().size;
-  els.rosterStatus.textContent = rosterLength ? `${rosterLength}명 입력됨${suffix}${missingCount ? ` · OMR 없음 ${missingCount}명` : ""}` : "명렬 없음";
+  els.rosterStatus.textContent = rosterLength ? `${rosterLength}명 입력됨${suffix}${missingCount ? ` · OMR 없음 ${missingCount}명` : ""}${state.answerRoster ? " · 기존 PDF의 학생 연결 유지 중 (새 평가에는 최신 명렬 적용)" : ""}` : "명렬 없음";
   renderMissingRosterList();
 }
 
 function renderMissingRosterList(){
   if(!els.missingRosterList) return;
   const missing = missingRosterKeySet();
-  const rows = currentRoster()
+  const rows = (state.answerRoster || currentRoster())
     .filter(student => missing.has(rosterStudentKey(student)))
     .map(student => `
       <button class="btn mini missingRosterClearBtn" type="button" data-key="${escapeHtml(rosterStudentKey(student))}">
@@ -8593,7 +8645,7 @@ function renderMissingRosterList(){
 }
 
 function pruneMissingRosterKeys(){
-  const valid = new Set(currentRoster().map(rosterStudentKey));
+  const valid = new Set((state.answerRoster || currentRoster()).map(rosterStudentKey));
   state.missingRosterKeys = (Array.isArray(state.missingRosterKeys) ? state.missingRosterKeys : [])
     .filter(key => valid.has(key));
 }
@@ -8894,22 +8946,7 @@ function updateJpgSelection(){
 }
 
 function parseRosterFromCsv(text){
-  const lines = text.replace(/\r/g,"").split("\n").map(l => l.trim()).filter(Boolean);
-  if(!lines.length) return "";
-  const sample = lines[0];
-  const delim = sample.includes("\t") ? "\t" : sample.includes(";") ? ";" : ",";
-  const headerKw = ["반","번호","이름","class","number","name","학번","학생","성명"];
-  const dataLines = lines.filter((line, i) => {
-    if(i !== 0) return true;
-    const cols = line.split(delim).map(c => c.toLowerCase());
-    return !headerKw.some(k => cols.some(c => c.includes(k.toLowerCase())));
-  });
-  return dataLines.map(line => {
-    const cols = line.split(delim).map(c => c.replace(/^"|"$/g,"").trim());
-    if(cols.length >= 3) return `${cols[0]},${cols[1]},${cols[2]}`;
-    if(cols.length === 2) return `,${cols[0]},${cols[1]}`;
-    return null;
-  }).filter(Boolean).join("\n");
+  return SharedRoster.parse(text).map(formatRosterLine).join("\n");
 }
 
 function externalScoreTemplateRows(){
@@ -9682,8 +9719,9 @@ els.answerZoomResetBtn.addEventListener("click", () => setAnswerZoom(1));
 els.rosterFileInput.addEventListener("change", async () => {
   const file = els.rosterFileInput.files?.[0];
   if(!file) return;
-  const text = await file.text();
-  const parsed = parseRosterFromCsv(text);
+  let parsed;
+  try{parsed = (await SharedRoster.readFile(file)).map(formatRosterLine).join("\n");}
+  catch(error){alert(error.message);els.rosterFileInput.value = "";return;}
   if(!parsed){ alert("명렬을 인식할 수 없습니다. 반,번호,이름 형식의 CSV/TSV 파일을 사용하세요."); return; }
   els.rosterText.value = parsed;
   state.roster = parseRoster(els.rosterText.value);

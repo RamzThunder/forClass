@@ -414,6 +414,7 @@
     </section>
 
     <section class="settingpanel" id="setting-roster">
+      <div data-shared-roster-status></div>
       <p class="hint">엑셀·한셀에서 이름 열을 복사해 붙여넣으세요. 한 줄에 한 명. <b>3 김민수</b>처럼 번호가 붙어 있어도 자동 인식합니다.</p>
       <div class="classedit">
         <div class="classedit-head"><span class="classedit-title">반 구성</span><button class="classedit-add" id="addClassBtn">+ 반 추가</button></div>
@@ -490,6 +491,7 @@
 <input type="file" id="paperFile" accept="application/json" style="display:none">
 <div class="toast" id="toast"></div>
 
+<script src="shared-roster.js"></script>
 <script>
 const LS="public_logical_speaking_grader_v1";
 const LS_MIRROR="public_logical_speaking_grader_v1_mirror"; // 이중 저장용 백업 슬롯
@@ -804,6 +806,17 @@ function safeFileName(s){return String(s||DEFAULT_APP_TITLE).replace(/[\\/:*?"<>
 function updateAppTitle(){
   document.title=appTitle;
   const el=document.getElementById('appTitle');if(el)el.textContent=appTitle;
+}
+
+function applySharedSpeakingRoster(data){
+  SharedRoster.backup(LS, data.revision);
+  classStudents[currentClass] = state.students;
+  classStudents = SharedRoster.project(data, classStudents, s=>({...parseRoster(`${s.number} ${s.name}`)[0],id:`shared_${s.className}_${s.number}_${crypto.randomUUID()}`}));
+  classes = Object.keys(classStudents);
+  if(!classes.includes(currentClass)) currentClass = classes[0];
+  state.students = classStudents[currentClass];
+  if(!state.students.some(s=>s.id === state.current)) state.current = null;
+  save();
 }
 
 /* 명단 */
@@ -2166,6 +2179,7 @@ function initRosterSettings(){
   const ta=document.getElementById('rosterText');if(ta){ta.value=editRosterTexts[editRosterIndex]||'';ta.oninput=()=>{saveDraftRosterText();updateRosterEditCount();};}
 }
 function applyClassConfig(){
+  if(SharedRoster.load()){toast("공통 명렬은 홈에서 수정해 주세요.");return false;}
   saveDraftRosterText();
   const next=editClasses.map(x=>String(x).trim());
   if(!next.length||next.some(x=>!x)){toast('반 이름을 모두 입력해 주세요');return false;}
@@ -2394,14 +2408,16 @@ document.getElementById('resetAll').onclick=async()=>{
     state.phrases=["목소리 또렷함","시선 처리 좋음","근거 보강 필요","반박 인상적","시간 초과"];
     state.okMin=150;state.okMax=180;
     currentClass=classes[0];state.students=classStudents[currentClass];state.current=null;
+    if(SharedRoster.load()) applySharedSpeakingRoster(SharedRoster.load());
     save();
     closeOv(document.getElementById('ovResult'));
     renderClassBar();renderRoster();renderStage();
-    toast('초기화 완료 — 빈 명단으로 시작해요');
+    toast(SharedRoster.load()?'초기화 완료 — 공통 명렬이 적용되었습니다':'초기화 완료 — 빈 명단으로 시작해요');
   },800);
 };
 document.getElementById('jsonFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
   if(!applyLoaded(d))throw new Error('load failed');
+  if(SharedRoster.load()) applySharedSpeakingRoster(SharedRoster.load());
   state.current=null;save();renderClassBar();renderRoster();renderResult();renderStage();toast('불러오기 완료')}catch(x){toast('파일을 읽을 수 없습니다')}};r.readAsText(f);e.target.value=''};
 document.getElementById('paperFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);const res=importPaperData(d);if(!res)throw new Error('paper load failed');const extra=res.unmatched?` · 미매칭 ${res.unmatched}명`:'';toast(`종이 데이터 반영 ${res.updated}명${extra}`);}catch(x){toast('종이 데이터 파일을 읽을 수 없습니다')}};r.readAsText(f);e.target.value=''};
 function dl(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
@@ -2467,6 +2483,7 @@ if(!hadSaved){
 }
 if(!classStudents[currentClass])classStudents[currentClass]=state.students;
 state.students=classStudents[currentClass]||[];
+SharedRoster.connect(applySharedSpeakingRoster, ['#rosterText', '#rosterApply', '#addClassBtn']);
 updateAppTitle();
 renderClassBar();renderRoster();renderStage();
 openLinkedStudentFromUrl();

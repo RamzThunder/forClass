@@ -178,6 +178,20 @@ footer .wrap{
   color:var(--muted);
   font-size:12px;
 }
+main{min-width:0}
+.rosterPanel{min-width:0;margin:32px auto 48px;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:20px;max-width:940px}
+.rosterPanel h2{margin:0 0 10px;font-size:22px}
+.rosterPanel p{color:var(--muted);line-height:1.7}
+.rosterActions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}
+.rosterActions button,.rosterActions select,.rosterActions input{font:inherit;max-width:100%}
+.rosterActions button{padding:10px 16px;border:1px solid var(--accent);border-radius:10px;background:var(--accent);color:white;cursor:pointer}
+.rosterActions button:disabled{opacity:.45;cursor:default}
+.rosterActions select{padding:8px;border:1px solid var(--line);border-radius:8px}
+.rosterTable{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.rosterTable table{width:100%;border-collapse:collapse;text-align:left}
+.rosterTable th,.rosterTable td{padding:10px 16px;border-bottom:1px solid var(--line)}
+.rosterTable th{position:sticky;top:0;background:var(--bg)}
+#rosterMessage{min-height:1.7em}
 
 @media (max-width:620px){
   .hero{padding-top:64px}
@@ -244,11 +258,31 @@ footer .wrap{
         </div>
       </a>
     </section>
+    <div class="wrap">
+      <section class="rosterPanel" id="shared-roster" aria-labelledby="rosterTitle">
+        <h2 id="rosterTitle">공통 학생 명렬</h2>
+        <p>학생 명렬을 한 번 등록하면 지필·글쓰기·말하기 채점기에 함께 적용됩니다.<br>CSV의 학년, 반, 번호, 성명(이름)을 읽습니다. 전학 등으로 빠진 번호는 채우지 않고 원래 번호를 유지합니다.</p>
+        <p id="savedRosterSummary">등록된 명렬이 없습니다.</p>
+        <div class="rosterActions">
+          <label for="sharedRosterFile">명렬 CSV 첨부</label>
+          <input id="sharedRosterFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values">
+          <button id="saveSharedRoster" type="button" disabled>세 채점기에 적용</button>
+        </div>
+        <p id="rosterMessage" role="status" aria-live="polite">파일을 첨부한 뒤 학생 목록을 확인해 주세요.</p>
+        <div id="rosterPreview" hidden>
+          <div class="rosterActions"><label for="rosterClassFilter">반별 확인</label><select id="rosterClassFilter"></select><span id="rosterCount"></span></div>
+          <div class="rosterTable"><table><thead><tr><th scope="col">학년</th><th scope="col">반</th><th scope="col">번호</th><th scope="col">성명</th></tr></thead><tbody id="rosterRows"></tbody></table></div>
+        </div>
+        <p>같은 브라우저와 같은 사이트에서 공유됩니다. 이미 열어 둔 채점기는 작업을 저장한 뒤 새로고침해 주세요.</p>
+      </section>
+    </div>
   </main>
 
   <footer>
     <div class="wrap">평가 도구 모음</div>
   </footer>
 </div>
+<script src="shared-roster.js"></script>
+<script src="roster-manager.js"></script>
 </body>
 </html>
