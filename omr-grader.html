@@ -1257,7 +1257,7 @@ textarea{min-height:72px;resize:vertical}
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
             <span class="label">인정·미인정 키워드 연계</span>
-            <span class="statusLine">루브릭 편집에서 점수 인정 문구(또는 미인정 문구)별로 미인정 문구를 연계해 두면, 해당 문구를 누를 때 연계된 미인정 문구도 함께 선택됩니다.</span>
+            <span class="statusLine">루브릭 편집에서 점수 인정 문구(또는 미인정 문구)별로 미인정 문구를 연계해 두면, 해당 문구를 누를 때 연계된 미인정 문구도 함께 선택되며, 연계가 이어진 문구까지 연쇄로 선택됩니다.</span>
           </span>
           <input id="keywordLinkEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
@@ -4580,6 +4580,20 @@ function setSourceTextForSub(sub, value, question=activeQuestion()){
   else delete question.subSourceTexts[sub];
 }
 
+function linkedRejectClosure(item, startNodes){
+  const found = new Set();
+  const rejectKeywords = splitKeywords(item?.reject);
+  const queue = [...startNodes];
+  while(queue.length){
+    const node = queue.shift();
+    const target = (node.type === "accept" ? item.acceptLinks : item.rejectLinks)?.[node.keyword];
+    if(!target || found.has(target) || !rejectKeywords.includes(target)) continue;
+    found.add(target);
+    queue.push({type:"reject", keyword:target});
+  }
+  return found;
+}
+
 function toggleKeywordHit(itemId, type, keyword){
   if(!guardRubricUnlocked()) return;
   const item = activeRubric().find(entry => entry.id === itemId);
@@ -4595,14 +4609,19 @@ function toggleKeywordHit(itemId, type, keyword){
   const isOn = currentList.includes(keyword);
   itemHits[type] = isOn ? currentList.filter(value => value !== keyword) : currentList.concat(keyword);
   itemHits.partial = [];
-  const linkMap = type === "accept" ? item.acceptLinks : item.rejectLinks;
-  const linkedReject = state.settings?.keywordLinkEnabled ? linkMap?.[keyword] : "";
-  if(linkedReject && linkedReject !== keyword && splitKeywords(item.reject).includes(linkedReject)){
+  if(state.settings?.keywordLinkEnabled){
     const rejectList = Array.isArray(itemHits.reject) ? itemHits.reject : [];
+    const chained = linkedRejectClosure(item, [{type, keyword}]);
+    chained.delete(type === "reject" ? keyword : "");
     if(!isOn){
-      if(!rejectList.includes(linkedReject)) itemHits.reject = rejectList.concat(linkedReject);
-    }else if(!itemHits[type].some(other => linkMap?.[other] === linkedReject)){
-      itemHits.reject = rejectList.filter(value => value !== linkedReject);
+      itemHits.reject = rejectList.concat([...chained].filter(value => !rejectList.includes(value)));
+    }else if(chained.size){
+      const roots = [
+        ...(itemHits.accept || []).map(value => ({type:"accept", keyword:value})),
+        ...rejectList.filter(value => !chained.has(value)).map(value => ({type:"reject", keyword:value}))
+      ];
+      const stillNeeded = linkedRejectClosure(item, roots);
+      itemHits.reject = rejectList.filter(value => !chained.has(value) || stillNeeded.has(value));
     }
   }
   const hasHits = ["accept","reject"].some(hitType => itemHits[hitType]?.length);
