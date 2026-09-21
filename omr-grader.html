@@ -8336,7 +8336,9 @@ function keywordTypeForItem(item, keyword){
 function scoreFromKeywordHits(item, hits){
   const accept = (hits.accept || []).reduce((sum, keyword) => sum + keywordScore(item, "accept", keyword), 0);
   const reject = (hits.reject || []).reduce((sum, keyword) => sum + keywordScore(item, "reject", keyword), 0);
-  return accept - reject;
+  const score = accept - reject;
+  // 채점용 항목의 감점은 해당 항목 안에서만 적용한다(0점 미만으로 내려가 다른 항목 점수를 깎지 않음).
+  return item?.type === "deduct" ? score : Math.max(0, score);
 }
 
 function keywordScore(item, type, keyword){
@@ -8348,7 +8350,8 @@ function keywordScore(item, type, keyword){
 }
 
 function scoreValue(scores, item){
-  return scores?.[item.id] ?? scores?.[item.name] ?? 0;
+  const value = scores?.[item.id] ?? scores?.[item.name] ?? 0;
+  return item?.type === "deduct" ? value : Math.max(0, Number(value) || 0);
 }
 
 function rubricTotal(rubric, scores, question=activeQuestion()){
