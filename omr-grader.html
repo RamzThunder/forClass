@@ -341,6 +341,7 @@ textarea{min-height:72px;resize:vertical}
 .keywordEditChip{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:7px 8px;font-size:12px;font-weight:750;line-height:1.5;display:grid;grid-template-columns:minmax(0,1fr) 70px 22px;gap:6px;align-items:start;word-break:keep-all;overflow-wrap:anywhere;cursor:grab}
 .keywordEditChip.combo{grid-template-columns:minmax(0,1fr) 70px minmax(96px,.55fr) 22px}
 .keywordEditChip:active{cursor:grabbing}
+.keywordLinkInput{grid-column:1 / -1;min-width:0;font-size:12px}
 .keywordEditInput{min-height:44px;border:0;background:transparent;padding:0;text-align:left;font-size:12px;font-weight:750;line-height:1.5;resize:vertical;overflow:hidden}
 .keywordEditInput:focus{outline:0}
 .keywordScoreInput{min-height:36px;padding:5px 6px;font-size:12px;font-weight:900;text-align:center}
@@ -1255,6 +1256,13 @@ textarea{min-height:72px;resize:vertical}
         </label>
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
+            <span class="label">인정·미인정 키워드 연계</span>
+            <span class="statusLine">루브릭 편집에서 점수 인정 문구별로 미인정 문구를 연계해 두면, 인정 문구를 누를 때 연계된 미인정 문구도 함께 선택됩니다.</span>
+          </span>
+          <input id="keywordLinkEnabledInput" type="checkbox" style="width:auto;min-height:auto">
+        </label>
+        <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
+          <span>
             <span class="label">다중창 모드</span>
             <span class="statusLine">루브릭을 별도 창으로 띄워 OMR 화면과 나눠 봅니다.</span>
           </span>
@@ -1501,7 +1509,7 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, comboFullCreditEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, unwrittenOcrEnabled:false, unwrittenOcrIncludeShort:false, deductTemplate:structuredClone(defaultDeductTemplate)}
+  settings:{autoAssistEnabled:false, comboFullCreditEnabled:false, keywordLinkEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, unwrittenOcrEnabled:false, unwrittenOcrIncludeShort:false, deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
@@ -1558,7 +1566,7 @@ const els = {
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"),
   oneHandPrevKeyBtn:$("oneHandPrevKeyBtn"), oneHandNextKeyBtn:$("oneHandNextKeyBtn"), oneHandUnwrittenKeyBtn:$("oneHandUnwrittenKeyBtn"), openRubricWindowBtn:$("openRubricWindowBtn"),
   unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
-  reviewAssistPanel:$("reviewAssistPanel"), reviewAssistEnabledInput:$("reviewAssistEnabledInput"), comboFullCreditEnabledInput:$("comboFullCreditEnabledInput"), openReviewAssistBtn:$("openReviewAssistBtn"), openReviewAssistFromSettingsBtn:$("openReviewAssistFromSettingsBtn"),
+  reviewAssistPanel:$("reviewAssistPanel"), reviewAssistEnabledInput:$("reviewAssistEnabledInput"), comboFullCreditEnabledInput:$("comboFullCreditEnabledInput"), keywordLinkEnabledInput:$("keywordLinkEnabledInput"), openReviewAssistBtn:$("openReviewAssistBtn"), openReviewAssistFromSettingsBtn:$("openReviewAssistFromSettingsBtn"),
   reviewAssistQuickStatus:$("reviewAssistQuickStatus"), reviewAssistModal:$("reviewAssistModal"), closeReviewAssistBtn:$("closeReviewAssistBtn"), refreshReviewAssistBtn:$("refreshReviewAssistBtn"), openReviewAssistPopupBtn:$("openReviewAssistPopupBtn"),
   reviewAssistSummary:$("reviewAssistSummary"), reviewAssistList:$("reviewAssistList"),
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), jpgPdfFolderInput:$("jpgPdfFolderInput"), jpgPdfSelectedStatus:$("jpgPdfSelectedStatus"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
@@ -1920,6 +1928,7 @@ function applySettings(){
   if(els.reviewAssistPanel) els.reviewAssistPanel.classList.toggle("hidden", !reviewAssistEnabled);
   if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
   if(els.comboFullCreditEnabledInput) els.comboFullCreditEnabledInput.checked = comboFullCreditEnabled;
+  if(els.keywordLinkEnabledInput) els.keywordLinkEnabledInput.checked = Boolean(state.settings?.keywordLinkEnabled);
   if(els.unwrittenOcrEnabledInput) els.unwrittenOcrEnabledInput.checked = unwrittenOcrEnabled;
   if(els.reviewAssistEnabledInput) els.reviewAssistEnabledInput.checked = reviewAssistEnabled;
   if(els.unwrittenOcrShortInput) els.unwrittenOcrShortInput.checked = Boolean(state.settings?.unwrittenOcrIncludeShort);
@@ -2048,6 +2057,7 @@ function normalizeSettings(){
     ...settings,
     autoAssistEnabled:Boolean(settings.autoAssistEnabled),
     comboFullCreditEnabled:Boolean(settings.comboFullCreditEnabled),
+    keywordLinkEnabled:Boolean(settings.keywordLinkEnabled),
     incompleteOnly:Boolean(settings.incompleteOnly),
     multiWindowEnabled:Boolean(settings.multiWindowEnabled),
     oneHandGradingEnabled:Boolean(settings.oneHandGradingEnabled),
@@ -2170,6 +2180,7 @@ function normalizeRubric(rubric){
       comboFullCredit:Boolean(item.comboFullCredit),
       maxPt:item.type === "deduct" || item.deductOnly ? 0 : Math.max(0, Number(item.maxPt) || 0),
       acceptCategories:item.acceptCategories && typeof item.acceptCategories === "object" ? {...item.acceptCategories} : {},
+      acceptLinks:item.acceptLinks && typeof item.acceptLinks === "object" ? {...item.acceptLinks} : {},
       partial:item.partial || item.partialText || "",
       partialPt:Number.isFinite(partialPt) ? partialPt : Math.max(0, pt - (Number.isFinite(legacyPartialDeduct) ? legacyPartialDeduct : 1)),
       reject:item.reject || item.rejectText || item.exclude || "",
@@ -4212,6 +4223,9 @@ body.popupCompleted .popupLockBanner{display:block}
       state.sourceCheckAnswers[subSourceInput.dataset.sub || ""] = subSourceInput.value;
     }
   });
+  rubricPopupWindow.document.addEventListener("focusin", evt => {
+    if(evt.target.closest(".keywordLinkInput")) refreshKeywordLinkOptions(evt.target.closest(".inlineRubricEditor"));
+  });
   rubricPopupWindow.document.addEventListener("keydown", evt => {
     if((evt.ctrlKey || evt.metaKey) && evt.key === "Enter"){
       const editor = evt.target.closest(".inlineRubricEditor");
@@ -4580,6 +4594,15 @@ function toggleKeywordHit(itemId, type, keyword){
   const isOn = currentList.includes(keyword);
   itemHits[type] = isOn ? currentList.filter(value => value !== keyword) : currentList.concat(keyword);
   itemHits.partial = [];
+  const linkedReject = type === "accept" && state.settings?.keywordLinkEnabled ? item.acceptLinks?.[keyword] : "";
+  if(linkedReject && splitKeywords(item.reject).includes(linkedReject)){
+    const rejectList = Array.isArray(itemHits.reject) ? itemHits.reject : [];
+    if(!isOn){
+      if(!rejectList.includes(linkedReject)) itemHits.reject = rejectList.concat(linkedReject);
+    }else if(!itemHits.accept.some(other => item.acceptLinks?.[other] === linkedReject)){
+      itemHits.reject = rejectList.filter(value => value !== linkedReject);
+    }
+  }
   const hasHits = ["accept","reject"].some(hitType => itemHits[hitType]?.length);
   if(hasHits) qrec.keywordHits[item.id] = itemHits;
   else delete qrec.keywordHits[item.id];
@@ -4781,7 +4804,7 @@ function keywordButtonsHtml(item, type, keywords, keywordHits){
     const partialClass = on && type === "accept" && isPartialScore(item, keywordHits?.[item.id]) ? " partialScore" : "";
     const score = keywordScore(item, type, keyword);
     const label = type === "accept" ? `+${score}` : score ? `-${score}` : "0";
-    return `<button class="keywordChip ${type}${on}${partialClass}" type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} · ${escapeHtml(label)}점</button>`;
+    return `<button class="keywordChip ${type}${on}${partialClass}"${type === "accept" && state.settings?.keywordLinkEnabled && item.acceptLinks?.[keyword] ? ` title="${escapeHtml("연계 미인정: " + item.acceptLinks[keyword])}"` : ""} type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} · ${escapeHtml(label)}점</button>`;
   }).join("")}</div>`;
 }
 
@@ -4839,6 +4862,33 @@ function subSelectHtml(value, className="rubricSubInput"){
   return `<select class="${className}" title="소문항">${subOptions().map(option => `<option value="${escapeHtml(option)}"${option === selectedValue ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
 }
 
+function keywordLinkSelectHtml(item, keyword, rejectKeywords=splitKeywords(item.reject)){
+  const linked = item.acceptLinks?.[keyword] || "";
+  const options = [`<option value="">연계 없음</option>`]
+    .concat(rejectKeywords.map(reject => `<option value="${escapeHtml(reject)}"${reject === linked ? " selected" : ""}>${escapeHtml(reject.replace(/\s+/g, " "))}</option>`));
+  return `<select class="keywordLinkInput" title="이 문구를 누를 때 함께 선택할 미인정 문구">${options.join("")}</select>`;
+}
+
+function refreshKeywordLinkOptions(editor){
+  if(!editor) return;
+  const rejectKeywords = keywordsFromZone(editor, "reject");
+  editor.querySelectorAll(".keywordLinkInput").forEach(select => {
+    const current = select.value;
+    const options = [`<option value="">연계 없음</option>`]
+      .concat(rejectKeywords.map(reject => `<option value="${escapeHtml(reject)}"${reject === current ? " selected" : ""}>${escapeHtml(reject.replace(/\s+/g, " "))}</option>`));
+    select.innerHTML = options.join("");
+  });
+}
+
+function keywordLinksFromEditor(editor, item){
+  const selects = editor.querySelectorAll(".keywordLinkInput");
+  if(!selects.length) return item.acceptLinks || {};
+  const rejectKeywords = keywordsFromZone(editor, "reject");
+  return Object.fromEntries([...editor.querySelectorAll('.keywordDropZone[data-type="accept"] .keywordEditChip')]
+    .map(chip => [keywordValueFromChip(chip), chip.querySelector(".keywordLinkInput")?.value || ""])
+    .filter(([keyword, link]) => keyword && link && rejectKeywords.includes(link)));
+}
+
 function keywordEditChipHtml(item, type, keyword){
   const comboCategory = type === "accept" && item.comboFullCredit && state.settings?.comboFullCreditEnabled;
   const category = item.acceptCategories?.[keyword] || "";
@@ -4848,6 +4898,7 @@ function keywordEditChipHtml(item, type, keyword){
       <input class="keywordScoreInput" type="number" step="1" min="0" value="${escapeHtml(keywordScore(item, type, keyword))}" title="점수">
       ${comboCategory ? `<input class="keywordCategoryInput" type="text" value="${escapeHtml(category)}" placeholder="카테고리" title="조합 카테고리">` : ""}
       <button class="keywordRemoveBtn" type="button" title="삭제">×</button>
+      ${type === "accept" && state.settings?.keywordLinkEnabled && item.type !== "deduct" ? keywordLinkSelectHtml(item, keyword) : ""}
     </div>
   `;
 }
@@ -7992,12 +8043,14 @@ function readInlineRubricEditor(editor){
     comboFullCredit:row.querySelector(".rubricTypeInput").value !== "deduct" && Boolean(row.querySelector(".rubricComboFullCreditInput")?.checked),
     maxPt:row.querySelector(".rubricTypeInput").value !== "deduct" ? nonNegativeNumber(row.querySelector(".rubricMaxPtInput")?.value) : 0,
     acceptCategories:keywordCategoriesFromZone(editor, "accept"),
+    acceptLinks:{},
     partial:"",
     partialPt:0,
     reject:keywordsFromZone(editor, "reject").join("\n"),
     rejectScores:keywordScoresFromZone(editor, "reject"),
     rejectDeduct:0
   };
+  item.acceptLinks = keywordLinksFromEditor(editor, activeRubric().find(entry => entry.id === item.id) || {});
   item.pt = splitKeywords(item.accept).reduce((sum, keyword) => sum + keywordScore(item, "accept", keyword), 0);
   item.rejectDeduct = Math.max(0, ...splitKeywords(item.reject).map(keyword => keywordScore(item, "reject", keyword)));
   return item.name ? item : null;
@@ -9711,6 +9764,12 @@ els.reviewAssistEnabledInput.addEventListener("change", () => {
   renderRubric();
   persist();
 });
+els.keywordLinkEnabledInput.addEventListener("change", () => {
+  state.settings.keywordLinkEnabled = Boolean(els.keywordLinkEnabledInput.checked);
+  applySettings();
+  renderRubric();
+  persist();
+});
 els.comboFullCreditEnabledInput.addEventListener("change", () => {
   state.settings.comboFullCreditEnabled = Boolean(els.comboFullCreditEnabledInput.checked);
   applySettings();
@@ -10007,6 +10066,9 @@ els.rubricList.addEventListener("change", evt => {
   if(typeInput) applyInlineRubricItem(typeInput.closest(".inlineRubricEditor"));
   const comboInput = evt.target.closest(".rubricComboFullCreditInput");
   if(comboInput) applyInlineRubricItem(comboInput.closest(".inlineRubricEditor"));
+});
+els.rubricList.addEventListener("focusin", evt => {
+  if(evt.target.closest(".keywordLinkInput")) refreshKeywordLinkOptions(evt.target.closest(".inlineRubricEditor"));
 });
 els.rubricList.addEventListener("keydown", evt => {
   if(evt.key !== "Enter" || !evt.ctrlKey) return;
