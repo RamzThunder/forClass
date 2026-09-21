@@ -4793,7 +4793,7 @@ function isPartialScore(item, hits){
   const max = Number(item?.maxPt) || 0;
   if(item?.type === "deduct" || max <= 0 || !hits?.accept?.length) return false;
   const score = scoreFromKeywordHits(item, hits);
-  return score > 0 && score < max;
+  return score < max;
 }
 
 function keywordButtonsHtml(item, type, keywords, keywordHits){
