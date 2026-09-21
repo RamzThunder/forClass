@@ -4406,7 +4406,7 @@ window.__omrRubricPopupSelect = async (kind, value) => {
     syncRubricPopup();
     return;
   }
-  const page = kind === "side" ? Number(value) : pageWithCurrentSide(Number(value));
+  const page = Number(value);
   if(!Number.isFinite(page) || page <= 0) return;
   if(state.pdf) await goPage(page, {autoStudentCropSide:kind !== "side"});
   else{
@@ -5957,7 +5957,8 @@ async function goScoped(delta){
     }
     nextIndex = previousPageIndex >= 0 ? previousPageIndex : 0;
   }
-  await goPage(pageWithCurrentSide(pages[nextIndex]));
+  // 다음/이전 학생으로 갈 때는 현재 보던 면을 물려받지 않고, 해당 학생 영역 → 문항 전체 영역 → 첫 면 순으로 면을 정한다.
+  await goPage(pages[nextIndex]);
 }
 
 function updateResults(){
@@ -10064,7 +10065,7 @@ els.classSelect.addEventListener("change", async () => {
   updateChrome();
 });
 function handleAnswerSelectChange(select){
-  const page = pageWithCurrentSide(Number(select.value));
+  const page = Number(select.value);
   if(!Number.isFinite(page) || page <= 0) return;
   select.blur();
   if(state.pdf) goPage(page);
