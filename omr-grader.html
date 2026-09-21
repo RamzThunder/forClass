@@ -1257,7 +1257,7 @@ textarea{min-height:72px;resize:vertical}
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
             <span class="label">인정·미인정 키워드 연계</span>
-            <span class="statusLine">루브릭 편집에서 점수 인정 문구별로 미인정 문구를 연계해 두면, 인정 문구를 누를 때 연계된 미인정 문구도 함께 선택됩니다.</span>
+            <span class="statusLine">루브릭 편집에서 점수 인정 문구(또는 미인정 문구)별로 미인정 문구를 연계해 두면, 해당 문구를 누를 때 연계된 미인정 문구도 함께 선택됩니다.</span>
           </span>
           <input id="keywordLinkEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
@@ -2181,6 +2181,7 @@ function normalizeRubric(rubric){
       maxPt:item.type === "deduct" || item.deductOnly ? 0 : Math.max(0, Number(item.maxPt) || 0),
       acceptCategories:item.acceptCategories && typeof item.acceptCategories === "object" ? {...item.acceptCategories} : {},
       acceptLinks:item.acceptLinks && typeof item.acceptLinks === "object" ? {...item.acceptLinks} : {},
+      rejectLinks:item.rejectLinks && typeof item.rejectLinks === "object" ? {...item.rejectLinks} : {},
       partial:item.partial || item.partialText || "",
       partialPt:Number.isFinite(partialPt) ? partialPt : Math.max(0, pt - (Number.isFinite(legacyPartialDeduct) ? legacyPartialDeduct : 1)),
       reject:item.reject || item.rejectText || item.exclude || "",
@@ -4594,12 +4595,13 @@ function toggleKeywordHit(itemId, type, keyword){
   const isOn = currentList.includes(keyword);
   itemHits[type] = isOn ? currentList.filter(value => value !== keyword) : currentList.concat(keyword);
   itemHits.partial = [];
-  const linkedReject = type === "accept" && state.settings?.keywordLinkEnabled ? item.acceptLinks?.[keyword] : "";
-  if(linkedReject && splitKeywords(item.reject).includes(linkedReject)){
+  const linkMap = type === "accept" ? item.acceptLinks : item.rejectLinks;
+  const linkedReject = state.settings?.keywordLinkEnabled ? linkMap?.[keyword] : "";
+  if(linkedReject && linkedReject !== keyword && splitKeywords(item.reject).includes(linkedReject)){
     const rejectList = Array.isArray(itemHits.reject) ? itemHits.reject : [];
     if(!isOn){
       if(!rejectList.includes(linkedReject)) itemHits.reject = rejectList.concat(linkedReject);
-    }else if(!itemHits.accept.some(other => item.acceptLinks?.[other] === linkedReject)){
+    }else if(!itemHits[type].some(other => linkMap?.[other] === linkedReject)){
       itemHits.reject = rejectList.filter(value => value !== linkedReject);
     }
   }
@@ -4804,7 +4806,7 @@ function keywordButtonsHtml(item, type, keywords, keywordHits){
     const partialClass = on && type === "accept" && isPartialScore(item, keywordHits?.[item.id]) ? " partialScore" : "";
     const score = keywordScore(item, type, keyword);
     const label = type === "accept" ? `+${score}` : score ? `-${score}` : "0";
-    return `<button class="keywordChip ${type}${on}${partialClass}"${type === "accept" && state.settings?.keywordLinkEnabled && item.acceptLinks?.[keyword] ? ` title="${escapeHtml("연계 미인정: " + item.acceptLinks[keyword])}"` : ""} type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} · ${escapeHtml(label)}점</button>`;
+    return `<button class="keywordChip ${type}${on}${partialClass}"${state.settings?.keywordLinkEnabled && (type === "accept" ? item.acceptLinks : item.rejectLinks)?.[keyword] ? ` title="${escapeHtml("연계 미인정: " + (type === "accept" ? item.acceptLinks : item.rejectLinks)[keyword])}"` : ""} type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} · ${escapeHtml(label)}점</button>`;
   }).join("")}</div>`;
 }
 
@@ -4862,31 +4864,35 @@ function subSelectHtml(value, className="rubricSubInput"){
   return `<select class="${className}" title="소문항">${subOptions().map(option => `<option value="${escapeHtml(option)}"${option === selectedValue ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
 }
 
-function keywordLinkSelectHtml(item, keyword, rejectKeywords=splitKeywords(item.reject)){
-  const linked = item.acceptLinks?.[keyword] || "";
-  const options = [`<option value="">연계 없음</option>`]
-    .concat(rejectKeywords.map(reject => `<option value="${escapeHtml(reject)}"${reject === linked ? " selected" : ""}>${escapeHtml(reject.replace(/\s+/g, " "))}</option>`));
-  return `<select class="keywordLinkInput" title="이 문구를 누를 때 함께 선택할 미인정 문구">${options.join("")}</select>`;
+function keywordLinkOptionsHtml(rejectKeywords, selected, ownKeyword=""){
+  return [`<option value="">연계 없음</option>`]
+    .concat(rejectKeywords.filter(reject => reject !== ownKeyword).map(reject => `<option value="${escapeHtml(reject)}"${reject === selected ? " selected" : ""}>${escapeHtml(reject.replace(/\s+/g, " "))}</option>`))
+    .join("");
+}
+
+function keywordLinkSelectHtml(item, keyword, type="accept"){
+  const links = type === "accept" ? item.acceptLinks : item.rejectLinks;
+  const title = type === "accept" ? "이 문구를 누를 때 함께 선택할 미인정 문구" : "이 문구를 누를 때 함께 선택할 다른 미인정 문구";
+  return `<select class="keywordLinkInput" data-link-type="${type}" title="${title}">${keywordLinkOptionsHtml(splitKeywords(item.reject), links?.[keyword] || "", type === "reject" ? keyword : "")}</select>`;
 }
 
 function refreshKeywordLinkOptions(editor){
   if(!editor) return;
   const rejectKeywords = keywordsFromZone(editor, "reject");
   editor.querySelectorAll(".keywordLinkInput").forEach(select => {
-    const current = select.value;
-    const options = [`<option value="">연계 없음</option>`]
-      .concat(rejectKeywords.map(reject => `<option value="${escapeHtml(reject)}"${reject === current ? " selected" : ""}>${escapeHtml(reject.replace(/\s+/g, " "))}</option>`));
-    select.innerHTML = options.join("");
+    const own = select.dataset.linkType === "reject" ? keywordValueFromChip(select.closest(".keywordEditChip")) : "";
+    select.innerHTML = keywordLinkOptionsHtml(rejectKeywords, select.value, own);
   });
 }
 
-function keywordLinksFromEditor(editor, item){
-  const selects = editor.querySelectorAll(".keywordLinkInput");
-  if(!selects.length) return item.acceptLinks || {};
+function keywordLinksFromEditor(editor, item, type){
+  const selects = editor.querySelectorAll(`.keywordLinkInput[data-link-type="${type}"]`);
+  const previous = (type === "accept" ? item.acceptLinks : item.rejectLinks) || {};
+  if(!selects.length) return editor.querySelector(".keywordLinkInput") ? {} : previous;
   const rejectKeywords = keywordsFromZone(editor, "reject");
-  return Object.fromEntries([...editor.querySelectorAll('.keywordDropZone[data-type="accept"] .keywordEditChip')]
+  return Object.fromEntries([...editor.querySelectorAll(`.keywordDropZone[data-type="${type}"] .keywordEditChip`)]
     .map(chip => [keywordValueFromChip(chip), chip.querySelector(".keywordLinkInput")?.value || ""])
-    .filter(([keyword, link]) => keyword && link && rejectKeywords.includes(link)));
+    .filter(([keyword, link]) => keyword && link && link !== keyword && rejectKeywords.includes(link)));
 }
 
 function keywordEditChipHtml(item, type, keyword){
@@ -4898,7 +4904,7 @@ function keywordEditChipHtml(item, type, keyword){
       <input class="keywordScoreInput" type="number" step="1" min="0" value="${escapeHtml(keywordScore(item, type, keyword))}" title="점수">
       ${comboCategory ? `<input class="keywordCategoryInput" type="text" value="${escapeHtml(category)}" placeholder="카테고리" title="조합 카테고리">` : ""}
       <button class="keywordRemoveBtn" type="button" title="삭제">×</button>
-      ${type === "accept" && state.settings?.keywordLinkEnabled && item.type !== "deduct" ? keywordLinkSelectHtml(item, keyword) : ""}
+      ${state.settings?.keywordLinkEnabled && (type === "reject" || item.type !== "deduct") ? keywordLinkSelectHtml(item, keyword, type) : ""}
     </div>
   `;
 }
@@ -8044,13 +8050,16 @@ function readInlineRubricEditor(editor){
     maxPt:row.querySelector(".rubricTypeInput").value !== "deduct" ? nonNegativeNumber(row.querySelector(".rubricMaxPtInput")?.value) : 0,
     acceptCategories:keywordCategoriesFromZone(editor, "accept"),
     acceptLinks:{},
+    rejectLinks:{},
     partial:"",
     partialPt:0,
     reject:keywordsFromZone(editor, "reject").join("\n"),
     rejectScores:keywordScoresFromZone(editor, "reject"),
     rejectDeduct:0
   };
-  item.acceptLinks = keywordLinksFromEditor(editor, activeRubric().find(entry => entry.id === item.id) || {});
+  const previousItem = activeRubric().find(entry => entry.id === item.id) || {};
+  item.acceptLinks = keywordLinksFromEditor(editor, previousItem, "accept");
+  item.rejectLinks = keywordLinksFromEditor(editor, previousItem, "reject");
   item.pt = splitKeywords(item.accept).reduce((sum, keyword) => sum + keywordScore(item, "accept", keyword), 0);
   item.rejectDeduct = Math.max(0, ...splitKeywords(item.reject).map(keyword => keywordScore(item, "reject", keyword)));
   return item.name ? item : null;
