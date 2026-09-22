@@ -5,7 +5,7 @@
     if(value && typeof value === 'object') return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+stable(value[k])).join(',')+'}';
     return JSON.stringify(value ?? null);
   }
-  function empty(){return {version:1,sessions:{},changes:[]};}
+  function empty(){return {version:1,sessions:{},changes:[],deletedChangeIds:[]};}
   // Store a compact content fingerprint rather than duplicating whole rubrics per student.
   function fingerprint(value){
     const text=stable(value);let a=2166136261,b=2246822519;
@@ -22,7 +22,9 @@
       if(!s || !Array.isArray(s.targets) || !s.questionId) return;
       result.sessions[key]={...s,targets:s.targets.filter(t=>t && typeof t.key==='string' && Number(t.page)>0),marks:s.marks && typeof s.marks==='object' ? s.marks : {}};
     });
-    result.changes=Array.isArray(raw.changes)?raw.changes.filter(c=>c && typeof c.id==='string'):[];
+    result.deletedChangeIds=Array.isArray(raw.deletedChangeIds)?[...new Set(raw.deletedChangeIds.filter(id=>typeof id==='string'))]:[];
+    const deleted=new Set(result.deletedChangeIds);
+    result.changes=Array.isArray(raw.changes)?raw.changes.filter(c=>c && typeof c.id==='string' && !deleted.has(c.id)):[];
     return result;
   }
   function key(meta){return JSON.stringify([meta.questionId,meta.itemId,meta.type,meta.keyword,meta.kind || 'keyword']);}
@@ -70,10 +72,19 @@
     });
     return changes;
   }
+  function deleteChange(data,id){
+    if(!data.changes.some(c=>c.id===id)) return false;
+    data.changes=data.changes.filter(c=>c.id!==id);
+    data.deletedChangeIds=[...new Set([...(data.deletedChangeIds || []),id])];
+    return true;
+  }
   function merge(left,right){
     const next=restore(left),incoming=restore(right);
+    next.deletedChangeIds=[...new Set([...next.deletedChangeIds,...incoming.deletedChangeIds])];
+    const deleted=new Set(next.deletedChangeIds);
+    next.changes=next.changes.filter(c=>!deleted.has(c.id));
     const ids=new Set(next.changes.map(c=>c.id));
-    incoming.changes.forEach(c=>{if(!ids.has(c.id)){next.changes.push(c);ids.add(c.id);}});
+    incoming.changes.forEach(c=>{if(!ids.has(c.id) && !deleted.has(c.id)){next.changes.push(c);ids.add(c.id);}});
     Object.entries(incoming.sessions).forEach(([key,s])=>{
       if(!next.sessions[key]){next.sessions[key]=s;return;}
       const current=next.sessions[key],seen=new Set(current.targets.map(t=>t.key));
@@ -84,7 +95,7 @@
     });
     return next;
   }
-  const api={stable,fingerprint,empty,restore,key,ensure,stats,mark,complete,differences,merge};
+  const api={stable,fingerprint,empty,restore,key,ensure,stats,mark,complete,differences,deleteChange,merge};
   root.KeywordReview=api;
   if(typeof module!=='undefined') module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

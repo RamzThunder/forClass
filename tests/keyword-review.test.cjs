@@ -76,3 +76,18 @@ test('JSON 병합 시 수정 내역은 중복되지 않고 검토 완료는 재�
   assert.equal(merged.changes.length,1);
   assert.equal(R.stats(merged.sessions[R.key(meta)],()=> 'grade').completed,false);
 });
+
+test('수정 내역 개별 삭제를 저장하고 예전 백업 병합으로 되살리지 않음',()=>{
+  const data=R.empty();
+  data.changes=[{id:'remove',before:2,after:1},{id:'keep',before:1,after:0}];
+  const backup=JSON.parse(JSON.stringify(data));
+  const session=R.ensure(data,meta,[targets[0]]);
+  R.mark(session,targets[0],'checked');
+  assert.equal(R.deleteChange(data,'remove'),true);
+  assert.equal(R.deleteChange(data,'unknown'),false);
+  assert.equal(R.stats(session,()=> 'checked').reviewed,1);
+  const restored=R.restore(JSON.parse(JSON.stringify(data)));
+  assert.deepEqual(restored.changes.map(c=>c.id),['keep']);
+  assert.deepEqual(R.merge(restored,backup).changes.map(c=>c.id),['keep']);
+  assert.deepEqual(R.merge(backup,restored).changes.map(c=>c.id),['keep']);
+});
