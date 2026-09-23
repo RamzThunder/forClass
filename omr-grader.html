@@ -1312,7 +1312,7 @@ textarea{min-height:72px;resize:vertical}
         <div class="settingsToolSection">
           <h3 class="settingsToolTitle">외부 점수 합산</h3>
           <div class="statusLine" style="margin-bottom:8px">엑셀 파일로 선택형 점수와 오프라인으로 채점한 나머지 서술형 점수를 가져와 총점에 더합니다.</div>
-          <div class="row">
+          <div class="row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
             <label class="field">
               <span class="label">선택형 만점</span>
               <input id="externalSelectedMaxInput" type="number" min="0" step="1" value="0">
@@ -1321,7 +1321,12 @@ textarea{min-height:72px;resize:vertical}
               <span class="label">서술형 만점</span>
               <input id="externalWrittenMaxInput" type="number" min="0" step="1" value="0">
             </label>
+            <label class="field">
+              <span class="label">총점 만점</span>
+              <input id="externalTotalMaxInput" type="number" min="0" step="1" value="0" placeholder="비우면 합계">
+            </label>
           </div>
+          <div class="statusLine" style="margin-bottom:8px">만점은 학생용 화면의 점수 옆에 작게 표시됩니다. 0이면 표시하지 않고, 총점 만점이 0이면 선택형+서술형 만점을 합해 표시합니다.</div>
           <label class="field">
             <span class="label">오프라인 서술형 문제 수</span>
             <input id="offlineWrittenCountInput" type="number" min="1" max="30" step="1" value="1">
@@ -1616,7 +1621,7 @@ const els = {
   reviewAssistSummary:$("reviewAssistSummary"), reviewAssistList:$("reviewAssistList"),
   pagesPerStudentInput:$("pagesPerStudentInput"), jpgPdfInput:$("jpgPdfInput"), jpgPdfFolderInput:$("jpgPdfFolderInput"), jpgPdfSelectedStatus:$("jpgPdfSelectedStatus"), convertJpgPdfBtn:$("convertJpgPdfBtn"), jpgPdfStatus:$("jpgPdfStatus"),
   rosterFileInput:$("rosterFileInput"),
-  externalSelectedMaxInput:$("externalSelectedMaxInput"), externalWrittenMaxInput:$("externalWrittenMaxInput"), offlineWrittenCountInput:$("offlineWrittenCountInput"), offlineWrittenSettingsList:$("offlineWrittenSettingsList"), downloadExternalScoreTemplateBtn:$("downloadExternalScoreTemplateBtn"), externalScoreInput:$("externalScoreInput"), clearExternalScoresBtn:$("clearExternalScoresBtn"), externalScoreStatus:$("externalScoreStatus"),
+  externalSelectedMaxInput:$("externalSelectedMaxInput"), externalWrittenMaxInput:$("externalWrittenMaxInput"), externalTotalMaxInput:$("externalTotalMaxInput"), offlineWrittenCountInput:$("offlineWrittenCountInput"), offlineWrittenSettingsList:$("offlineWrittenSettingsList"), downloadExternalScoreTemplateBtn:$("downloadExternalScoreTemplateBtn"), externalScoreInput:$("externalScoreInput"), clearExternalScoresBtn:$("clearExternalScoresBtn"), externalScoreStatus:$("externalScoreStatus"),
   mergePdfInput:$("mergePdfInput"), mergePdfFolderInput:$("mergePdfFolderInput"), mergePdfBtn:$("mergePdfBtn"), mergePdfStatus:$("mergePdfStatus"),
   mergeJsonInput:$("mergeJsonInput"), mergeJsonConflictSelect:$("mergeJsonConflictSelect"), mergeJsonBtn:$("mergeJsonBtn"), exportMergedJsonBtn:$("exportMergedJsonBtn"), mergeJsonStatus:$("mergeJsonStatus"),
   chooseSaveDirectoryBtn:$("chooseSaveDirectoryBtn"), clearSaveDirectoryBtn:$("clearSaveDirectoryBtn"), saveDirectoryStatus:$("saveDirectoryStatus"), resetAllDataBtn:$("resetAllDataBtn"),
@@ -1988,6 +1993,7 @@ function applySettings(){
   if(els.pagesPerStudentInput) els.pagesPerStudentInput.value = pagesPerStudent();
   if(els.externalSelectedMaxInput) els.externalSelectedMaxInput.value = externalSelectedMaxScore();
   if(els.externalWrittenMaxInput) els.externalWrittenMaxInput.value = externalWrittenMaxScore();
+  if(els.externalTotalMaxInput) els.externalTotalMaxInput.value = nonNegativeNumber(state.settings?.externalTotalMaxScore);
   if(els.offlineWrittenCountInput) els.offlineWrittenCountInput.value = externalOfflineWrittenCount();
   renderOfflineWrittenSettingsList();
   if(!multiWindowEnabled){
@@ -2121,6 +2127,7 @@ function normalizeSettings(){
     pagesPerStudent:Math.max(1, Math.floor(nonNegativeNumber(settings.pagesPerStudent) || 1)),
     externalSelectedMaxScore:nonNegativeNumber(settings.externalSelectedMaxScore),
     externalWrittenMaxScore:nonNegativeNumber(settings.externalWrittenMaxScore),
+    externalTotalMaxScore:nonNegativeNumber(settings.externalTotalMaxScore),
     externalOfflineWrittenCount:Math.max(1, Math.min(30, Math.floor(nonNegativeNumber(settings.externalOfflineWrittenCount) || 1))),
     externalOfflineWrittenTitles:Array.isArray(settings.externalOfflineWrittenTitles) ? settings.externalOfflineWrittenTitles.map(title => String(title || "").trim()).filter(Boolean).slice(0, 30) : [],
     externalOfflineWrittenMaxScores:Array.isArray(settings.externalOfflineWrittenMaxScores) ? settings.externalOfflineWrittenMaxScores.map(nonNegativeNumber).slice(0, 30) : [],
@@ -7421,6 +7428,7 @@ async function buildStudentScoreScreenHtml(records, options){
   .scoreLabel{color:#647085;font-size:12px;font-weight:850;margin-bottom:4px}
   .scoreValue{font-size:22px;font-weight:950;color:#172033}
   .scoreValue.accent{color:#176b87}
+  .scoreMax{margin-left:6px;font-size:13px;font-weight:800;color:#647085}
   .section{padding:14px 16px}
   .sectionTitle{margin:0 0 10px;font-size:15px;font-weight:950}
   .questionList{display:grid;gap:8px}
@@ -7668,7 +7676,8 @@ async function studentScoreCardHtml(rec, options, index=0){
   const total = selectedScore + writtenScore;
   const selectedMax = externalSelectedMaxScore();
   const writtenMax = externalWrittenMaxScore();
-  const totalMax = selectedMax > 0 && writtenMax > 0 ? selectedMax + writtenMax : 0;
+  const totalMax = nonNegativeNumber(state.settings?.externalTotalMaxScore) || (selectedMax > 0 && writtenMax > 0 ? selectedMax + writtenMax : 0);
+  const maxHtml = max => max > 0 ? `<span class="scoreMax">/ ${escapeHtml(formatScore(max))}점 만점</span>` : "";
   const renderPage = options.includeAnswerCapture && state.pdf ? createAnswerPageRenderer() : null;
   const questionRows = [];
   for(const question of state.questions) questionRows.push(await studentScoreGradedQuestionHtml(rec, question, options, renderPage));
@@ -7679,20 +7688,19 @@ async function studentScoreCardHtml(rec, options, index=0){
       <div>
         <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
       </div>
-      <div class="totalScore">국어 총점 ${escapeHtml(scoreWithMaxText(total, totalMax))}</div>
     </div>
     <div class="scoreGrid">
       <div class="scoreBox">
         <div class="scoreLabel">선택형 점수</div>
-        <div class="scoreValue">${escapeHtml(scoreWithMaxText(selectedScore, selectedMax))}</div>
+        <div class="scoreValue">${escapeHtml(formatScore(selectedScore))}점${maxHtml(selectedMax)}</div>
       </div>
       <div class="scoreBox">
         <div class="scoreLabel">서술형 점수</div>
-        <div class="scoreValue">${escapeHtml(scoreWithMaxText(writtenScore, writtenMax))}</div>
+        <div class="scoreValue">${escapeHtml(formatScore(writtenScore))}점${maxHtml(writtenMax)}</div>
       </div>
       <div class="scoreBox">
         <div class="scoreLabel">국어 총점</div>
-        <div class="scoreValue accent">${escapeHtml(scoreWithMaxText(total, totalMax))}</div>
+        <div class="scoreValue accent">${escapeHtml(formatScore(total))}점${maxHtml(totalMax)}</div>
       </div>
     </div>
     <div class="section">
@@ -10411,6 +10419,7 @@ function persistExternalScoreSettings(){
   const offlineSettings = externalOfflineWrittenSettingsFromInputs();
   state.settings.externalSelectedMaxScore = nonNegativeNumber(els.externalSelectedMaxInput?.value);
   state.settings.externalWrittenMaxScore = nonNegativeNumber(els.externalWrittenMaxInput?.value);
+  state.settings.externalTotalMaxScore = nonNegativeNumber(els.externalTotalMaxInput?.value);
   state.settings.externalOfflineWrittenCount = externalOfflineWrittenCountFromInput();
   state.settings.externalOfflineWrittenTitles = offlineSettings.titles;
   state.settings.externalOfflineWrittenMaxScores = offlineSettings.maxScores;
@@ -10422,6 +10431,7 @@ function persistExternalScoreSettings(){
 }
 els.externalSelectedMaxInput.addEventListener("change", persistExternalScoreSettings);
 els.externalWrittenMaxInput.addEventListener("change", persistExternalScoreSettings);
+els.externalTotalMaxInput.addEventListener("change", persistExternalScoreSettings);
 els.offlineWrittenCountInput.addEventListener("change", () => {
   persistExternalScoreSettings();
 });
