@@ -792,7 +792,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.4.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.4.1</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -6370,10 +6370,12 @@ function reviewScoreSnapshot(){
   Object.values(state.records).forEach(rec=>{
     const studentKey=reviewStudentKey(rec),total=grandTotal(rec);
     state.questions.forEach(q=>{
-      const hits=rec.answers?.[q.id]?.keywordHits || {};
+      const qrec=rec.answers?.[q.id];
+      if(qrec?.completed) qrec.everCompleted=true;
+      const hits=qrec?.keywordHits || {};
       const choices=q.rubric.flatMap(item=>['accept','reject'].flatMap(type=>(hits[item.id]?.[type] || []).map(word=>`${item.name} / ${type==='accept'?'인정':'미인정·감점'} / ${word}`))).sort();
       const key=JSON.stringify([studentKey,q.id]);
-      result[key]={key,studentKey,questionId:q.id,questionLabel:q.label,className:rec.className || '',number:rec.number || '',name:rec.name || '',page:rec.page,score:questionTotal(rec,q),total,choices};
+      result[key]={key,studentKey,questionId:q.id,questionLabel:q.label,className:rec.className || '',number:rec.number || '',name:rec.name || '',page:rec.page,score:questionTotal(rec,q),total,choices,graded:Boolean(qrec?.everCompleted)};
     });
   });
   return result;
@@ -6381,8 +6383,11 @@ function reviewScoreSnapshot(){
 function captureReviewChanges(){
   const next=reviewScoreSnapshot();
   const kind=state.keywordFilter?.kind || (state.keywordFilter?'keyword':'');
-  const context=['keyword','keywordMissing','reviewIssue','reviewAll'].includes(kind) ? `${activeQuestion().label} · ${keywordFilterLabel()}` : '';
-  const changes=KeywordReview.differences(reviewScoreBaseline,next,context,()=>crypto.randomUUID());
+  const inReview=['keyword','keywordMissing','reviewIssue','reviewAll'].includes(kind);
+  const context=inReview ? `${activeQuestion().label} · ${keywordFilterLabel()}` : '채점 완료 후 수정';
+  const changes=KeywordReview.differences(reviewScoreBaseline,next,context,()=>crypto.randomUUID())
+    .filter(change=>inReview || reviewScoreBaseline?.[change.key]?.graded);
+  changes.forEach(change=>delete change.graded);
   state.keywordReview.changes.push(...changes);
   reviewScoreBaseline=next;
 }
