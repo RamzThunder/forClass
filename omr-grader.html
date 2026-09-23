@@ -803,7 +803,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.7.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.8.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -5087,6 +5087,7 @@ function updateProgress(){
   els.progressFill.style.width = `${pct}%`;
   els.progressText.textContent = total > 0 ? `채점 완료: ${graded} / ${total}명 (${pct}%)` : "";
   if(state.settings?.reviewAssistEnabled) updateReviewAssistStatus();
+  updateReviewDoneOverlay();
 }
 
 function renderUnwrittenOcrCandidates(){
@@ -6324,13 +6325,24 @@ function updateKeywordReviewToolbar(){
   box.innerHTML=`<span>${escapeHtml(reviewProgressText(session))}</span><div class="compactBtns">${target?`<button class="btn mini ${marked?'':'primary'}" data-review-action="mark" data-review-key="${id}" data-review-target="${escapeHtml(target.key)}" aria-pressed="${!!marked}">${marked?'✓ 검토 완료 (취소) · V':'현재 학생 검토 완료 · V'}</button><button class="btn mini" data-review-action="markNext" data-review-key="${id}" data-review-target="${escapeHtml(target.key)}">검토 완료 · 다음</button>`:''}<button class="btn mini" data-review-action="complete" data-review-key="${id}" ${reviewProgress(session).reviewed!==session.targets.length || !session.targets.length?'disabled':''}>키워드 검토 완료</button><button class="btn mini" data-review-action="history">수정 내역</button></div>`;
 }
 function updateReviewDoneOverlay(){
-  const box=$('reviewDoneOverlay'),session=state.settings?.incompleteOnly ? reviewSession() : null;
-  const p=session ? reviewProgress(session) : null;
-  const show=Boolean(state.pdf && p && p.total && p.reviewed===p.total);
-  box.classList.toggle('hidden',!show);
-  if(!show){box.innerHTML='';return;}
+  const box=$('reviewDoneOverlay');
+  const html=state.pdf && state.settings?.incompleteOnly ? (reviewSession() ? reviewDoneCardHtml(reviewSession()) : gradingDoneCardHtml()) : '';
+  box.classList.toggle('hidden',!html);
+  box.innerHTML=html;
+}
+function reviewDoneCardHtml(session){
+  const p=reviewProgress(session);
+  if(!p.total || p.reviewed!==p.total) return '';
   const id=escapeHtml(KeywordReview.key(session));
-  box.innerHTML=`<div class="reviewDoneCard"><h2>✓ 모든 학생 검토 완료</h2><p>${escapeHtml(keywordFilterLabel())} · ${p.total}명</p><div class="compactBtns">${p.completed?'':`<button class="btn primary" type="button" data-review-action="complete" data-review-key="${id}">키워드 검토 완료로 표시</button>`}<button class="btn" type="button" data-review-done-action="showAll">필터 끄고 전체 보기</button></div></div>`;
+  return `<div class="reviewDoneCard"><h2>✓ 모든 학생 검토 완료</h2><p>${escapeHtml(keywordFilterLabel())} · ${p.total}명</p><div class="compactBtns">${p.completed?'':`<button class="btn primary" type="button" data-review-action="complete" data-review-key="${id}">키워드 검토 완료로 표시</button>`}<button class="btn" type="button" data-review-done-action="showAll">필터 끄고 전체 보기</button></div></div>`;
+}
+function gradingDoneCardHtml(){
+  const question=activeQuestion();
+  if(question.offline) return '';
+  const pages=baseScopedPages();
+  if(!pages.length || !pages.every(page=>isQuestionCompletedOnPage(page))) return '';
+  const scope=[question.label,state.activeClass || '전체 반',state.keywordFilter?keywordFilterLabel():''].filter(Boolean).join(' · ');
+  return `<div class="reviewDoneCard"><h2>✓ 모든 학생 채점 완료</h2><p>${escapeHtml(scope)} · ${pages.length}명</p><div class="compactBtns"><button class="btn" type="button" data-review-done-action="showAll">필터 끄고 전체 보기</button></div></div>`;
 }
 function refreshKeywordReview(){
   if(state.settings?.incompleteOnly && reviewSession()) updateChrome();
@@ -9424,6 +9436,23 @@ function selectedClassName(){
 }
 
 function scopedPages(){
+  const pages = baseScopedPages();
+  if(state.settings?.incompleteOnly){
+    const session = reviewSession();
+    let filtered;
+    if(session){
+      const unreviewed = new Set(session.targets.filter(target => !reviewIsMarked(session, target))
+        .map(target => firstPageForStudentIndex(studentIndexForPage(reviewRecord(target)?.page || target.page))));
+      filtered = pages.filter(page => unreviewed.has(page));
+    }else{
+      filtered = pages.filter(page => !isQuestionCompletedOnPage(page));
+    }
+    return filtered.length ? filtered : pages;
+  }
+  return pages;
+}
+
+function baseScopedPages(){
   const pageLimit = state.pdf ? state.pageCount : Infinity;
   let pages;
   if(!state.activeClass){
@@ -9439,18 +9468,6 @@ function scopedPages(){
   if(state.keywordFilter){
     const keywordPages = keywordFilterPages(state.keywordFilter);
     pages = pages.filter(page => keywordPages.includes(page));
-  }
-  if(state.settings?.incompleteOnly){
-    const session = reviewSession();
-    let filtered;
-    if(session){
-      const unreviewed = new Set(session.targets.filter(target => !reviewIsMarked(session, target))
-        .map(target => firstPageForStudentIndex(studentIndexForPage(reviewRecord(target)?.page || target.page))));
-      filtered = pages.filter(page => unreviewed.has(page));
-    }else{
-      filtered = pages.filter(page => !isQuestionCompletedOnPage(page));
-    }
-    return filtered.length ? filtered : pages;
   }
   return pages;
 }
