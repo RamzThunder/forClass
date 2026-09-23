@@ -1388,6 +1388,7 @@ textarea{min-height:72px;resize:vertical}
         <label class="checkField"><input id="shareSeparateClassFilesInput" type="checkbox"> 반별로 개별 PDF 저장</label>
         <div class="compactBtns">
           <button class="btn" id="openStudentScoreScreenBtn" type="button">학생용 화면 열기</button>
+          <button class="btn" id="saveStudentScoreScreenBtn" type="button">학생용 화면 HTML 저장</button>
           <button class="btn primary" id="createShareReportBtn" type="button">내보내기</button>
         </div>
       </section>
@@ -1576,7 +1577,7 @@ const els = {
   keywordSummary:$("keywordSummary"), openKeywordModalBtn:$("openKeywordModalBtn"), keywordModal:$("keywordModal"),
   openKeywordPopupBtn:$("openKeywordPopupBtn"), closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
-  createShareReportBtn:$("createShareReportBtn"), openStudentScoreScreenBtn:$("openStudentScoreScreenBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
+  createShareReportBtn:$("createShareReportBtn"), openStudentScoreScreenBtn:$("openStudentScoreScreenBtn"), saveStudentScoreScreenBtn:$("saveStudentScoreScreenBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
   shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"), shareIncludeHighlightInput:$("shareIncludeHighlightInput"),
   shareScopeAllInput:$("shareScopeAllInput"), shareSeparateClassFilesInput:$("shareSeparateClassFilesInput"),
   shareClassList:$("shareClassList"), shareScopeStatus:$("shareScopeStatus"),
@@ -7212,6 +7213,26 @@ async function openStudentScoreScreen(){
   }
 }
 
+async function saveStudentScoreScreenHtml(){
+  const payload = selectedShareReportPayload();
+  if(!payload) return;
+  const btn = els.saveStudentScoreScreenBtn;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "HTML 만드는 중...";
+  try{
+    const html = await buildStudentScoreScreenHtml(payload.records, payload.options);
+    const suffix = payload.options.titleSuffix ? `_${payload.options.titleSuffix}` : "";
+    download(`${safeFileName(`${state.appTitle}${suffix}_학생용_점수`)}.html`, "text/html;charset=utf-8", html);
+  }catch(err){
+    console.error(err);
+    alert("학생용 화면 HTML을 만들 수 없습니다.");
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 async function buildStudentScoreScreenHtml(records, options){
   const exportedAt = new Date().toLocaleString("ko-KR");
   const reportTitle = `${state.appTitle}${options.titleSuffix ? ` · ${options.titleSuffix}` : ""} 학생용 점수 확인`;
@@ -7249,6 +7270,7 @@ async function buildStudentScoreScreenHtml(records, options){
   .studentCounter{display:grid;place-items:center;color:#647085;font-size:12px;font-weight:900}
   .student{display:none;background:#fff;border:1px solid #d9dee8;border-radius:10px;margin:0 0 16px;overflow:hidden;box-shadow:0 10px 26px rgba(23,32,51,.08)}
   .student.active{display:block}
+  .studentPlaceholder{display:grid;place-items:center;gap:6px;min-height:240px;border:1px dashed #d9dee8;border-radius:10px;background:#fff;color:#647085;font-size:14px;font-weight:850;text-align:center;padding:24px}
   .studentHead{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px 16px;background:#fbfcfe;border-bottom:1px solid #d9dee8}
   .studentName{font-size:18px;font-weight:950}
   .totalScore{font-size:24px;font-weight:950;color:#176b87;white-space:nowrap}
@@ -7343,6 +7365,7 @@ async function buildStudentScoreScreenHtml(records, options){
         <div class="studentCounter" id="studentCounter"></div>
         <button type="button" id="nextStudentBtn">다음</button>
       </div>
+      <div class="studentPlaceholder" id="studentPlaceholder">왼쪽 학생 목록에서 이름을 선택하면 점수가 표시됩니다.</div>
       ${studentHtml}
     </section>
   </div>
@@ -7352,8 +7375,9 @@ async function buildStudentScoreScreenHtml(records, options){
   const cards = Array.from(document.querySelectorAll(".student[data-student-index]"));
   const buttons = Array.from(document.querySelectorAll(".studentNavBtn[data-student-index]"));
   const counter = document.getElementById("studentCounter");
+  const placeholder = document.getElementById("studentPlaceholder");
   const navKeys = ${JSON.stringify(studentNavKeys)};
-  let active = 0;
+  let active = -1;
   function isTypingTarget(target){
     const tag = String(target?.tagName || "").toLowerCase();
     return tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable;
@@ -7361,6 +7385,7 @@ async function buildStudentScoreScreenHtml(records, options){
   function showStudent(index){
     if(!cards.length) return;
     active = Math.max(0, Math.min(cards.length - 1, Number(index) || 0));
+    if(placeholder) placeholder.hidden = true;
     cards.forEach((card, cardIndex) => card.classList.toggle("active", cardIndex === active));
     buttons.forEach((button, buttonIndex) => {
       const on = buttonIndex === active;
@@ -7372,17 +7397,18 @@ async function buildStudentScoreScreenHtml(records, options){
     window.scrollTo({top:0, behavior:"smooth"});
   }
   buttons.forEach((button, index) => button.addEventListener("click", () => showStudent(index)));
-  document.getElementById("prevStudentBtn")?.addEventListener("click", () => showStudent(active - 1));
-  document.getElementById("nextStudentBtn")?.addEventListener("click", () => showStudent(active + 1));
+  const step = delta => showStudent(active < 0 ? 0 : active + delta);
+  document.getElementById("prevStudentBtn")?.addEventListener("click", () => step(-1));
+  document.getElementById("nextStudentBtn")?.addEventListener("click", () => step(1));
   document.addEventListener("keydown", event => {
     if(isTypingTarget(event.target)) return;
     const prev = event.key === "ArrowLeft" || (navKeys.prev && event.code === navKeys.prev);
     const next = event.key === "ArrowRight" || (navKeys.next && event.code === navKeys.next);
     if(prev || next) event.preventDefault();
-    if(prev) showStudent(active - 1);
-    if(next) showStudent(active + 1);
+    if(prev) step(-1);
+    if(next) step(1);
   });
-  showStudent(0);
+  if(counter) counter.textContent = "- / " + cards.length;
 })();
 <\/script>
 </body>
@@ -9918,6 +9944,7 @@ $('reviewChangesList').addEventListener('change',evt=>{
   if(change){change.note=field.value;persist();}
 });
 els.openStudentScoreScreenBtn.addEventListener("click", openStudentScoreScreen);
+els.saveStudentScoreScreenBtn.addEventListener("click", saveStudentScoreScreenHtml);
 els.createShareReportBtn.addEventListener("click", createShareReport);
 els.openMergeJsonBtn.addEventListener("click", () => {
   els.mergeJsonStatus.textContent = "병합할 JSON 파일을 선택하세요.";
