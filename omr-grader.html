@@ -7266,7 +7266,7 @@ async function buildStudentScoreScreenHtml(records, options){
   .pickerHead{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 2px 8px;border-bottom:1px solid #eef1f5}
   .pickerTitle{font-size:13px;font-weight:950}
   .studentNav{display:grid;align-content:start;gap:6px;min-height:0;overflow:auto;padding-right:2px}
-  .studentNavBtn{display:grid;gap:2px;width:100%;min-height:48px;text-align:left;border:1px solid #d9dee8;background:#fff;color:#172033;border-radius:8px;padding:8px 9px;font-weight:850;cursor:pointer}
+  .studentNavBtn{display:grid;gap:2px;width:100%;min-height:40px;text-align:left;border:1px solid #d9dee8;background:#fff;color:#172033;border-radius:8px;padding:8px 9px;font-weight:850;cursor:pointer}
   .studentNavBtn.on{border-color:#176b87;background:#edf7fa;color:#176b87}
   .studentNavBtnName{font-size:13px;font-weight:950;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .studentNavBtnMeta{font-size:11px;color:#647085;line-height:1.25}
@@ -7299,6 +7299,8 @@ async function buildStudentScoreScreenHtml(records, options){
   details[open] summary.questionSummary::before{content:"▾"}
   .summaryTitle{display:flex;align-items:center;gap:8px;min-width:0}
   .summaryScore{white-space:nowrap;color:#176b87;font-weight:950}
+  .scoreSide{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .deductBadge{display:inline-block;border:1px solid #edcfcb;border-radius:999px;background:#fff7f6;color:#a33a35;padding:2px 8px;font-size:12px;font-weight:900;white-space:nowrap}
   .offlineLine{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid #d9dee8;border-radius:8px;background:#fbfcfe;padding:12px 13px;font-weight:900}
   .detailBody{border-top:1px solid #eef1f5;padding:12px}
   .subGroup{display:grid;grid-template-columns:94px minmax(0,1fr) 78px;gap:0;border:1px solid #d9dee8;border-radius:8px;margin:9px 0;background:#fff;overflow:hidden}
@@ -7459,7 +7461,6 @@ async function buildStudentScoreScreenHtml(records, options){
 function studentScoreNavButtonHtml(rec, index){
   return `<button class="studentNavBtn" type="button" data-student-index="${index}" data-class="${escapeHtml(shareReportRecordClassName(rec))}">
     <span class="studentNavBtnName">${escapeHtml(studentLabelForRecord(rec))}</span>
-    <span class="studentNavBtnMeta">OMR ${escapeHtml(rec.page || "")}쪽</span>
   </button>`;
 }
 
@@ -7479,7 +7480,6 @@ async function studentScoreCardHtml(rec, options, index=0){
     <div class="studentHead">
       <div>
         <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
-        <div class="meta">OMR ${escapeHtml(rec.page || "")}쪽</div>
       </div>
       <div class="totalScore">국어 총점 ${escapeHtml(scoreWithMaxText(total, totalMax))}</div>
     </div>
@@ -7518,7 +7518,7 @@ async function studentScoreGradedQuestionHtml(rec, question, options){
   return `<details class="questionDetail">
     <summary class="questionSummary">
       <span class="summaryTitle"><span>${escapeHtml(question.label)}</span>${badges}</span>
-      <span class="summaryScore">${escapeHtml(formatScore(Math.max(0, qtotal)))}점 / ${escapeHtml(formatScore(qmax))}점</span>
+      <span class="scoreSide"><span class="summaryScore">${escapeHtml(formatScore(Math.max(0, qtotal)))}점 / ${escapeHtml(formatScore(qmax))}점</span>${studentScoreDeductBadgeHtml(qtotal, qmax)}</span>
     </summary>
     <div class="detailBody">
       ${groups || `<div class="empty">이 채점기로 표시한 채점 근거가 없습니다.</div>`}
@@ -7528,11 +7528,16 @@ async function studentScoreGradedQuestionHtml(rec, question, options){
   </details>`;
 }
 
+function studentScoreDeductBadgeHtml(score, max){
+  const deducted = (Number(max) || 0) - Math.max(0, Number(score) || 0);
+  return deducted > 0 ? `<span class="deductBadge">${escapeHtml(formatScore(deducted))}점 감점</span>` : "";
+}
+
 function studentScoreOfflineQuestionHtml(score, index){
   const max = externalOfflineWrittenMaxScores()[index] || 0;
   return `<div class="offlineLine">
     <span>${escapeHtml(externalOfflineWrittenTitles()[index] || `오프라인 서술형 ${index + 1}`)}</span>
-    <span class="summaryScore">${escapeHtml(scoreWithMaxText(score || 0, max))}</span>
+    <span class="scoreSide"><span class="summaryScore">${escapeHtml(scoreWithMaxText(score || 0, max))}</span>${studentScoreDeductBadgeHtml(score, max)}</span>
   </div>`;
 }
 
