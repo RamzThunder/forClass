@@ -54,6 +54,11 @@ h1{margin:0;font-size:20px;line-height:1.25}
 #saveCropBtn{top:58px}
 body.offlineQuestionActive .side > section{display:none!important}
 body.offlineQuestionActive .side > #offlineQuestionNote{display:block!important}
+.offlineScoreCard{display:grid;gap:6px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe;padding:12px;margin-bottom:12px}
+.offlineScoreStudent{font-size:13px;font-weight:850;color:var(--muted)}
+.offlineScoreLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.offlineScoreLine strong{font-size:24px;font-weight:950;color:#176b87}
+.offlineDeductBadge{display:inline-block;border:1px solid #edcfcb;border-radius:999px;background:#fff7f6;color:#a33a35;padding:2px 8px;font-size:12px;font-weight:900}
 .studentCropAreaControls{position:absolute;right:12px;top:104px;z-index:9;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:min(520px,calc(100% - 24px));border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px;box-shadow:0 8px 22px rgba(23,32,51,.14)}
 .studentCropAreaControls .label{white-space:nowrap}
 .studentCropAreaCount{width:62px;min-height:32px;padding:5px 8px;font-weight:850}
@@ -935,7 +940,16 @@ textarea{min-height:72px;resize:vertical}
 
   <aside class="side">
     <section class="panel hidden" id="offlineQuestionNote">
-      <div class="panelHead"><h2 class="panelTitle">오프라인 서술형 문항</h2></div>
+      <div class="panelHead"><h2 class="panelTitle" id="offlineQuestionTitle">오프라인 서술형 문항</h2></div>
+      <div class="offlineScoreCard">
+        <div class="offlineScoreStudent" id="offlineScoreStudent">학생 정보 없음</div>
+        <div class="offlineScoreLine"><strong id="offlineScoreValue">-</strong><span id="offlineScoreBadge"></span></div>
+        <div class="statusLine" id="offlineScoreHint" style="margin:0"></div>
+      </div>
+      <label class="field">
+        <span class="label">모범답안</span>
+        <textarea id="offlineExampleInput" placeholder="모범답안 입력" style="min-height:140px"></textarea>
+      </label>
       <div class="statusLine">이 문항은 점수를 엑셀로 가져오며, 여기서는 학생용 화면에 들어갈 답안 영역만 지정합니다.<br>· 상단 <b>영역 지정</b>: 모든 학생 공통 영역<br>· 상단 <b>학생 영역</b>: 현재 학생만 다른 영역</div>
     </section>
     <section class="panel hidden" id="autoAssistPanel">
@@ -2110,6 +2124,7 @@ function normalizeSettings(){
     externalOfflineWrittenCount:Math.max(1, Math.min(30, Math.floor(nonNegativeNumber(settings.externalOfflineWrittenCount) || 1))),
     externalOfflineWrittenTitles:Array.isArray(settings.externalOfflineWrittenTitles) ? settings.externalOfflineWrittenTitles.map(title => String(title || "").trim()).filter(Boolean).slice(0, 30) : [],
     externalOfflineWrittenMaxScores:Array.isArray(settings.externalOfflineWrittenMaxScores) ? settings.externalOfflineWrittenMaxScores.map(nonNegativeNumber).slice(0, 30) : [],
+    externalOfflineWrittenExamples:Array.isArray(settings.externalOfflineWrittenExamples) ? settings.externalOfflineWrittenExamples.map(text => String(text || "")).slice(0, 30) : [],
     externalOfflineWrittenCrops:Array.isArray(settings.externalOfflineWrittenCrops) ? settings.externalOfflineWrittenCrops.map(normalizeOfflineWrittenCrop).slice(0, 30) : [],
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
@@ -2730,6 +2745,7 @@ function updateQuestionControls(){
   const question = activeQuestion();
   els.questionSelect.value = question.id;
   document.body.classList.toggle("offlineQuestionActive", Boolean(question.offline));
+  renderOfflineQuestionPanel();
   els.questionStatus.textContent = question.offline ? `${question.label} · 오프라인 문항 (영역 지정 전용)` : `${question.label} · 소문항 ${question.subs?.length || 0}개`;
   updateProgress();
   renderQuestionSettings();
@@ -3991,6 +4007,7 @@ function loadRecordIntoForm(){
   renderAnswerHighlights();
   updateHighlightButtons();
   updateMobileScanNav();
+  renderOfflineQuestionPanel();
 }
 
 function renderRubric(){
@@ -6921,6 +6938,36 @@ function offlineQuestion(index){
   question.crop = crops[index];
   return question;
 }
+function renderOfflineQuestionPanel(){
+  const question = activeQuestion();
+  if(!question?.offline) return;
+  const index = question.offlineIndex;
+  $("offlineQuestionTitle").textContent = question.label;
+  const exampleInput = $("offlineExampleInput");
+  const example = String(state.settings.externalOfflineWrittenExamples?.[index] || "");
+  if(document.activeElement !== exampleInput) exampleInput.value = example;
+  const rec = currentRecord();
+  const student = studentForPage(state.page);
+  $("offlineScoreStudent").textContent = student ? [student.className, student.number ? `${student.number}번` : "", student.name].filter(Boolean).join(" ") : (state.pdf ? `${state.page}쪽` : "학생 정보 없음");
+  const external = normalizeExternalScores(rec?.externalScores);
+  const hasScore = external.imported || external.offlineWrittenScores.some(Boolean);
+  const score = external.offlineWrittenScores[index] || 0;
+  const max = question.maxScore;
+  $("offlineScoreValue").textContent = hasScore ? scoreWithMaxText(score, max) : "-";
+  const deducted = max - Math.max(0, score);
+  $("offlineScoreBadge").innerHTML = hasScore && deducted > 0 ? `<span class="offlineDeductBadge">${escapeHtml(formatScore(deducted))}점 감점</span>` : "";
+  $("offlineScoreHint").textContent = hasScore ? "엑셀에서 가져온 점수" : "가져온 점수가 없습니다. 설정 > 외부 점수 합산에서 엑셀을 업로드하세요.";
+}
+
+function saveOfflineExampleAnswer(){
+  const question = activeQuestion();
+  if(!question?.offline) return;
+  const examples = Array.isArray(state.settings.externalOfflineWrittenExamples) ? state.settings.externalOfflineWrittenExamples : (state.settings.externalOfflineWrittenExamples = []);
+  while(examples.length <= question.offlineIndex) examples.push("");
+  examples[question.offlineIndex] = $("offlineExampleInput").value;
+  persist();
+}
+
 function questionById(id){
   const offlineIndex = offlineQuestionIndex(id);
   return offlineIndex >= 0 ? offlineQuestion(offlineIndex) : state.questions.find(q => q.id === id);
@@ -10379,6 +10426,12 @@ els.offlineWrittenCountInput.addEventListener("change", () => {
   persistExternalScoreSettings();
 });
 els.offlineWrittenSettingsList.addEventListener("change", persistExternalScoreSettings);
+let offlineExampleSaveTimer = 0;
+$("offlineExampleInput").addEventListener("input", () => {
+  clearTimeout(offlineExampleSaveTimer);
+  offlineExampleSaveTimer = setTimeout(saveOfflineExampleAnswer, 400);
+});
+$("offlineExampleInput").addEventListener("change", saveOfflineExampleAnswer);
 els.offlineWrittenSettingsList.addEventListener("click", evt => {
   const cropBtn = evt.target.closest("[data-offline-crop]");
   if(cropBtn) return startOfflineWrittenCrop(Number(cropBtn.dataset.offlineCrop));
