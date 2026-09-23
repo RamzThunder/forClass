@@ -52,6 +52,8 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .actionDivider{width:1px;align-self:stretch;min-height:32px;background:var(--line);margin:4px 2px}
 .canvasActionBtn{position:absolute;right:12px;top:12px;z-index:9;min-height:34px;padding:6px 9px;font-size:12px;font-weight:900;box-shadow:0 8px 22px rgba(23,32,51,.16)}
 #saveCropBtn{top:58px}
+body.offlineQuestionActive .side > section{display:none!important}
+body.offlineQuestionActive .side > #offlineQuestionNote{display:block!important}
 .studentCropAreaControls{position:absolute;right:12px;top:104px;z-index:9;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:min(520px,calc(100% - 24px));border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px;box-shadow:0 8px 22px rgba(23,32,51,.14)}
 .studentCropAreaControls .label{white-space:nowrap}
 .studentCropAreaCount{width:62px;min-height:32px;padding:5px 8px;font-weight:850}
@@ -932,6 +934,10 @@ textarea{min-height:72px;resize:vertical}
   <div class="sideResizer" id="sideResizer" title="드래그해서 사이드바 너비 조절"></div>
 
   <aside class="side">
+    <section class="panel hidden" id="offlineQuestionNote">
+      <div class="panelHead"><h2 class="panelTitle">오프라인 서술형 문항</h2></div>
+      <div class="statusLine">이 문항은 점수를 엑셀로 가져오며, 여기서는 학생용 화면에 들어갈 답안 영역만 지정합니다.<br>· 상단 <b>영역 지정</b>: 모든 학생 공통 영역<br>· 상단 <b>학생 영역</b>: 현재 학생만 다른 영역</div>
+    </section>
     <section class="panel hidden" id="autoAssistPanel">
       <div class="panelHead">
         <h2 class="panelTitle">답안 텍스트 (자동 채점 보조)</h2>
@@ -1629,7 +1635,6 @@ let cropCompositeMode = false;
 let cropCompositeLayouts = [];
 let activeCompositeSide = "";
 let cropDraft = null;
-let offlineCropTarget = null;
 let pendingShortcutAction = "";
 let saveDirectoryHandle = null;
 
@@ -2337,7 +2342,7 @@ function normalizeRecords(){
   });
 }
 
-function activeQuestion(){return state.questions.find(q => q.id === state.activeQuestion) || state.questions[0]}
+function activeQuestion(){return questionById(state.activeQuestion) || state.questions[0]}
 function activeRubric(){return activeQuestion().rubric}
 function syncSourceTextToQuestion(sourceEl=null){
   const question = activeQuestion();
@@ -2401,40 +2406,40 @@ function pageWithStudentCropSide(page, questionId=state.activeQuestion){
     const side = crop?.side || parseCropOverrideKey(key).side || "page1";
     return pageForCropSide(studentIndex, side) || targetPage;
   }
-  const question = state.questions.find(item => item.id === questionId);
-  const side = question?.crop?.side;
+  const question = questionById(questionId);
+  const side = question?.offline && !question.crop.saved ? "" : question?.crop?.side;
   return side ? (pageForCropSide(studentIndex, side) || targetPage) : targetPage;
 }
 function activeCrop(){
   if(state.mode === "calibrate" && cropDraft) return cropDraft;
-  if(state.mode === "calibrate" && offlineCropTarget !== null) return baseCropForCurrentEdit();
   return studentCropForCurrent() || activeQuestion().crop;
 }
 function baseCropForCurrentEdit(){
-  if(offlineCropTarget !== null) return externalOfflineWrittenCrops()[offlineCropTarget] || activeQuestion().crop;
   return studentCropForCurrent() || activeQuestion().crop;
 }
 function ensureCropDraft(){
   const meta = cropOverrideMeta(activeQuestion().id);
-  if(cropDraft && cropDraft.questionId === meta.questionId && cropDraft.side === meta.side && cropDraft.area === state.activeStudentCropArea && cropDraft.studentMode === state.studentCropMode && cropDraft.offlineTarget === offlineCropTarget) return cropDraft;
+  if(cropDraft && cropDraft.questionId === meta.questionId && cropDraft.side === meta.side && cropDraft.area === state.activeStudentCropArea && cropDraft.studentMode === state.studentCropMode) return cropDraft;
   const base = baseCropForCurrentEdit();
   cropDraft = {
     ...base,
     ...meta,
     area:state.studentCropMode ? state.activeStudentCropArea : 1,
     areaLabel:`영역 ${state.studentCropMode ? state.activeStudentCropArea : 1}`,
-    studentMode:state.studentCropMode,
-    offlineTarget:offlineCropTarget
+    studentMode:state.studentCropMode
   };
   return cropDraft;
 }
 function saveEditableCrop(){
   const draft = cropDraft || ensureCropDraft();
-  if(offlineCropTarget !== null) return saveOfflineWrittenCrop(draft);
   if(!state.studentCropMode){
     const crop = activeQuestion().crop;
     Object.assign(crop, draft, cropOverrideMeta(activeQuestion().id));
     delete crop.studentMode;
+    if(activeQuestion().offline){
+      crop.saved = true;
+      renderOfflineWrittenSettingsList();
+    }
     persist();
     updatePageSideControls();
     updateStudentCropButtons();
@@ -2591,7 +2596,6 @@ function ensureQuestionRecord(key=recordKey()){
 function setMode(mode){
   state.mode = mode;
   cropDraft = null;
-  if(mode !== "calibrate") offlineCropTarget = null;
   if(mode === "calibrate") highlightMode = false;
   if(mode === "calibrate") state.fullPage = false;
   const showFullPage = state.fullPage || mode === "calibrate";
@@ -2719,11 +2723,14 @@ async function setQuestion(id){
 }
 
 function updateQuestionControls(){
-  const options = state.questions.map(q => `<option value="${escapeHtml(q.id)}">${escapeHtml(q.label)}</option>`).join("");
+  const offlineOptions = externalOfflineWrittenTitles().map((title, index) => `<option value="${escapeHtml(offlineQuestionId(index))}">${escapeHtml(title)}</option>`).join("");
+  const options = state.questions.map(q => `<option value="${escapeHtml(q.id)}">${escapeHtml(q.label)}</option>`).join("")
+    + (offlineOptions ? `<optgroup label="오프라인 서술형 (영역 지정 전용)">${offlineOptions}</optgroup>` : "");
   if(els.questionSelect.innerHTML !== options) els.questionSelect.innerHTML = options;
   const question = activeQuestion();
   els.questionSelect.value = question.id;
-  els.questionStatus.textContent = `${question.label} · 소문항 ${question.subs?.length || 0}개`;
+  document.body.classList.toggle("offlineQuestionActive", Boolean(question.offline));
+  els.questionStatus.textContent = question.offline ? `${question.label} · 오프라인 문항 (영역 지정 전용)` : `${question.label} · 소문항 ${question.subs?.length || 0}개`;
   updateProgress();
   renderQuestionSettings();
 }
@@ -3862,7 +3869,7 @@ function updateSaveCropButton(){
   const visible = Boolean(state.pdf && state.mode === "calibrate");
   els.saveCropBtn.classList.toggle("hidden", !visible);
   els.saveCropBtn.disabled = !visible;
-  els.saveCropBtn.textContent = offlineCropTarget !== null ? `${externalOfflineWrittenTitles()[offlineCropTarget]} 영역 저장` : state.studentCropMode ? `영역 ${state.activeStudentCropArea} 저장` : "전체 영역 저장";
+  els.saveCropBtn.textContent = state.studentCropMode ? `영역 ${state.activeStudentCropArea} 저장` : "전체 영역 저장";
   els.saveCropBtn.title = state.studentCropMode ? `현재 학생 영역 ${state.activeStudentCropArea} 저장` : "현재 문항 전체 영역 저장";
 }
 
@@ -3908,7 +3915,6 @@ function selectStudentCropArea(area){
 function toggleStudentCropMode(){
   if(!state.pdf) return;
   state.studentCropMode = !state.studentCropMode;
-  offlineCropTarget = null;
   cropDraft = null;
   if(state.studentCropMode && state.mode !== "calibrate") setMode("calibrate");
   updatePageSideControls();
@@ -5872,6 +5878,7 @@ async function undoLastChange(){
 }
 
 function syncFormToRecord(){
+  if(activeQuestion().offline) return;
   ensureQuestionRecord();
   const rec = state.records[recordKey()];
   const student = studentForPage(state.page);
@@ -6890,8 +6897,33 @@ function normalizeOfflineWrittenCrop(crop){
     y,
     w:clamp(Number(crop.w) || .04, .04, 1 - x),
     h:clamp(Number(crop.h) || .04, .04, 1 - y),
-    side:String(crop.side || "page1")
+    side:String(crop.side || "page1"),
+    saved:crop.saved !== false
   };
+}
+
+function offlineQuestionId(index){return `offline_${index + 1}`}
+function offlineQuestionIndex(id){
+  const match = String(id || "").match(/^offline_(\d+)$/);
+  const index = match ? Number(match[1]) - 1 : -1;
+  return index >= 0 && index < externalOfflineWrittenCount() ? index : -1;
+}
+const offlineQuestionCache = {};
+function offlineQuestion(index){
+  const crops = Array.isArray(state.settings.externalOfflineWrittenCrops) ? state.settings.externalOfflineWrittenCrops : (state.settings.externalOfflineWrittenCrops = []);
+  while(crops.length <= index) crops.push(null);
+  if(!crops[index]) crops[index] = {x:.10, y:.52, w:.80, h:.20, side:"page1", saved:false};
+  const id = offlineQuestionId(index);
+  const question = offlineQuestionCache[id] || (offlineQuestionCache[id] = {id, offline:true, exampleAnswer:"", sourceText:"", subSourceTexts:{}, subScores:{}, subs:[], rubric:[]});
+  question.offlineIndex = index;
+  question.label = externalOfflineWrittenTitles()[index];
+  question.maxScore = externalOfflineWrittenMaxScores()[index] || 0;
+  question.crop = crops[index];
+  return question;
+}
+function questionById(id){
+  const offlineIndex = offlineQuestionIndex(id);
+  return offlineIndex >= 0 ? offlineQuestion(offlineIndex) : state.questions.find(q => q.id === id);
 }
 
 function externalOfflineWrittenCrops(){
@@ -6905,34 +6937,12 @@ function startOfflineWrittenCrop(index){
     return;
   }
   els.settingsModal.classList.add("hidden");
-  state.studentCropMode = false;
-  setMode("calibrate");
-  offlineCropTarget = index;
-  cropDraft = null;
-  positionOverlay();
-  updateSaveCropButton();
-  updateStudentCropButtons();
-  showToast(`${externalOfflineWrittenTitles()[index]} 답안 영역을 지정한 뒤 저장하세요.`);
-}
-
-function saveOfflineWrittenCrop(draft){
-  const index = offlineCropTarget;
-  const crops = Array.isArray(state.settings.externalOfflineWrittenCrops) ? [...state.settings.externalOfflineWrittenCrops] : [];
-  while(crops.length <= index) crops.push(null);
-  crops[index] = normalizeOfflineWrittenCrop({...draft, side:cropOverrideMeta().side});
-  state.settings.externalOfflineWrittenCrops = crops;
-  offlineCropTarget = null;
-  cropDraft = null;
-  persist();
-  renderOfflineWrittenSettingsList();
-  showToast(`${externalOfflineWrittenTitles()[index]} 답안 영역을 저장했습니다.`);
-  setMode("grade");
-  drawCrop();
+  setQuestion(offlineQuestionId(index)).then(() => setMode("calibrate"));
 }
 
 function clearOfflineWrittenCrop(index){
   const crops = Array.isArray(state.settings.externalOfflineWrittenCrops) ? [...state.settings.externalOfflineWrittenCrops] : [];
-  if(!crops[index]) return;
+  if(!crops[index]?.saved) return;
   crops[index] = null;
   state.settings.externalOfflineWrittenCrops = crops;
   persist();
@@ -6951,7 +6961,7 @@ function renderOfflineWrittenSettingsList(){
   if(!els.offlineWrittenSettingsList) return;
   const titles = externalOfflineWrittenTitles();
   const maxScores = externalOfflineWrittenMaxScores();
-  const crops = externalOfflineWrittenCrops();
+  const crops = externalOfflineWrittenCrops().map(crop => crop?.saved ? crop : null);
   els.offlineWrittenSettingsList.innerHTML = titles.map((title, index) => `
     <div class="questionEditCard offlineWrittenSettingsRow" data-index="${index}">
       <div class="questionEditTop" style="grid-template-columns:minmax(0,1fr) 110px">
@@ -6965,9 +6975,9 @@ function renderOfflineWrittenSettingsList(){
         </label>
       </div>
       <div class="compactBtns" style="justify-content:flex-start;align-items:center;margin-top:8px">
-        <button class="btn mini" type="button" data-offline-crop="${index}">${crops[index] ? "답안 영역 다시 지정" : "답안 영역 지정"}</button>
+        <button class="btn mini" type="button" data-offline-crop="${index}">${crops[index] ? "공통 영역 다시 지정" : "공통 영역 지정"}</button>
         ${crops[index] ? `<button class="btn mini danger" type="button" data-offline-crop-clear="${index}">영역 삭제</button>` : ""}
-        <span class="statusLine" style="margin:0">${crops[index] ? `영역 설정됨${pagesPerStudent() > 1 ? ` · ${escapeHtml(cropSideDisplayFromKey(crops[index].side))}` : ""}` : "영역 없음"}</span>
+        <span class="statusLine" style="margin:0">${crops[index] ? `영역 설정됨${pagesPerStudent() > 1 ? ` · ${escapeHtml(cropSideDisplayFromKey(crops[index].side))}` : ""}` : "영역 없음"} · 학생별 영역은 상단 문항 선택에서 지정</span>
       </div>
     </div>
   `).join("");
@@ -7553,16 +7563,12 @@ function studentAnswerCropEntries(rec, question){
     .filter(entry => entry.page)
     .sort((a,b) => a.area - b.area);
   if(overrides.length) return overrides;
-  if(!question.crop) return [];
+  if(!question.crop || (question.offline && !question.crop.saved)) return [];
   return [{crop:question.crop, area:1, page:pageForCropSide(studentIndex, question.crop.side || "page1") || Number(rec.page) || 1}];
 }
 
 function offlineAnswerCropEntries(rec, index){
-  const crop = externalOfflineWrittenCrops()[index];
-  if(!crop) return [];
-  const studentIndex = Number(rec.studentIndex) || studentIndexForPage(rec.page);
-  const page = pageForCropSide(studentIndex, crop.side);
-  return page ? [{crop, area:1, page}] : [];
+  return studentAnswerCropEntries(rec, offlineQuestion(index));
 }
 
 function createAnswerPageRenderer(){
@@ -10363,6 +10369,7 @@ function persistExternalScoreSettings(){
   state.settings.externalOfflineWrittenMaxScores = offlineSettings.maxScores;
   applySettings();
   persist();
+  updateQuestionControls();
   updateResults();
   updateExternalScoreStatus();
 }
