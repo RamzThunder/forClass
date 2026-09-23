@@ -792,7 +792,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.2.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.3.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -2718,8 +2718,32 @@ function mobileViewerHeight(){
   return Math.round((window.innerHeight || 720) * .44);
 }
 
+let unwrittenFilterAutoFullPage = false;
+let lastFullPageFilterKey = "";
+function isUnwrittenKeywordFilter(filter){
+  return filter?.kind === "keyword" && String(filter.keyword || "").trim() === "미작성";
+}
+function syncUnwrittenFilterFullPage(){
+  const filterKey = JSON.stringify(state.keywordFilter || null);
+  if(filterKey === lastFullPageFilterKey || !state.pdf || state.mode === "calibrate") return;
+  lastFullPageFilterKey = filterKey;
+  if(isUnwrittenKeywordFilter(state.keywordFilter)){
+    if(state.fullPage) return;
+    state.fullPage = true;
+    unwrittenFilterAutoFullPage = true;
+  }else{
+    if(!unwrittenFilterAutoFullPage) return;
+    unwrittenFilterAutoFullPage = false;
+    if(!state.fullPage) return;
+    state.fullPage = false;
+  }
+  setMode("grade");
+  renderCurrentPage();
+}
+
 function toggleFullPage(){
   if(!state.pdf || state.mode === "calibrate") return;
+  unwrittenFilterAutoFullPage = false;
   state.fullPage = !state.fullPage;
   setMode("grade");
   renderCurrentPage();
@@ -3810,6 +3834,7 @@ function setAnswerZoom(nextZoom){
 }
 
 function updateChrome(){
+  syncUnwrittenFilterFullPage();
   const scoped = scopedPages();
   const currentBasePage = firstPageForStudentIndex(studentIndexForPage(state.page));
   const scopedIndex = scoped.indexOf(currentBasePage);
