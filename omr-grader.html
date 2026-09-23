@@ -1381,6 +1381,7 @@ textarea{min-height:72px;resize:vertical}
         <label class="checkField"><input id="shareIncludeMemoInput" type="checkbox" checked> 문항 메모</label>
         <label class="checkField"><input id="shareIncludeDiscussionInput" type="checkbox" checked> 논의 필요 표시</label>
         <label class="checkField"><input id="shareIncludeHighlightInput" type="checkbox" checked> 형광펜 캡처/메모</label>
+        <label class="checkField"><input id="shareIncludeAnswerCaptureInput" type="checkbox" checked> 학생 답안 캡처 (학생용 화면)</label>
         <div class="panelHead" style="margin-top:14px"><h2 class="panelTitle">내보내기 범위</h2></div>
         <label class="checkField"><input id="shareScopeAllInput" type="checkbox" checked> 전체 선택</label>
         <div class="shareClassList" id="shareClassList"></div>
@@ -1578,7 +1579,7 @@ const els = {
   openKeywordPopupBtn:$("openKeywordPopupBtn"), closeKeywordModalBtn:$("closeKeywordModalBtn"), keywordModalList:$("keywordModalList"),
   keywordStudentTitle:$("keywordStudentTitle"), keywordStudentDetail:$("keywordStudentDetail"),
   createShareReportBtn:$("createShareReportBtn"), openStudentScoreScreenBtn:$("openStudentScoreScreenBtn"), saveStudentScoreScreenBtn:$("saveStudentScoreScreenBtn"), shareIncludeExampleInput:$("shareIncludeExampleInput"),
-  shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"), shareIncludeHighlightInput:$("shareIncludeHighlightInput"),
+  shareIncludeMemoInput:$("shareIncludeMemoInput"), shareIncludeDiscussionInput:$("shareIncludeDiscussionInput"), shareIncludeHighlightInput:$("shareIncludeHighlightInput"), shareIncludeAnswerCaptureInput:$("shareIncludeAnswerCaptureInput"),
   shareScopeAllInput:$("shareScopeAllInput"), shareSeparateClassFilesInput:$("shareSeparateClassFilesInput"),
   shareClassList:$("shareClassList"), shareScopeStatus:$("shareScopeStatus"),
   mergeJsonModal:$("mergeJsonModal"), openMergeJsonBtn:$("openMergeJsonBtn"), closeMergeJsonBtn:$("closeMergeJsonBtn"), cancelMergeJsonBtn:$("cancelMergeJsonBtn"),
@@ -1628,6 +1629,7 @@ let cropCompositeMode = false;
 let cropCompositeLayouts = [];
 let activeCompositeSide = "";
 let cropDraft = null;
+let offlineCropTarget = null;
 let pendingShortcutAction = "";
 let saveDirectoryHandle = null;
 
@@ -2103,6 +2105,7 @@ function normalizeSettings(){
     externalOfflineWrittenCount:Math.max(1, Math.min(30, Math.floor(nonNegativeNumber(settings.externalOfflineWrittenCount) || 1))),
     externalOfflineWrittenTitles:Array.isArray(settings.externalOfflineWrittenTitles) ? settings.externalOfflineWrittenTitles.map(title => String(title || "").trim()).filter(Boolean).slice(0, 30) : [],
     externalOfflineWrittenMaxScores:Array.isArray(settings.externalOfflineWrittenMaxScores) ? settings.externalOfflineWrittenMaxScores.map(nonNegativeNumber).slice(0, 30) : [],
+    externalOfflineWrittenCrops:Array.isArray(settings.externalOfflineWrittenCrops) ? settings.externalOfflineWrittenCrops.map(normalizeOfflineWrittenCrop).slice(0, 30) : [],
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
       keywords:normalizeKeywordText(savedTemplate.keywords || savedTemplate.keyword || ""),
@@ -2404,26 +2407,30 @@ function pageWithStudentCropSide(page, questionId=state.activeQuestion){
 }
 function activeCrop(){
   if(state.mode === "calibrate" && cropDraft) return cropDraft;
+  if(state.mode === "calibrate" && offlineCropTarget !== null) return baseCropForCurrentEdit();
   return studentCropForCurrent() || activeQuestion().crop;
 }
 function baseCropForCurrentEdit(){
+  if(offlineCropTarget !== null) return externalOfflineWrittenCrops()[offlineCropTarget] || activeQuestion().crop;
   return studentCropForCurrent() || activeQuestion().crop;
 }
 function ensureCropDraft(){
   const meta = cropOverrideMeta(activeQuestion().id);
-  if(cropDraft && cropDraft.questionId === meta.questionId && cropDraft.side === meta.side && cropDraft.area === state.activeStudentCropArea && cropDraft.studentMode === state.studentCropMode) return cropDraft;
+  if(cropDraft && cropDraft.questionId === meta.questionId && cropDraft.side === meta.side && cropDraft.area === state.activeStudentCropArea && cropDraft.studentMode === state.studentCropMode && cropDraft.offlineTarget === offlineCropTarget) return cropDraft;
   const base = baseCropForCurrentEdit();
   cropDraft = {
     ...base,
     ...meta,
     area:state.studentCropMode ? state.activeStudentCropArea : 1,
     areaLabel:`영역 ${state.studentCropMode ? state.activeStudentCropArea : 1}`,
-    studentMode:state.studentCropMode
+    studentMode:state.studentCropMode,
+    offlineTarget:offlineCropTarget
   };
   return cropDraft;
 }
 function saveEditableCrop(){
   const draft = cropDraft || ensureCropDraft();
+  if(offlineCropTarget !== null) return saveOfflineWrittenCrop(draft);
   if(!state.studentCropMode){
     const crop = activeQuestion().crop;
     Object.assign(crop, draft, cropOverrideMeta(activeQuestion().id));
@@ -2584,6 +2591,7 @@ function ensureQuestionRecord(key=recordKey()){
 function setMode(mode){
   state.mode = mode;
   cropDraft = null;
+  if(mode !== "calibrate") offlineCropTarget = null;
   if(mode === "calibrate") highlightMode = false;
   if(mode === "calibrate") state.fullPage = false;
   const showFullPage = state.fullPage || mode === "calibrate";
@@ -3854,7 +3862,7 @@ function updateSaveCropButton(){
   const visible = Boolean(state.pdf && state.mode === "calibrate");
   els.saveCropBtn.classList.toggle("hidden", !visible);
   els.saveCropBtn.disabled = !visible;
-  els.saveCropBtn.textContent = state.studentCropMode ? `영역 ${state.activeStudentCropArea} 저장` : "전체 영역 저장";
+  els.saveCropBtn.textContent = offlineCropTarget !== null ? `${externalOfflineWrittenTitles()[offlineCropTarget]} 영역 저장` : state.studentCropMode ? `영역 ${state.activeStudentCropArea} 저장` : "전체 영역 저장";
   els.saveCropBtn.title = state.studentCropMode ? `현재 학생 영역 ${state.activeStudentCropArea} 저장` : "현재 문항 전체 영역 저장";
 }
 
@@ -3900,6 +3908,7 @@ function selectStudentCropArea(area){
 function toggleStudentCropMode(){
   if(!state.pdf) return;
   state.studentCropMode = !state.studentCropMode;
+  offlineCropTarget = null;
   cropDraft = null;
   if(state.studentCropMode && state.mode !== "calibrate") setMode("calibrate");
   updatePageSideControls();
@@ -6872,6 +6881,64 @@ function externalOfflineWrittenMaxScores(){
   return Array.from({length:externalOfflineWrittenCount()}, (_, index) => nonNegativeNumber(saved[index]));
 }
 
+function normalizeOfflineWrittenCrop(crop){
+  if(!crop || typeof crop !== "object") return null;
+  const x = clamp(Number(crop.x) || 0, 0, .96);
+  const y = clamp(Number(crop.y) || 0, 0, .96);
+  return {
+    x,
+    y,
+    w:clamp(Number(crop.w) || .04, .04, 1 - x),
+    h:clamp(Number(crop.h) || .04, .04, 1 - y),
+    side:String(crop.side || "page1")
+  };
+}
+
+function externalOfflineWrittenCrops(){
+  const saved = Array.isArray(state.settings?.externalOfflineWrittenCrops) ? state.settings.externalOfflineWrittenCrops : [];
+  return Array.from({length:externalOfflineWrittenCount()}, (_, index) => normalizeOfflineWrittenCrop(saved[index]));
+}
+
+function startOfflineWrittenCrop(index){
+  if(!state.pdf){
+    alert("먼저 답안 PDF를 열어주세요.");
+    return;
+  }
+  els.settingsModal.classList.add("hidden");
+  state.studentCropMode = false;
+  setMode("calibrate");
+  offlineCropTarget = index;
+  cropDraft = null;
+  positionOverlay();
+  updateSaveCropButton();
+  updateStudentCropButtons();
+  showToast(`${externalOfflineWrittenTitles()[index]} 답안 영역을 지정한 뒤 저장하세요.`);
+}
+
+function saveOfflineWrittenCrop(draft){
+  const index = offlineCropTarget;
+  const crops = Array.isArray(state.settings.externalOfflineWrittenCrops) ? [...state.settings.externalOfflineWrittenCrops] : [];
+  while(crops.length <= index) crops.push(null);
+  crops[index] = normalizeOfflineWrittenCrop({...draft, side:cropOverrideMeta().side});
+  state.settings.externalOfflineWrittenCrops = crops;
+  offlineCropTarget = null;
+  cropDraft = null;
+  persist();
+  renderOfflineWrittenSettingsList();
+  showToast(`${externalOfflineWrittenTitles()[index]} 답안 영역을 저장했습니다.`);
+  setMode("grade");
+  drawCrop();
+}
+
+function clearOfflineWrittenCrop(index){
+  const crops = Array.isArray(state.settings.externalOfflineWrittenCrops) ? [...state.settings.externalOfflineWrittenCrops] : [];
+  if(!crops[index]) return;
+  crops[index] = null;
+  state.settings.externalOfflineWrittenCrops = crops;
+  persist();
+  renderOfflineWrittenSettingsList();
+}
+
 function externalOfflineWrittenSettingsFromInputs(){
   const rows = [...(els.offlineWrittenSettingsList?.querySelectorAll(".offlineWrittenSettingsRow") || [])];
   return {
@@ -6884,6 +6951,7 @@ function renderOfflineWrittenSettingsList(){
   if(!els.offlineWrittenSettingsList) return;
   const titles = externalOfflineWrittenTitles();
   const maxScores = externalOfflineWrittenMaxScores();
+  const crops = externalOfflineWrittenCrops();
   els.offlineWrittenSettingsList.innerHTML = titles.map((title, index) => `
     <div class="questionEditCard offlineWrittenSettingsRow" data-index="${index}">
       <div class="questionEditTop" style="grid-template-columns:minmax(0,1fr) 110px">
@@ -6895,6 +6963,11 @@ function renderOfflineWrittenSettingsList(){
           <span class="label">총점</span>
           <input class="offlineWrittenMaxInput" type="number" min="0" step="1" value="${escapeHtml(maxScores[index] || "")}" placeholder="총점">
         </label>
+      </div>
+      <div class="compactBtns" style="justify-content:flex-start;align-items:center;margin-top:8px">
+        <button class="btn mini" type="button" data-offline-crop="${index}">${crops[index] ? "답안 영역 다시 지정" : "답안 영역 지정"}</button>
+        ${crops[index] ? `<button class="btn mini danger" type="button" data-offline-crop-clear="${index}">영역 삭제</button>` : ""}
+        <span class="statusLine" style="margin:0">${crops[index] ? `영역 설정됨${pagesPerStudent() > 1 ? ` · ${escapeHtml(cropSideDisplayFromKey(crops[index].side))}` : ""}` : "영역 없음"}</span>
       </div>
     </div>
   `).join("");
@@ -6968,6 +7041,7 @@ function selectedShareReportPayload(){
     includeMemo:els.shareIncludeMemoInput.checked,
     includeDiscussion:els.shareIncludeDiscussionInput.checked,
     includeHighlight:els.shareIncludeHighlightInput.checked,
+    includeAnswerCapture:Boolean(els.shareIncludeAnswerCaptureInput?.checked),
     scope,
     titleSuffix:scope === "classes" ? [...selectedClasses].join(", ") : ""
   };
@@ -7241,7 +7315,9 @@ async function buildStudentScoreScreenHtml(records, options){
   const classTabsHtml = studentClassNames.length > 1
     ? studentClassNames.map(name => `<button class="classTab" type="button" data-class="${escapeHtml(name)}">${escapeHtml(name || "반 미지정")}</button>`).join("")
     : "";
-  const studentHtml = (await Promise.all(records.map((rec, index) => studentScoreCardHtml(rec, options, index)))).join("");
+  const studentCards = [];
+  for(const [index, rec] of records.entries()) studentCards.push(await studentScoreCardHtml(rec, options, index));
+  const studentHtml = studentCards.join("");
   const oneHandKeys = state.settings?.oneHandKeys || defaultOneHandKeys;
   const studentNavKeys = {
     prev:state.settings?.oneHandGradingEnabled ? oneHandKeys.prev : "",
@@ -7300,6 +7376,9 @@ async function buildStudentScoreScreenHtml(records, options){
   .summaryTitle{display:flex;align-items:center;gap:8px;min-width:0}
   .summaryScore{white-space:nowrap;color:#176b87;font-weight:950}
   .scoreSide{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .answerCaptureBox{display:grid;gap:8px;margin-bottom:10px;border:1px solid #d9dee8;border-radius:8px;background:#fff;padding:10px}
+  .answerCaptureTitle{font-size:12px;font-weight:900;color:#647085}
+  .answerCapture{display:block;width:100%;max-width:100%;height:auto;border:1px solid #eef1f5;border-radius:6px;background:#fff}
   .deductBadge{display:inline-block;border:1px solid #edcfcb;border-radius:999px;background:#fff7f6;color:#a33a35;padding:2px 8px;font-size:12px;font-weight:900;white-space:nowrap}
   .offlineLine{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid #d9dee8;border-radius:8px;background:#fbfcfe;padding:12px 13px;font-weight:900}
   .detailBody{border-top:1px solid #eef1f5;padding:12px}
@@ -7464,6 +7543,71 @@ function studentScoreNavButtonHtml(rec, index){
   </button>`;
 }
 
+function studentAnswerCropEntries(rec, question){
+  const studentIndex = Number(rec.studentIndex) || studentIndexForPage(rec.page);
+  const overrides = studentCropOverridesForQuestion(rec, question.id)
+    .map(([key, crop]) => {
+      const parsed = parseCropOverrideKey(key);
+      return {crop, area:Number(crop?.area || parsed.area) || 1, page:pageForCropSide(studentIndex, crop?.side || parsed.side || "page1")};
+    })
+    .filter(entry => entry.page)
+    .sort((a,b) => a.area - b.area);
+  if(overrides.length) return overrides;
+  if(!question.crop) return [];
+  return [{crop:question.crop, area:1, page:pageForCropSide(studentIndex, question.crop.side || "page1") || Number(rec.page) || 1}];
+}
+
+function offlineAnswerCropEntries(rec, index){
+  const crop = externalOfflineWrittenCrops()[index];
+  if(!crop) return [];
+  const studentIndex = Number(rec.studentIndex) || studentIndexForPage(rec.page);
+  const page = pageForCropSide(studentIndex, crop.side);
+  return page ? [{crop, area:1, page}] : [];
+}
+
+function createAnswerPageRenderer(){
+  const cache = new Map();
+  return pageNumber => {
+    if(!cache.has(pageNumber)){
+      cache.set(pageNumber, (async () => {
+        const page = await state.pdf.getPage(pageNumber);
+        const viewport = page.getViewport({scale:Math.max(1.5, state.scale || 1)});
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d", {alpha:false});
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({canvasContext:ctx, viewport}).promise;
+        return canvas;
+      })());
+    }
+    return cache.get(pageNumber);
+  };
+}
+
+async function studentAnswerCapturesHtml(entries, renderPage){
+  if(!state.pdf || !entries.length) return "";
+  const images = [];
+  for(const entry of entries){
+    try{
+      const source = await renderPage(entry.page);
+      const cropped = cropCanvasFromRenderedPage(source, entry.crop);
+      const outScale = Math.min(1, 900 / cropped.width);
+      const out = document.createElement("canvas");
+      out.width = Math.max(1, Math.round(cropped.width * outScale));
+      out.height = Math.max(1, Math.round(cropped.height * outScale));
+      const ctx = out.getContext("2d", {alpha:false});
+      ctx.drawImage(cropped, 0, 0, out.width, out.height);
+      images.push(`<img class="answerCapture" src="${out.toDataURL("image/jpeg", .8)}" alt="내 답안${entries.length > 1 ? ` 영역 ${entry.area}` : ""}">`);
+    }catch(err){
+      console.warn("answer capture failed", err);
+    }
+  }
+  if(!images.length) return "";
+  return `<div class="answerCaptureBox"><div class="answerCaptureTitle">내가 쓴 답안</div>${images.join("")}</div>`;
+}
+
 async function studentScoreCardHtml(rec, options, index=0){
   const external = normalizeExternalScores(rec.externalScores);
   const selectedScore = external.selected;
@@ -7472,10 +7616,11 @@ async function studentScoreCardHtml(rec, options, index=0){
   const selectedMax = externalSelectedMaxScore();
   const writtenMax = externalWrittenMaxScore();
   const totalMax = selectedMax > 0 && writtenMax > 0 ? selectedMax + writtenMax : 0;
-  const questionRows = [
-    ...(await Promise.all(state.questions.map(question => studentScoreGradedQuestionHtml(rec, question, options)))),
-    ...external.offlineWrittenScores.map((score, index) => studentScoreOfflineQuestionHtml(score, index))
-  ].join("");
+  const renderPage = options.includeAnswerCapture && state.pdf ? createAnswerPageRenderer() : null;
+  const questionRows = [];
+  for(const question of state.questions) questionRows.push(await studentScoreGradedQuestionHtml(rec, question, options, renderPage));
+  for(const [scoreIndex, score] of external.offlineWrittenScores.entries()) questionRows.push(await studentScoreOfflineQuestionHtml(rec, score, scoreIndex, renderPage));
+  const questionRowsHtml = questionRows.join("");
   return `<section class="student" data-student-index="${index}">
     <div class="studentHead">
       <div>
@@ -7499,18 +7644,19 @@ async function studentScoreCardHtml(rec, options, index=0){
     </div>
     <div class="section">
       <h2 class="sectionTitle">문항별 점수</h2>
-      <div class="questionList">${questionRows || `<div class="empty">표시할 문항 점수가 없습니다.</div>`}</div>
+      <div class="questionList">${questionRowsHtml || `<div class="empty">표시할 문항 점수가 없습니다.</div>`}</div>
     </div>
   </section>`;
 }
 
-async function studentScoreGradedQuestionHtml(rec, question, options){
+async function studentScoreGradedQuestionHtml(rec, question, options, renderPage=null){
   const qrec = rec.answers?.[question.id] || {};
   const qtotal = questionTotal(rec, question);
   const qmax = questionMaxScore(question);
   const groups = shareReportSubGroupsHtml(question, qrec);
   const memo = options.includeMemo && String(qrec.memo || "").trim() ? `<div class="memo"><strong>문항 메모</strong>\n${escapeHtml(qrec.memo)}</div>` : "";
   const highlights = options.includeHighlight ? await shareReportHighlightsHtml(rec, question, qrec) : "";
+  const answerCapture = renderPage ? await studentAnswerCapturesHtml(studentAnswerCropEntries(rec, question), renderPage) : "";
   const badges = [
     qrec.completed ? `<span class="badge">채점 완료</span>` : "",
     options.includeDiscussion && qrec.needsDiscussion ? `<span class="badge warn">논의 필요</span>` : ""
@@ -7521,6 +7667,7 @@ async function studentScoreGradedQuestionHtml(rec, question, options){
       <span class="scoreSide"><span class="summaryScore">${escapeHtml(formatScore(Math.max(0, qtotal)))}점 / ${escapeHtml(formatScore(qmax))}점</span>${studentScoreDeductBadgeHtml(qtotal, qmax)}</span>
     </summary>
     <div class="detailBody">
+      ${answerCapture}
       ${groups || `<div class="empty">이 채점기로 표시한 채점 근거가 없습니다.</div>`}
       ${memo}
       ${highlights}
@@ -7533,12 +7680,24 @@ function studentScoreDeductBadgeHtml(score, max){
   return deducted > 0 ? `<span class="deductBadge">${escapeHtml(formatScore(deducted))}점 감점</span>` : "";
 }
 
-function studentScoreOfflineQuestionHtml(score, index){
+async function studentScoreOfflineQuestionHtml(rec, score, index, renderPage=null){
   const max = externalOfflineWrittenMaxScores()[index] || 0;
-  return `<div class="offlineLine">
-    <span>${escapeHtml(externalOfflineWrittenTitles()[index] || `오프라인 서술형 ${index + 1}`)}</span>
-    <span class="scoreSide"><span class="summaryScore">${escapeHtml(scoreWithMaxText(score || 0, max))}</span>${studentScoreDeductBadgeHtml(score, max)}</span>
+  const title = escapeHtml(externalOfflineWrittenTitles()[index] || `오프라인 서술형 ${index + 1}`);
+  const scoreHtml = `<span class="scoreSide"><span class="summaryScore">${escapeHtml(scoreWithMaxText(score || 0, max))}</span>${studentScoreDeductBadgeHtml(score, max)}</span>`;
+  const answerCapture = renderPage ? await studentAnswerCapturesHtml(offlineAnswerCropEntries(rec, index), renderPage) : "";
+  if(!answerCapture){
+    return `<div class="offlineLine">
+    <span>${title}</span>
+    ${scoreHtml}
   </div>`;
+  }
+  return `<details class="questionDetail">
+    <summary class="questionSummary">
+      <span class="summaryTitle"><span>${title}</span></span>
+      ${scoreHtml}
+    </summary>
+    <div class="detailBody">${answerCapture}</div>
+  </details>`;
 }
 
 async function shareReportStudentHtml(rec, options){
@@ -10213,6 +10372,12 @@ els.offlineWrittenCountInput.addEventListener("change", () => {
   persistExternalScoreSettings();
 });
 els.offlineWrittenSettingsList.addEventListener("change", persistExternalScoreSettings);
+els.offlineWrittenSettingsList.addEventListener("click", evt => {
+  const cropBtn = evt.target.closest("[data-offline-crop]");
+  if(cropBtn) return startOfflineWrittenCrop(Number(cropBtn.dataset.offlineCrop));
+  const clearBtn = evt.target.closest("[data-offline-crop-clear]");
+  if(clearBtn) clearOfflineWrittenCrop(Number(clearBtn.dataset.offlineCropClear));
+});
 els.externalScoreInput.addEventListener("change", async () => {
   const file = els.externalScoreInput.files?.[0];
   if(!file) return;
