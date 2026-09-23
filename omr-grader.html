@@ -792,7 +792,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.3.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.3.1</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -2723,11 +2723,19 @@ let lastFullPageFilterKey = "";
 function isUnwrittenKeywordFilter(filter){
   return filter?.kind === "keyword" && String(filter.keyword || "").trim() === "미작성";
 }
+function currentStudentReviewMarked(){
+  const session = reviewSession();
+  if(!session) return false;
+  const target = session.targets.find(t => recordKey(reviewRecord(t)?.page || t.page) === recordKey());
+  return Boolean(target && reviewIsMarked(session, target));
+}
 function syncUnwrittenFilterFullPage(){
-  const filterKey = JSON.stringify(state.keywordFilter || null);
-  if(filterKey === lastFullPageFilterKey || !state.pdf || state.mode === "calibrate") return;
+  if(!state.pdf || state.mode === "calibrate") return;
+  const wantFullPage = isUnwrittenKeywordFilter(state.keywordFilter) && !currentStudentReviewMarked();
+  const filterKey = JSON.stringify([state.keywordFilter || null, wantFullPage]);
+  if(filterKey === lastFullPageFilterKey) return;
   lastFullPageFilterKey = filterKey;
-  if(isUnwrittenKeywordFilter(state.keywordFilter)){
+  if(wantFullPage){
     if(state.fullPage) return;
     state.fullPage = true;
     unwrittenFilterAutoFullPage = true;
@@ -6264,6 +6272,7 @@ function reviewSessionControls(session){
   return `<div class="reviewProgress"><strong>${escapeHtml(reviewProgressText(session))}</strong><progress max="${Math.max(1,p.total)}" value="${p.reviewed}" aria-label="학생 검토 진행률"></progress><div class="compactBtns"><button class="btn mini" data-review-action="next" data-review-key="${id}" ${p.reviewed===p.total?'disabled':''}>미검토 학생 보기</button><button class="btn mini ${p.completed?'':'primary'}" data-review-action="complete" data-review-key="${id}" ${!p.total || p.reviewed!==p.total || p.completed?'disabled':''}>${p.completed?'키워드 검토 완료':'키워드 검토 완료로 표시'}</button></div><div class="statusLine">답안을 본 뒤 검토 완료를 눌러 주세요. 채점 화면에서는 V 키로 완료·취소할 수 있습니다. 체크를 해제한 학생도 검토 목록에 남습니다.</div></div>`;
 }
 function updateKeywordReviewToolbar(){
+  syncUnwrittenFilterFullPage();
   const box=$('keywordReviewToolbar'),session=reviewSession();
   if(!box) return;
   box.classList.toggle('hidden',!session);
