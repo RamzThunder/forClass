@@ -792,7 +792,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.3.1</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.4.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -6248,7 +6248,31 @@ function reviewSession(filter=state.keywordFilter, create=false){
   const existing=state.keywordReview.sessions[KeywordReview.key(meta)];
   if(!create && !existing) return null;
   const records=meta.kind==='keywordMissing' ? keywordMissingStudentRecords(meta.itemId,meta.type,meta.keyword) : keywordStudentRecords(meta.itemId,meta.type,meta.keyword);
-  return KeywordReview.ensure(state.keywordReview,meta,records.map(reviewTarget));
+  const session=KeywordReview.ensure(state.keywordReview,meta,records.map(reviewTarget));
+  autoMarkWholeUnwrittenReviews(session);
+  return session;
+}
+// Students the teacher marked 전체 미작성 were already judged; autoMarks keeps a manual un-mark from being overridden.
+function autoMarkWholeUnwrittenReviews(session){
+  if(session.kind!=='keyword' || String(session.keyword || '').trim()!=='미작성') return;
+  const question=state.questions.find(q=>q.id===session.questionId);
+  if(!question) return;
+  const subs=subOptions(question);
+  session.autoMarks=session.autoMarks || {};
+  let changed=false;
+  session.targets.forEach(target=>{
+    const unwritten=reviewRecord(target)?.answers?.[question.id]?.unwrittenSubs || {};
+    if(!subs.every(sub=>unwritten[sub])) return;
+    const signature=reviewSignature(session,target);
+    if(signature===null || session.autoMarks[target.key]===signature) return;
+    session.autoMarks[target.key]=signature;
+    if(session.marks[target.key]?.signature!==signature){
+      session.marks[target.key]={signature,at:Date.now(),auto:true};
+      session.completedAt=null;
+    }
+    changed=true;
+  });
+  if(changed) persist();
 }
 function reviewRecord(target){
   const atPage=state.records[recordKey(target.page)] || recordShellForPage(target.page);
