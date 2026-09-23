@@ -36,7 +36,9 @@ button{cursor:pointer}
 .topbar{min-height:64px;padding:10px 16px;border-bottom:1px solid var(--line);background:#fbfcfe;display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,.9fr) auto;align-items:center;gap:14px}
 .titleCluster{display:flex;align-items:center;gap:10px;min-width:0}
 .titleMain{display:grid;gap:3px;min-width:0}
-.titleQuestion{display:grid;grid-template-columns:minmax(150px,220px) minmax(180px,1fr);gap:10px;align-items:center;min-width:0}
+.titleQuestion{display:grid;grid-template-columns:auto minmax(150px,220px) minmax(180px,1fr);gap:10px;align-items:center;min-width:0}
+.reviewChangesTopBtn{position:relative}
+.reviewChangesCount{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:850;line-height:18px;text-align:center}
 .backBtn{width:40px;height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);display:grid;place-items:center;font-size:24px;font-weight:850;line-height:1;flex:0 0 auto}
 .backBtn:hover{border-color:var(--accent);color:var(--accent)}
 h1{margin:0;font-size:20px;line-height:1.25}
@@ -520,7 +522,8 @@ textarea{min-height:72px;resize:vertical}
   }
   body.pdfLoaded .side{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
   .topbar{display:flex;align-items:flex-start;flex-direction:column}
-  .titleQuestion{grid-template-columns:1fr}
+  .titleQuestion{grid-template-columns:auto 1fr}
+  .titleQuestion > div{grid-column:1 / -1}
   .actions{justify-content:flex-start}
   .navstrip{grid-template-columns:1fr}
   .canvasShell{min-height:58vh}
@@ -792,11 +795,12 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.4.1</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.5.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
       <div class="titleQuestion">
+        <button class="btn topActionBtn reviewChangesTopBtn" id="reviewChangesTopBtn" type="button" title="점수 수정 내역 보기"><span class="twoLine"><span>수정</span><span>내역</span></span><span class="reviewChangesCount hidden" id="reviewChangesCount"></span></button>
         <select id="questionSelect" title="채점할 문항"></select>
         <div>
           <div class="progressWrap">
@@ -2787,6 +2791,7 @@ function updateQuestionControls(){
   els.questionSelect.value = question.id;
   document.body.classList.toggle("offlineQuestionActive", Boolean(question.offline));
   renderOfflineQuestionPanel();
+  updateReviewChangesCount();
   els.questionStatus.textContent = question.offline ? `${question.label} · 오프라인 문항 (영역 지정 전용)` : `${question.label} · 소문항 ${question.subs?.length || 0}개`;
   updateProgress();
   renderQuestionSettings();
@@ -6390,6 +6395,13 @@ function captureReviewChanges(){
   changes.forEach(change=>delete change.graded);
   state.keywordReview.changes.push(...changes);
   reviewScoreBaseline=next;
+  if(changes.length) updateReviewChangesCount();
+}
+function updateReviewChangesCount(){
+  const count=state.keywordReview?.changes?.length || 0;
+  const badge=$('reviewChangesCount');
+  badge.textContent=count>99?'99+':String(count);
+  badge.classList.toggle('hidden',!count);
 }
 function reviewChangeRows(){
   const cls=$('reviewChangesClass').value;
@@ -6400,6 +6412,7 @@ function renderReviewChanges(){
   $('reviewChangesSummary').textContent=`점수 수정 ${rows.length}건 · ${new Set(rows.map(c=>c.studentKey)).size}명 (되돌린 변경도 시간순으로 기록)`;
   $('reviewChangesList').innerHTML=rows.map(c=>`<article class="reviewChangeRow"><strong>${escapeHtml([c.className,c.number?c.number+'번':'',c.name].filter(Boolean).join(' '))} · ${escapeHtml(c.questionLabel)}</strong><div>${formatScore(c.before)} → ${formatScore(c.after)}점 (${formatSignedScore(c.after-c.before)}) · 전체 합계 ${formatScore(c.totalBefore)} → ${formatScore(c.totalAfter)}점</div><div class="statusLine">${escapeHtml(new Date(c.at).toLocaleString('ko-KR'))} · ${escapeHtml(c.context)}</div><div>${escapeHtml(c.detail)}</div><label>전달 메모 <input class="reviewChangeNote" data-change-id="${escapeHtml(c.id)}" value="${escapeHtml(c.note || '')}" placeholder="변경 사유나 전달할 내용을 적어 주세요"></label><div class="compactBtns"><button class="btn mini danger" type="button" data-delete-review-change="${escapeHtml(c.id)}">이 수정 내역 삭제</button></div></article>`).join('') || '<div class="statusLine">검토 중 점수가 바뀌면 여기에 기록됩니다. 이전 수정 내역은 소급해서 기록하지 않습니다.</div>';
   $('copyReviewChangesBtn').disabled=!rows.length;$('exportReviewChangesBtn').disabled=!rows.length;
+  updateReviewChangesCount();
 }
 function openReviewChanges(){
   const select=$('reviewChangesClass'),old=select.value;
@@ -10287,6 +10300,7 @@ els.mergeJsonModal.addEventListener("click", evt => {
   if(evt.target === els.mergeJsonModal) els.mergeJsonModal.classList.add("hidden");
 });
 els.questionSelect.addEventListener("change", () => setQuestion(els.questionSelect.value));
+$("reviewChangesTopBtn").addEventListener("click", openReviewChanges);
 els.settingsModal.addEventListener("click", evt => {
   const shortcutBtn = evt.target.closest("[data-shortcut-action]");
   if(shortcutBtn){
