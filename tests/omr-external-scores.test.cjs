@@ -76,3 +76,50 @@ test('문항 카드 저장은 선택형·다른 문항 점수를 유지하고 �
   c.saveOfflineStudentScore({preventDefault(){}});
   assert.equal(c.saved,null);
 });
+function historySetup(){
+  const c = setup();
+  c.KeywordReview = require('../keyword-review.js');
+  c.crypto = require('node:crypto');
+  c.state.keywordReview = c.KeywordReview.empty();
+  c.state.questions = [{id:'q1',label:'온라인 문항',rubric:[]}];
+  c.state.settings.externalOfflineWrittenTitles = ['서술형 3','서술형 4'];
+  c.reviewStudentKey = rec => String(rec.studentIndex);
+  c.questionTotal = () => 0;
+  c.updateReviewChangesCount = () => {};
+  c.activeQuestion = () => c.state.questions[0];
+  c.keywordFilterLabel = () => '키워드 검토';
+  for(const name of ['externalOfflineWrittenTitles','offlineQuestionId','hasExternalScores','externalScoreTotal','gradedQuestionTotal','grandTotal','reviewScoreSnapshot','captureReviewChanges']) vm.runInContext(source(name),c);
+  c.resetBaseline = () => {c.reviewScoreBaseline=c.reviewScoreSnapshot();};
+  c.resetBaseline();
+  return c;
+}
+test('외부 점수 최초 가져오기는 제외하고 이후 선택형·문항별 수정과 총점 기록', () => {
+  const c = historySetup(), rec = c.state.records['2'];
+  rec.externalScores = {selected:30,offlineWrittenScores:[4,6],imported:true};
+  c.captureReviewChanges();
+  assert.equal(c.state.keywordReview.changes.length,0);
+  rec.externalScores = c.revisedExternalScores(rec.externalScores,['29','4','8.5']);
+  c.captureReviewChanges();
+  const rows=c.state.keywordReview.changes;
+  assert.equal(rows.length,2);
+  assert.deepEqual(rows.map(r=>[r.questionLabel,r.before,r.after,r.totalBefore,r.totalAfter]),[['선택형 점수',30,29,40,41.5],['서술형 4',6,8.5,40,41.5]]);
+  assert.ok(rows.every(r=>r.context==='외부 점수 수정' && r.name==='테스트'));
+  c.captureReviewChanges();
+  assert.equal(rows.length,2);
+  const restored=c.KeywordReview.restore(JSON.parse(JSON.stringify(c.state.keywordReview)));
+  assert.equal(restored.changes.length,2);
+});
+test('외부 점수 합계가 같아도 각 문항 수정 기록, 0점과 되돌리기도 기록', () => {
+  const c=historySetup(),rec=c.state.records['2'];
+  rec.externalScores={selected:0,offlineWrittenScores:[4,6],imported:true};
+  c.resetBaseline();
+  rec.externalScores=c.revisedExternalScores(rec.externalScores,['0','0','10']);
+  c.captureReviewChanges();
+  assert.equal(c.state.keywordReview.changes.length,2);
+  assert.ok(c.state.keywordReview.changes.every(r=>r.totalBefore===10 && r.totalAfter===10));
+  rec.externalScores={selected:0,offlineWrittenScores:[4,6],imported:true};
+  c.captureReviewChanges();
+  assert.equal(c.state.keywordReview.changes.length,4);
+  assert.equal(c.state.keywordReview.changes[2].before,0);
+  assert.equal(c.state.keywordReview.changes[2].after,4);
+});

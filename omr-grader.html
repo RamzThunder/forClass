@@ -6451,6 +6451,12 @@ function reviewScoreSnapshot(){
       const key=JSON.stringify([studentKey,q.id]);
       result[key]={key,studentKey,questionId:q.id,questionLabel:q.label,className:rec.className || '',number:rec.number || '',name:rec.name || '',page:rec.page,score:questionTotal(rec,q),total,choices,graded:Boolean(qrec?.everCompleted)};
     });
+    const external=normalizeExternalScores(rec.externalScores);
+    const externalItems=[{id:'selected',label:'선택형 점수',score:external.selected},...externalOfflineWrittenTitles().map((label,index)=>({id:offlineQuestionId(index),label,score:external.offlineWrittenScores[index] || 0}))];
+    externalItems.forEach(item=>{
+      const key=JSON.stringify([studentKey,'external',item.id]);
+      result[key]={key,studentKey,questionId:item.id,questionLabel:item.label,className:rec.className || '',number:rec.number || '',name:rec.name || '',page:rec.page,score:item.score,total,choices:[],graded:hasExternalScores(rec),external:true};
+    });
   });
   return result;
 }
@@ -6460,8 +6466,14 @@ function captureReviewChanges(){
   const inReview=['keyword','keywordMissing','reviewIssue','reviewAll'].includes(kind);
   const context=inReview ? `${activeQuestion().label} · ${keywordFilterLabel()}` : '채점 완료 후 수정';
   const changes=KeywordReview.differences(reviewScoreBaseline,next,context,()=>crypto.randomUUID())
-    .filter(change=>inReview || reviewScoreBaseline?.[change.key]?.graded);
-  changes.forEach(change=>delete change.graded);
+    .filter(change=>change.external ? reviewScoreBaseline?.[change.key]?.graded : inReview || reviewScoreBaseline?.[change.key]?.graded);
+  changes.forEach(change=>{
+    delete change.graded;
+    if(change.external){
+      change.context='외부 점수 수정';
+      change.detail=`${change.questionLabel} 외부 점수 변경`;
+    }
+  });
   state.keywordReview.changes.push(...changes);
   reviewScoreBaseline=next;
   if(changes.length) updateReviewChangesCount();
