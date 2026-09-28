@@ -159,6 +159,8 @@ body:not(.pdfLoaded) .answerZoomControls{display:none}
 .canvasShell.fullPageSpread .sideActive{outline-color:var(--accent);box-shadow:0 0 0 4px rgba(23,107,135,.18),0 18px 42px rgba(23,32,51,.18);filter:brightness(1.02)}
 .canvasShell.fullPageSpread .sideInactive{opacity:.62;filter:brightness(.82) saturate(.85)}
 .canvasShell.fullPageSpread .sideInactive:hover{opacity:.82;filter:brightness(.95)}
+.canvasShell.filterActive > .pageWrap:not(.hidden),.canvasShell.filterActive > .cropView:not(.hidden){border-radius:8px;outline:4px solid #d97706;outline-offset:5px;box-shadow:0 0 0 9px rgba(217,119,6,.16),0 18px 42px rgba(120,69,10,.18)}
+.canvasShell.filterActive > .pageWrap:not(.hidden)::after,.canvasShell.filterActive > .cropView:not(.hidden)::after{content:attr(data-filter-status);position:absolute;right:10px;top:10px;z-index:7;pointer-events:none;border:1px solid rgba(255,255,255,.78);border-radius:999px;background:#b45309;color:#fff;padding:5px 10px;font-size:12px;font-weight:950;line-height:1.35;box-shadow:0 6px 18px rgba(120,53,15,.28)}
 canvas{display:block;max-width:100%;height:auto;background:#fff;box-shadow:var(--shadow)}
 .fullPageSideLabel{position:absolute;left:10px;top:10px;z-index:3;border:1px solid rgba(23,32,51,.16);border-radius:999px;background:rgba(255,255,255,.92);color:var(--ink);padding:4px 8px;font-size:12px;font-weight:900;box-shadow:0 6px 16px rgba(23,32,51,.14)}
 button.fullPageSideLabel{cursor:pointer}
@@ -3894,6 +3896,7 @@ function updateChrome(){
   els.incompleteFilterNotice.textContent = incompleteLabel.notice;
   els.incompleteFilterNotice.classList.toggle("hidden", !state.settings?.incompleteOnly);
   updateKeywordFilterNotice();
+  updateAnswerFilterIndicator();
   updateShareScopeControls();
   updateStudentCropButtons();
   updateHighlightButtons();
@@ -3903,6 +3906,24 @@ function updateChrome(){
   renderUnwrittenOcrCandidates();
   updateMobileScanNav(scoped, scopedIndex);
   syncRubricPopup();
+}
+
+function updateAnswerFilterIndicator(){
+  const incompleteActive = Boolean(state.settings?.incompleteOnly);
+  const keywordActive = Boolean(state.keywordFilter);
+  const activeCount = Number(incompleteActive) + Number(keywordActive);
+  const status = activeCount > 1
+    ? `필터 ${activeCount}개 적용 중`
+    : incompleteActive
+      ? "미완료 필터 적용 중"
+      : keywordActive
+        ? "모아보기 필터 적용 중"
+        : "";
+  els.canvasShell.classList.toggle("filterActive", activeCount > 0);
+  [els.pageWrap, els.cropView].forEach(wrap => {
+    if(status) wrap.dataset.filterStatus = status;
+    else delete wrap.dataset.filterStatus;
+  });
 }
 
 function updateKeywordFilterNotice(){
