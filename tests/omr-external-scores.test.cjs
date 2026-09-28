@@ -57,3 +57,22 @@ test('채점 HTML의 인라인 스크립트 구문 검사', () => {
     assert.equal(result.status, 0, result.stderr);
   }
 });
+test('문항 카드 저장은 선택형·다른 문항 점수를 유지하고 현재 문항만 수정', () => {
+  const c = setup();
+  const rec = {externalScores:{selected:30, offlineWrittenScores:[4,6], imported:true}};
+  const form = {dataset:{recordKey:'2',questionId:'offline_2'}, reportValidity:() => true};
+  c.activeQuestion = () => ({id:'offline_2',offline:true,offlineIndex:1});
+  c.currentRecord = () => rec;
+  c.recordKey = () => '2';
+  c.$ = id => id === 'offlineScoreEditForm' ? form : {value:'8.5'};
+  c.commitStudentExternalScores = scores => {c.saved = scores;};
+  vm.runInContext(source('saveOfflineStudentScore'), c);
+  c.saveOfflineStudentScore({preventDefault(){}});
+  assert.equal(c.saved.selected,30);
+  assert.deepEqual(Array.from(c.saved.offlineWrittenScores),[4,8.5]);
+  assert.equal(c.saved.offlineWritten,12.5);
+  c.saved = null;
+  form.dataset.recordKey = '1';
+  c.saveOfflineStudentScore({preventDefault(){}});
+  assert.equal(c.saved,null);
+});

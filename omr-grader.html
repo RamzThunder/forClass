@@ -970,13 +970,17 @@ textarea{min-height:72px;resize:vertical}
       <div class="offlineScoreCard">
         <div class="offlineScoreStudent" id="offlineScoreStudent">학생 정보 없음</div>
         <div class="offlineScoreLine"><strong id="offlineScoreValue">-</strong><span id="offlineScoreBadge"></span></div>
-        <div class="statusLine" id="offlineScoreHint" style="margin:0"></div>
+        <form id="offlineScoreEditForm" style="margin-top:12px">
+          <label class="field"><span class="label">이 문항 점수 수정</span><input id="offlineScoreEditInput" type="number" min="0" step="any" required></label>
+          <button class="btn primary" type="submit">점수 저장</button>
+        </form>
+        <div class="statusLine" id="offlineScoreHint" style="margin:8px 0 0" aria-live="polite"></div>
       </div>
       <label class="field">
         <span class="label">모범답안</span>
         <textarea id="offlineExampleInput" placeholder="모범답안 입력" style="min-height:140px"></textarea>
       </label>
-      <div class="statusLine">이 문항은 점수를 엑셀로 가져오며, 위의 외부 점수 수정란에서 수정할 수 있습니다. 학생용 화면의 답안 영역도 지정할 수 있습니다.<br>· 상단 <b>영역 지정</b>: 모든 학생 공통 영역<br>· 상단 <b>학생 영역</b>: 현재 학생만 다른 영역</div>
+      <div class="statusLine">이 문항은 점수를 엑셀로 가져오며, 점수 카드 안에서 바로 수정하고 저장할 수 있습니다. 학생용 화면의 답안 영역도 지정할 수 있습니다.<br>· 상단 <b>영역 지정</b>: 모든 학생 공통 영역<br>· 상단 <b>학생 영역</b>: 현재 학생만 다른 영역</div>
     </section>
     <section class="panel hidden" id="autoAssistPanel">
       <div class="panelHead">
@@ -7020,6 +7024,23 @@ function saveStudentExternalScores(evt){
   if(form.dataset.recordKey !== recordKey() || !currentRecord() || !form.reportValidity()) return;
   const next = revisedExternalScores(currentRecord().externalScores, [...form.querySelectorAll("input")].map(input => input.value));
   if(!next) return;
+  commitStudentExternalScores(next);
+}
+
+function saveOfflineStudentScore(evt){
+  evt.preventDefault();
+  const question = activeQuestion();
+  const form = $("offlineScoreEditForm");
+  const rec = currentRecord();
+  if(!question?.offline || !rec || form.dataset.recordKey !== recordKey() || form.dataset.questionId !== question.id || !form.reportValidity()) return;
+  const previous = normalizeExternalScores(rec.externalScores);
+  const values = [previous.selected, ...previous.offlineWrittenScores];
+  values[question.offlineIndex + 1] = $("offlineScoreEditInput").value;
+  const next = revisedExternalScores(previous, values);
+  if(next) commitStudentExternalScores(next);
+}
+
+function commitStudentExternalScores(next){
   snapshotCurrentQuestion("외부 점수 수정");
   currentRecord().externalScores = next;
   persist();
@@ -7181,7 +7202,13 @@ function renderOfflineQuestionPanel(){
   $("offlineScoreValue").textContent = hasScore ? scoreWithMaxText(score, max) : "-";
   const deducted = max - Math.max(0, score);
   $("offlineScoreBadge").innerHTML = hasScore && deducted > 0 ? `<span class="offlineDeductBadge">${escapeHtml(formatScore(deducted))}점 감점</span>` : "";
-  $("offlineScoreHint").textContent = hasScore ? "외부 점수 · 위의 수정란에서 변경할 수 있습니다" : "가져온 점수가 없습니다. 설정 > 외부 점수 합산에서 엑셀을 업로드하세요.";
+  const editForm = $("offlineScoreEditForm");
+  const editInput = $("offlineScoreEditInput");
+  editForm.classList.toggle("hidden", !rec);
+  if(editForm.dataset.recordKey !== recordKey() || editForm.dataset.questionId !== question.id || document.activeElement !== editInput) editInput.value = score;
+  editForm.dataset.recordKey = recordKey();
+  editForm.dataset.questionId = question.id;
+  $("offlineScoreHint").textContent = rec ? "위 점수를 입력한 뒤 ‘점수 저장’을 누르세요. 학생용 HTML은 저장 후 다시 생성해 주세요." : "학생을 선택해 주세요.";
 }
 
 function saveOfflineExampleAnswer(){
@@ -11069,6 +11096,7 @@ els.sourceHighlightModal.addEventListener("click", evt => {
 });
 window.openStudentScoreLink = openStudentScoreLink;
 $("externalScoreForm").addEventListener("submit", saveStudentExternalScores);
+$("offlineScoreEditForm").addEventListener("submit", saveOfflineStudentScore);
 window.addEventListener("hashchange", () => openStudentScoreLink());
 loadSidebarWidth();
 loadSavedState();
