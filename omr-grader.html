@@ -954,6 +954,15 @@ textarea{min-height:72px;resize:vertical}
   <div class="sideResizer" id="sideResizer" title="드래그해서 사이드바 너비 조절"></div>
 
   <aside class="side">
+    <section class="panel" id="externalScoreEditor">
+      <div class="panelHead"><h2 class="panelTitle">학생 외부 점수 수정</h2></div>
+      <div class="statusLine" id="externalScoreEditorStudent"></div>
+      <form id="externalScoreForm">
+        <div id="externalScoreFields"></div>
+        <button class="btn primary" type="submit">외부 점수 저장</button>
+      </form>
+      <div class="statusLine">선택형과 오프라인 서술형 점수를 수정합니다. 학생용 HTML은 수정 후 다시 생성해 주세요.</div>
+    </section>
     <section class="panel hidden" id="offlineQuestionNote">
       <div class="panelHead"><h2 class="panelTitle" id="offlineQuestionTitle">오프라인 서술형 문항</h2></div>
       <div class="offlineScoreCard">
@@ -965,7 +974,7 @@ textarea{min-height:72px;resize:vertical}
         <span class="label">모범답안</span>
         <textarea id="offlineExampleInput" placeholder="모범답안 입력" style="min-height:140px"></textarea>
       </label>
-      <div class="statusLine">이 문항은 점수를 엑셀로 가져오며, 여기서는 학생용 화면에 들어갈 답안 영역만 지정합니다.<br>· 상단 <b>영역 지정</b>: 모든 학생 공통 영역<br>· 상단 <b>학생 영역</b>: 현재 학생만 다른 영역</div>
+      <div class="statusLine">이 문항은 점수를 엑셀로 가져오며, 위의 외부 점수 수정란에서 수정할 수 있습니다. 학생용 화면의 답안 영역도 지정할 수 있습니다.<br>· 상단 <b>영역 지정</b>: 모든 학생 공통 영역<br>· 상단 <b>학생 영역</b>: 현재 학생만 다른 영역</div>
     </section>
     <section class="panel hidden" id="autoAssistPanel">
       <div class="panelHead">
@@ -3856,6 +3865,7 @@ function setAnswerZoom(nextZoom){
 }
 
 function updateChrome(){
+  renderExternalScoreEditor();
   syncUnwrittenFilterFullPage();
   const scoped = scopedPages();
   const currentBasePage = firstPageForStudentIndex(studentIndexForPage(state.page));
@@ -6965,6 +6975,78 @@ function normalizeExternalScores(scores){
   return {selected, offlineWritten, offlineWrittenScores, imported:Boolean(scores?.imported)};
 }
 
+function renderExternalScoreEditor(){
+  const rec = currentRecord();
+  const form = $("externalScoreForm");
+  $("externalScoreEditorStudent").textContent = rec ? studentLabelForRecord(rec) : "학생을 선택해 주세요.";
+  form.classList.toggle("hidden", !rec);
+  if(!rec) return;
+  if(form.dataset.recordKey === recordKey() && form.contains(document.activeElement)) return;
+  form.dataset.recordKey = recordKey();
+  const scores = normalizeExternalScores(rec.externalScores);
+  const fields = [{label:"선택형 점수", value:scores.selected}, ...externalOfflineWrittenTitles().map((label, index) => ({label, value:scores.offlineWrittenScores[index] || 0}))];
+  $("externalScoreFields").innerHTML = fields.map(({label, value}, index) => `<label class="field"><span class="label">${escapeHtml(label)}</span><input type="number" min="0" step="any" required data-external-index="${index}" value="${value}"></label>`).join("");
+}
+
+function revisedExternalScores(previous, values){
+  if(!values.length || values.some(value => String(value).trim() === "" || !Number.isFinite(Number(value)) || Number(value) < 0)) return null;
+  return normalizeExternalScores({...previous, selected:Number(values[0]), offlineWrittenScores:values.slice(1).map(Number), imported:true});
+}
+
+function saveStudentExternalScores(evt){
+  evt.preventDefault();
+  const form = $("externalScoreForm");
+  if(form.dataset.recordKey !== recordKey() || !currentRecord() || !form.reportValidity()) return;
+  const next = revisedExternalScores(currentRecord().externalScores, [...form.querySelectorAll("input")].map(input => input.value));
+  if(!next) return;
+  snapshotCurrentQuestion("외부 점수 수정");
+  currentRecord().externalScores = next;
+  persist();
+  updateResults();
+  updateExternalScoreStatus();
+  renderOfflineQuestionPanel();
+  showToast("학생 외부 점수를 저장했습니다. 학생용 HTML은 다시 생성해 주세요.");
+}
+
+function studentScoreEditUrl(rec){
+  const url = new URL(window.location.href);
+  url.hash = "edit-student=" + encodeURIComponent(JSON.stringify({
+    key:String(rec.studentIndex || studentIndexForPage(rec.page)),
+    pdf:state.lastPdfName,
+    questions:state.questions.map(question => question.id),
+    identity:[rec.className || "", rec.number || "", rec.name || ""]
+  }));
+  return url.href;
+}
+
+async function openStudentScoreLink(hash=window.location.hash){
+  if(!hash.startsWith("#edit-student=")) return;
+  let target;
+  try{target = JSON.parse(decodeURIComponent(hash.slice(14)));}catch{ return; }
+  const rec = state.records[target?.key];
+  if(!rec || target.pdf !== state.lastPdfName || JSON.stringify(target.questions) !== JSON.stringify(state.questions.map(question => question.id)) || JSON.stringify(target.identity) !== JSON.stringify([rec.className || "", rec.number || "", rec.name || ""])){
+    showToast("이 학생의 채점 자료가 없습니다. HTML을 만든 브라우저에서 해당 시험 자료를 열어 주세요.");
+    return;
+  }
+  const page = firstPageForStudentIndex(Number(target.key));
+  if(state.pdf && page > state.pageCount) return;
+  saveCurrent();
+  state.activeClass = "";
+  state.keywordFilter = null;
+  state.settings.incompleteOnly = false;
+  document.querySelectorAll(".modalBackdrop").forEach(modal => modal.classList.add("hidden"));
+  if(state.pdf) await goPage(page, {autoStudentCropSide:false});
+  else{
+    state.page = page;
+    state.lastPdfPage = page;
+    persist();
+    loadRecordIntoForm();
+    updateChrome();
+  }
+  $("externalScoreEditor").scrollIntoView({block:"nearest"});
+  $("externalScoreFields").querySelector("input")?.focus();
+}
+
 function externalScoreNumber(value){
   if(typeof value === "number") return nonNegativeNumber(value);
   const text = String(value ?? "").trim();
@@ -7078,7 +7160,7 @@ function renderOfflineQuestionPanel(){
   $("offlineScoreValue").textContent = hasScore ? scoreWithMaxText(score, max) : "-";
   const deducted = max - Math.max(0, score);
   $("offlineScoreBadge").innerHTML = hasScore && deducted > 0 ? `<span class="offlineDeductBadge">${escapeHtml(formatScore(deducted))}점 감점</span>` : "";
-  $("offlineScoreHint").textContent = hasScore ? "엑셀에서 가져온 점수" : "가져온 점수가 없습니다. 설정 > 외부 점수 합산에서 엑셀을 업로드하세요.";
+  $("offlineScoreHint").textContent = hasScore ? "외부 점수 · 위의 수정란에서 변경할 수 있습니다" : "가져온 점수가 없습니다. 설정 > 외부 점수 합산에서 엑셀을 업로드하세요.";
 }
 
 function saveOfflineExampleAnswer(){
@@ -7643,6 +7725,17 @@ async function buildStudentScoreScreenHtml(records, options){
 </main>
 <script>
 (function(){
+  document.addEventListener("click", event => {
+    const link = event.target.closest(".editStudentLink");
+    if(!link) return;
+    try{
+      if(window.opener && !window.opener.closed && typeof window.opener.openStudentScoreLink === "function"){
+        event.preventDefault();
+        window.opener.openStudentScoreLink(new URL(link.href).hash);
+        window.opener.focus();
+      }
+    }catch(error){ /* 저장한 HTML은 링크로 채점 화면을 엽니다. */ }
+  });
   const cards = Array.from(document.querySelectorAll(".student[data-student-index]"));
   const buttons = Array.from(document.querySelectorAll(".studentNavBtn[data-student-index]"));
   const classTabs = Array.from(document.querySelectorAll(".classTab[data-class]"));
@@ -7802,6 +7895,7 @@ async function studentScoreCardHtml(rec, options, index=0){
     <div class="studentHead">
       <div>
         <div class="studentName">${escapeHtml(studentLabelForRecord(rec))}</div>
+        <a class="editStudentLink" href="${escapeHtml(studentScoreEditUrl(rec))}" target="omr-score-editor">점수 수정 · 학생 채점 화면 열기</a>
       </div>
     </div>
     <div class="scoreGrid">
@@ -10021,6 +10115,7 @@ function clearExternalScores(){
 }
 
 function updateExternalScoreStatus(){
+  renderExternalScoreEditor();
   if(!els.externalScoreStatus) return;
   const records = Object.values(state.records || {}).filter(hasExternalScores);
   const selected = records.reduce((sum, rec) => sum + normalizeExternalScores(rec.externalScores).selected, 0);
@@ -10951,6 +11046,9 @@ els.closeSourceHighlightModalBtn.addEventListener("click", () => els.sourceHighl
 els.sourceHighlightModal.addEventListener("click", evt => {
   if(evt.target === els.sourceHighlightModal) els.sourceHighlightModal.classList.add("hidden");
 });
+window.openStudentScoreLink = openStudentScoreLink;
+$("externalScoreForm").addEventListener("submit", saveStudentExternalScores);
+window.addEventListener("hashchange", () => openStudentScoreLink());
 loadSidebarWidth();
 loadSavedState();
 bindCropDrag();
@@ -10964,6 +11062,7 @@ updateSaveDirectoryStatus();
 updateUndoButton();
 promptInitialSetupIfNeeded();
 if(!needsInitialSetup()) offerLastPdfRestore();
+openStudentScoreLink();
 </script>
 
 <div class="modalBackdrop hidden" id="sourceHighlightModal" role="dialog" aria-modal="true" aria-labelledby="sourceHighlightModalTitle">
