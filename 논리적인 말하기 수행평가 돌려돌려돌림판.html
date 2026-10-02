@@ -765,6 +765,7 @@
             </div>
             <div class="tools-left">
               <button class="tiny-btn" id="copyResultBtn">복사</button>
+              <button class="tiny-btn" id="resetOrderBtn">순서 초기화</button>
               <button class="tiny-btn" id="toggleCompactBtn">간격 줄이기</button>
               <button class="tiny-btn" id="printBtn">인쇄</button>
             </div>
@@ -820,6 +821,7 @@
     const historyList = document.getElementById("historyList");
 
     const copyResultBtn = document.getElementById("copyResultBtn");
+    const resetOrderBtn = document.getElementById("resetOrderBtn");
     const toggleCompactBtn = document.getElementById("toggleCompactBtn");
     const printBtn = document.getElementById("printBtn");
 
@@ -837,11 +839,13 @@
     let compactMode = false;
     let history = [];
     let linkedRoster = null;
+    let linkedEntries = null;
 
     window.addEventListener("message", event => {
       if (event.source !== window.opener || !event.data || event.data.channel !== "speaking-order-draw" || event.data.type !== "roster") return;
       const entries = event.data.entries;
       if (!Array.isArray(entries) || !entries.every(entry => typeof entry.label === "string")) return;
+      linkedEntries = entries;
       linkedRoster = entries.map(entry => entry.label);
       nameInput.value = linkedRoster.join("\n");
       updateInputStatus();
@@ -1186,6 +1190,21 @@
 
     copyResultBtn.addEventListener("click", () => {
       copyText(resultToText(), "결과를 복사했어요!");
+    });
+
+    resetOrderBtn.addEventListener("click", () => {
+      const original = linkedEntries
+        ? [...linkedEntries].sort((a, b) => Number(a.no) - Number(b.no)).map(entry => entry.label)
+        : parseNames();
+      if (!original.length) { showToast("초기화할 명단이 없어요!"); return; }
+      currentResult = original;
+      renderResult(original);
+      document.querySelectorAll(".result-group").forEach(group => group.classList.add("revealed"));
+      stageTitle.textContent = "순서 초기화 완료";
+      stageSub.textContent = linkedEntries ? "학번 순으로 돌아갔어요." : "입력한 순서로 돌아갔어요.";
+      if (linkedEntries && window.opener && !window.opener.closed)
+        window.opener.postMessage({channel:"speaking-order-draw", type:"reset", labels:original}, "*");
+      showToast("발표 순서를 초기화했어요!");
     });
 
     toggleCompactBtn.addEventListener("click", () => {

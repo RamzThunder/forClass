@@ -908,6 +908,7 @@ document.getElementById('btnSpeakingDraw').onclick=()=>{
   speakingDrawClass=currentClass;
   speakingDrawEntries=state.students.map((student,index)=>({
     id:student.id,
+    no:student.no,
     label:`${student.no} ${student.name}${state.students.some((other,i)=>i!==index&&other.no===student.no&&other.name===student.name)?` (${index+1})`:''}`
   }));
   speakingDrawWindow=window.open('./논리적인 말하기 수행평가 돌려돌려돌림판.html','speakingOrderDraw');
@@ -920,7 +921,7 @@ window.addEventListener('message',event=>{
     speakingDrawWindow.postMessage({channel:'speaking-order-draw',type:'roster',className:speakingDrawClass,entries:speakingDrawEntries},'*');
     return;
   }
-  if(event.data.type!=='result')return;
+  if(event.data.type!=='result'&&event.data.type!=='reset')return;
   if(currentClass!==speakingDrawClass){toast('추첨한 반으로 돌아가서 다시 뽑아 주세요');return;}
   const labels=event.data.labels;
   const expected=new Set(speakingDrawEntries.map(entry=>entry.label));
@@ -932,7 +933,7 @@ window.addEventListener('message',event=>{
   if(speakingDrawEntries.some(entry=>!byId.has(entry.id))){toast('명단이 바뀌어 다시 추첨해야 해요');return;}
   state.students=labels.map(label=>byId.get(byLabel.get(label)));
   save();renderRoster();renderStage();
-  toast(`${currentClass}반 발표 순서가 저장됐어요`);
+  toast(event.data.type==='reset'?`${currentClass}반 발표 순서를 학번 순으로 초기화했어요`:`${currentClass}반 발표 순서가 저장됐어요`);
 });
 /* 채점 */
 function selectStudent(id){if(previewMode)exitPreview();state.current=id;renderRoster();renderStage();resetTimer()}
