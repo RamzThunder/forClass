@@ -240,6 +240,11 @@
   .stancebtn{flex:1;padding:9px 0;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:14px;font-weight:800;transition:.1s}
   .stancebtn.agree:hover,.stancebtn.agree.on{background:#2f6b54;color:#fff;border-color:#2f6b54}
   .stancebtn.oppose:hover,.stancebtn.oppose.on{background:#c2702a;color:#fff;border-color:#c2702a}
+  #selectionModeSettings .stancebtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .choice-pick-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .choice-pick-head h3{margin:0}
+  .choice-clear{font-size:11px;color:var(--muted);border:1px solid var(--line);background:transparent;border-radius:6px;padding:3px 7px;white-space:nowrap}
+  .choice-clear:hover{color:var(--amber);border-color:var(--amber)}
   .fbtns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
   .fbtn{font-size:12px;padding:5px 10px;border:1px solid var(--amber);color:var(--amber);border-radius:20px;background:var(--amber-soft);transition:.1s}
   .fbtn:hover{background:var(--amber);color:#fff}
@@ -280,6 +285,10 @@
   .recrit{border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:12px;background:#fffdf9}
   .recrit .rctop{display:flex;gap:8px;align-items:center;margin-bottom:9px}
   .recrit .rc-name{flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:7px;font-size:14px;font-weight:700}
+  .recrit .choice-fixed-name{background:var(--card);color:var(--ink)}
+  .recrit .choice-prompt-row{margin-bottom:10px}
+  .recrit .choice-prompt-row .mlabel{margin:0 0 6px}
+  .modal .recrit textarea.choice-prompt{min-height:72px;padding:8px 9px;font:inherit;font-size:13px;line-height:1.5;resize:vertical}
   .rc-base{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;white-space:nowrap}
   .rc-base input{width:50px;padding:6px;border:1px solid var(--line);border-radius:6px;text-align:center;font-size:13px;font-weight:700}
   .ro-timed{display:flex;align-items:center;gap:2px;font-size:13px;color:var(--amber);cursor:pointer;white-space:nowrap}
@@ -302,6 +311,15 @@
   .memo-add{font-size:12px;font-weight:800;color:var(--accent);padding:3px 0}
   .reopt .ro-del{color:var(--muted);font-size:16px;padding:0 5px}
   .reopt .ro-del:hover{color:var(--amber)}
+  .bonus-editor{margin:10px 0 4px;padding:9px 10px;border:1px dashed var(--line);border-radius:8px;background:var(--card)}
+  .bonus-editor>label{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-size:12px;font-weight:800;cursor:pointer}
+  .bonus-options,.bonus-requires{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .bonus-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:11px;line-height:1.3}
+  .bonus-chip.selected,.bonus-chip.met{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+  .bonus-chip input{margin:0}
+  .bonus-award{margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:12px}
+  .bonus-award.active{border-color:var(--accent);background:var(--accent-soft)}
+  .bonus-award strong{color:var(--accent)}
   .addopt{font-size:12px;color:var(--accent);font-weight:700;padding:3px 0;margin-left:2px}
   .addcrit{font-size:13px;color:var(--accent);font-weight:700;padding:8px 0;display:block}
   .oktimeset{display:flex;align-items:center;gap:8px}
@@ -403,6 +421,7 @@
       <button class="settingtab on" data-tab="basic">기본</button>
       <button class="settingtab" data-tab="roster">명단</button>
       <button class="settingtab" data-tab="rubric">루브릭</button>
+      <button class="settingtab" data-tab="choices">선택문제</button>
       <button class="settingtab" data-tab="folder">저장 폴더</button>
     </div>
 
@@ -412,6 +431,17 @@
         <input id="titleInput" placeholder="수행평가 제목">
         <button class="mbtn primary" id="titleApply">제목 저장</button>
       </div>
+      <div class="mlabel">학생별 선택 방식</div>
+      <div class="stancesel" id="selectionModeSettings" style="max-width:440px">
+        <label class="stancebtn" style="text-align:center;cursor:pointer"><input type="radio" name="selectionMode" value="topic"> 주제·입장 선택</label>
+        <label class="stancebtn" style="text-align:center;cursor:pointer"><input type="radio" name="selectionMode" value="draw"> 선택 문제 뽑기</label>
+      </div>
+    </section>
+
+    <section class="settingpanel" id="setting-choices">
+      <div id="choiceSetTabs" class="rostertabs"></div>
+      <div id="choiceSetEditor"></div>
+      <div class="mactions"><button class="mbtn primary" id="choiceSetsApply">선택문제 루브릭 저장</button></div>
     </section>
 
     <section class="settingpanel" id="setting-roster">
@@ -543,6 +573,13 @@ const DEFAULT_RUBRIC=[
 ];
 
 let state={students:[],rubric:JSON.parse(JSON.stringify(DEFAULT_RUBRIC)),phrases:["목소리 또렷함","시선 처리 좋음","근거 보강 필요","반박 인상적","시간 초과"],okMin:150,okMax:180,current:null};
+function defaultChoiceSets(){return Array.from({length:5},()=>Array.from({length:3},(_,i)=>({name:`선택문제 ${i+1}`,prompt:'',base:0,opts:[]})))}
+function defaultChoiceTemplate(){return {name:'공통 루브릭',base:0,opts:[]}}
+let choiceSets=defaultChoiceSets();
+let choiceTemplate=defaultChoiceTemplate();
+let selectionMode='draw';
+function choiceRubric(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)&&s.choiceSet>=0&&s.choiceSet<5?choiceSets[s.choiceSet]:[]}
+function rubricForStudent(s){return state.rubric.concat(choiceRubric(s))}
 let timer={elapsed:0,running:false,handle:null,excludes:[],exRunning:false,exStart:null,countdown:null,_countVal:0};
 // 마이크 자동 감지 상태
 let mic={on:false,stream:null,ctx:null,analyser:null,data:null,raf:null,sens:15,quietSince:null,autoEx:false,level:0};
@@ -681,7 +718,7 @@ let currentClass=classes[0];
 let classStudents={}; // {'1':[...students], ...}
 let lastSavedAt=null;
 
-function migrateChecks(arr){(arr||[]).forEach(s=>{if(!s.checks){s.checks={};if(s.picks){Object.keys(s.picks).forEach(ci=>{if(s.picks[ci]!=null)s.checks[ci]=[s.picks[ci]]})}}if(!s.cmemos)s.cmemos={};if(!s.optmemos)s.optmemos={};if(s.absent===undefined)s.absent=false;if(s.topic===undefined)s.topic=null;if(s.stance===undefined)s.stance=null;if(s.recordedTime===undefined)s.recordedTime=null;if(s.transcript===undefined)s.transcript=null;if(s.paperMissing===undefined)s.paperMissing=false;if(s.paperSubmitted===undefined)s.paperSubmitted=false;});return arr||[]}
+function migrateChecks(arr){(arr||[]).forEach(s=>{if(!s.checks){s.checks={};if(s.picks){Object.keys(s.picks).forEach(ci=>{if(s.picks[ci]!=null)s.checks[ci]=[s.picks[ci]]})}}if(!s.cmemos)s.cmemos={};if(!s.optmemos)s.optmemos={};if(s.absent===undefined)s.absent=false;if(s.topic===undefined)s.topic=null;if(s.stance===undefined)s.stance=null;if(s.choiceSet===undefined)s.choiceSet=null;if(s.recordedTime===undefined)s.recordedTime=null;if(s.transcript===undefined)s.transcript=null;if(s.paperMissing===undefined)s.paperMissing=false;if(s.paperSubmitted===undefined)s.paperSubmitted=false;});return arr||[]}
 
 function pad2(n){return String(n).padStart(2,'0')}
 function nowText(){const d=new Date();return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`}
@@ -694,7 +731,7 @@ function save(manual){
   if(previewMode)return; // 미리보기 모드에서는 저장하지 않음
   classStudents[currentClass]=state.students; // 현재 반 학생 반영
   const payload=JSON.stringify({
-    shared:{appTitle,rubric:state.rubric,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
+    shared:{appTitle,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
     classes:classStudents, currentClass, savedAt:Date.now()
   });
   let okMain=false, okMirror=false;
@@ -724,6 +761,9 @@ function applyLoaded(d){
     if(excludedSpeakingClasses.size===classes.length)excludedSpeakingClasses.clear();
     if((sh.rubricVersion||1)>=RUBRIC_VERSION && sh.rubric){state.rubric=sh.rubric;}
     else {state.rubric=JSON.parse(JSON.stringify(DEFAULT_RUBRIC));}
+    choiceSets=Array.isArray(sh.choiceSets)&&sh.choiceSets.length===5&&sh.choiceSets.every(set=>Array.isArray(set)&&set.length===3)?sh.choiceSets:defaultChoiceSets();
+    choiceTemplate=sh.choiceTemplate&&Array.isArray(sh.choiceTemplate.opts)?sh.choiceTemplate:defaultChoiceTemplate();
+    selectionMode=sh.selectionMode==='topic'||sh.selectionMode==='draw'?sh.selectionMode:(sh.choiceSets?'draw':'topic');
     state.phrases=sh.phrases||state.phrases;state.okMin=sh.okMin??150;state.okMax=sh.okMax??180;
     classStudents={};classes.forEach(c=>{classStudents[c]=migrateChecks(d.classes[c]||d.classes[Object.keys(d.classes).find(k=>normalizeClassName(k)===c)]||[])});
     const loadedCurrent=sh.classNamesRaw?String(d.currentClass):normalizeClassName(d.currentClass);
@@ -733,6 +773,9 @@ function applyLoaded(d){
   } else {
     classes=[...DEFAULT_CLASSES];
     excludedSpeakingClasses=new Set();
+    choiceSets=defaultChoiceSets();
+    choiceTemplate=defaultChoiceTemplate();
+    selectionMode='draw';
     appTitle=d.appTitle||DEFAULT_APP_TITLE;
     state.rubric=d.rubric||state.rubric;state.phrases=d.phrases||state.phrases;state.okMin=d.okMin??150;state.okMax=d.okMax??180;
     const migrated=migrateChecks(d.students||[]);
@@ -778,7 +821,7 @@ function switchClass(cls){
   state.current=null;
   clearInterval(timer.countdown);timer.countdown=null;timer._countVal=0;
   clearInterval(timer.handle);timer.running=false;timer.elapsed=0;
-  save();renderClassBar();renderRoster();renderStage();
+  save();renderClassBar();renderRoster();renderStage();castState();
   toast(`${clsLabel(cls)} 선택`);
   autoLoadTranscripts(false); // 반 전환 시 해당 반 txt 자동 스캔 (조용히)
 }
@@ -866,7 +909,7 @@ function applySharedSpeakingRoster(data){
 function parseRoster(text){
   return text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map((line,i)=>{
     const m=line.match(/^(\d+)[\.\)]?\s+(.+)$/);
-    return {id:Date.now()+"_"+i,no:m?parseInt(m[1]):i+1,name:m?m[2].trim():line,checks:{},cmemos:{},optmemos:{},memo:"",topic:null,stance:null,absent:false,done:false,transcript:null,paperMissing:false,paperSubmitted:false};
+    return {id:Date.now()+"_"+i,no:m?parseInt(m[1]):i+1,name:m?m[2].trim():line,checks:{},cmemos:{},optmemos:{},memo:"",topic:null,stance:null,choiceSet:null,absent:false,done:false,transcript:null,paperMissing:false,paperSubmitted:false};
   });
 }
 function hasGradingProgress(s){
@@ -875,7 +918,7 @@ function hasGradingProgress(s){
   const hasChecks=s.checks&&Object.values(s.checks).some(v=>Array.isArray(v)&&v.length);
   const hasCMemos=s.cmemos&&Object.values(s.cmemos).some(v=>String(v||'').trim());
   const hasOptMemos=s.optmemos&&Object.values(s.optmemos).some(g=>g&&Object.values(g).some(v=>String(v||'').trim()));
-  return !!(hasChecks || hasCMemos || hasOptMemos || String(s.memo||'').trim() || s.topic!==null || s.stance!==null || s.recordedTime || s.paperMissing || s.paperSubmitted);
+  return !!(hasChecks || hasCMemos || hasOptMemos || String(s.memo||'').trim() || (selectionMode==='topic'?(s.topic!==null||s.stance!==null):s.choiceSet!=null) || s.recordedTime || s.paperMissing || s.paperSubmitted);
 }
 function hasAnyData(s){
   if(!s)return false;
@@ -883,7 +926,7 @@ function hasAnyData(s){
   const hasChecks=s.checks&&Object.values(s.checks).some(v=>Array.isArray(v)&&v.length);
   const hasCMemos=s.cmemos&&Object.values(s.cmemos).some(v=>String(v||'').trim());
   const hasOptMemos=s.optmemos&&Object.values(s.optmemos).some(g=>g&&Object.values(g).some(v=>String(v||'').trim()));
-  return !!(hasChecks||hasCMemos||hasOptMemos||String(s.memo||'').trim()||s.topic!==null||s.stance!==null||s.recordedTime||s.paperMissing||s.paperSubmitted);
+  return !!(hasChecks||hasCMemos||hasOptMemos||String(s.memo||'').trim()||(selectionMode==='topic'?(s.topic!==null||s.stance!==null):s.choiceSet!=null)||s.recordedTime||s.paperMissing||s.paperSubmitted);
 }
 function renderRoster(){
   renderClassBar();
@@ -942,7 +985,7 @@ let previewMode=false;
 let previewStudent=null;
 let previewPrevCurrent=null;
 function makePreviewStudent(){
-  return {id:'__preview__',no:'예시',name:'예시 학생',checks:{},cmemos:{},optmemos:{},memo:"",topic:null,stance:null,absent:false,done:false,transcript:null,_preview:true};
+  return {id:'__preview__',no:'예시',name:'예시 학생',checks:{},cmemos:{},optmemos:{},memo:"",topic:null,stance:null,choiceSet:null,absent:false,done:false,transcript:null,_preview:true};
 }
 function curStudent(){
   if(previewMode)return previewStudent;
@@ -970,13 +1013,21 @@ function exitPreview(){
 }
 function togglePreview(){previewMode?exitPreview():enterPreview();}
 function checksOf(s,ci){return Array.isArray(s.checks&&s.checks[ci])?s.checks[ci]:[]}
-function critBase(ci){return Number(state.rubric[ci]?.base)||0}
-function critScore(s,ci){if(s&&s.absent)return critBase(ci);return critBase(ci)+checksOf(s,ci).reduce((a,oi)=>a+(Number(state.rubric[ci].opts[oi]?.pt)||0),0)}
+function bonusRequirements(c){
+  if(!c||!c.allBonus||!Array.isArray(c.allBonus.requires))return [];
+  return [...new Set(c.allBonus.requires)].filter(i=>Number.isInteger(i)&&i>=0&&i<c.opts.length);
+}
+function bonusEarned(s,ci){
+  const c=rubricForStudent(s)[ci],required=bonusRequirements(c);
+  return !!(s&&!s.absent&&required.length&&required.every(i=>checksOf(s,ci).includes(i)));
+}
+function critBase(ci,s){return Number(rubricForStudent(s)[ci]?.base)||0}
+function critScore(s,ci){const c=rubricForStudent(s)[ci];if(!c)return 0;if(s&&s.absent)return critBase(ci,s);return critBase(ci,s)+checksOf(s,ci).reduce((a,oi)=>a+(Number(c.opts[oi]?.pt)||0),0)+(bonusEarned(s,ci)?5:0)}
 function paperMissingPenalty(s){return s&&s.paperMissing&&!s.absent?-5:0}
-function studentTotal(s){return state.rubric.reduce((a,c,i)=>a+critScore(s,i),0)+paperMissingPenalty(s)}
-function rubricMax(){return state.rubric.reduce((a,c)=>a+(Number(c.base)||0)+c.opts.reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0),0)}
-function rubricMin(){return state.rubric.reduce((a,c)=>a+(Number(c.base)||0),0)}
-function missingCount(s){return state.rubric.reduce((n,c,i)=>n+(checksOf(s,i).length===0?1:0),0)}
+function studentTotal(s){return rubricForStudent(s).reduce((a,c,i)=>a+critScore(s,i),0)+paperMissingPenalty(s)}
+function rubricMax(s){return rubricForStudent(s).reduce((a,c)=>a+(Number(c.base)||0)+(c.opts||[]).reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0)+(bonusRequirements(c).length?5:0),0)}
+function rubricMin(s){return rubricForStudent(s).reduce((a,c)=>a+(Number(c.base)||0),0)}
+function missingCount(s){return rubricForStudent(s).reduce((n,c,i)=>n+(checksOf(s,i).length===0?1:0),0)}
 function gradeOf(pct){if(pct>=90)return"A";if(pct>=80)return"B";if(pct>=70)return"C";if(pct>=60)return"D";return"E"}
 function hasPaperMissing(s){return !!(s&&s.paperMissing&&!s.absent)}
 function hasPaperSubmitted(s){return !!(s&&s.paperSubmitted&&!s.absent)}
@@ -1009,7 +1060,7 @@ function optMemoValue(om,oi,mi){
 function setOptMemo(s,ci,oi,mi,value){
   if(!s.optmemos)s.optmemos={};
   if(!s.optmemos[ci])s.optmemos[ci]={};
-  const labels=memoLabelsFor(state.rubric[ci].opts[oi]);
+  const labels=memoLabelsFor(rubricForStudent(s)[ci].opts[oi]);
   if(labels.length>1){
     const cur=(s.optmemos[ci][oi]&&typeof s.optmemos[ci][oi]==='object')?s.optmemos[ci][oi]:{0:s.optmemos[ci][oi]||''};
     cur[mi]=value;
@@ -1046,7 +1097,7 @@ function applyStudentLock(s){
 function renderStage(){
   const s=curStudent();const stage=document.getElementById('stage');
   if(!s){stage.innerHTML='<div class="stage-empty">왼쪽에서 학생을 고르면 채점이 시작됩니다.<br>명단이 없다면 <b>오른쪽 위 ‘명단 붙여넣기’</b>부터 해주세요.</div>';return}
-  const max=rubricMax(),tot=studentTotal(s),pct=max?Math.round(tot/max*100):0,miss=missingCount(s);
+  const max=rubricMax(s),tot=studentTotal(s),pct=max?Math.round(tot/max*100):0,miss=missingCount(s);
   const paperMissing=hasPaperMissing(s);
   const paperSubmitted=hasPaperSubmitted(s);
   const previewBanner = previewMode ? `<div class="previewbanner">🎬 미리보기 모드 — 학생들에게 보여주는 예시입니다. 여기서 한 채점은 <b>저장되지 않습니다</b>. <button class="pvexit" id="pvExitBtn">미리보기 종료</button></div>` : '';
@@ -1067,7 +1118,7 @@ function renderStage(){
       <div class="nav"><button class="navb" id="prevBtn" title="이전 (←)">‹</button><button class="navb" id="nextBtn" title="다음 (→)">›</button></div>
     </div>
     <div class="sbody"><div class="row2">
-      <div class="crits">${state.rubric.map((c,i)=>critHTML(s,c,i)).join('')}</div>
+      <div class="crits">${rubricForStudent(s).map((c,i)=>critHTML(s,c,i)).join('')}</div>
       <div class="side">
         <div class="panel timer">
           <h3>발표 타이머 <span class="recbadge" id="recBadge" style="display:none">🔴 녹음 중</span><label class="rectoggle" title="발표 타이머와 함께 자동 녹음하고, 끝나면 파일로 저장합니다"><input type="checkbox" id="recEnable" ${rec.enabled?'checked':''}>녹음</label></h3>
@@ -1092,14 +1143,17 @@ function renderStage(){
             <div class="exlist" id="exList"></div>
           </div>
         </div>
-        <div class="panel">
-          <h3>주제 · 입장</h3>
+        ${selectionMode==='draw'?`<div class="panel">
+          <div class="choice-pick-head"><h3>선택 문제 뽑기</h3>${s.choiceSet!=null?'<button class="choice-clear choice-set-btn" data-choice-set="-1">뽑기 선택 취소</button>':''}</div>
+          <div class="stancesel">${choiceSets.map((_,i)=>`<button class="stancebtn choice-set-btn ${s.choiceSet===i?'on agree':''}" data-choice-set="${i}" aria-pressed="${s.choiceSet===i}">${i+1}번</button>`).join('')}</div>
+        </div>`:`<div class="panel">
+          <h3>주제 · 입장 선택</h3>
           <div class="topicsel">${TOPICS.map((t,i)=>`<button class="topicbtn ${s.topic===i?'on':''}" data-topic="${i}" title="${esc(t.full)}">${esc(t.short)}</button>`).join('')}</div>
           <div class="stancesel">
             <button class="stancebtn agree ${s.stance==='찬성'?'on':''}" data-stance="찬성">찬성</button>
             <button class="stancebtn oppose ${s.stance==='반대'?'on':''}" data-stance="반대">반대</button>
           </div>
-        </div>
+        </div>`}
         <div class="panel">
           <h3>메모 · 피드백</h3>
           <div class="fbtns">${state.phrases.map(p=>`<button class="fbtn" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
@@ -1114,7 +1168,7 @@ function renderStage(){
           <h3 style="color:var(--accent)">총점</h3>
           <div class="tnum" id="totNum">${tot}<small>/${max}</small></div>
           <div class="tgrade" id="totGrade">${gradeOf(pct)} · ${pct}%</div>
-          <div class="basenote">최저 보장 ${rubricMin()}점부터 시작</div>
+          <div class="basenote">최저 보장 ${rubricMin(s)}점부터 시작</div>
           <div class="miss" id="totMiss">${miss?`체크 안 한 항목 ${miss}개 (기본점만 반영됨)`:''}</div>
           <button class="markdone ${s.done?'isdone':''}" id="doneBtn">${s.done?'잠금 해제':'채점 완료(잠금)'}</button>
           ${s.done?'<div class="locknote">채점 완료 상태라 입력이 잠겨 있습니다.</div>':''}
@@ -1133,9 +1187,9 @@ function renderStage(){
     const turningOn=(pos<0);
     if(pos>=0)arr.splice(pos,1); else arr.push(oi);
     // 'auto'가 아닌 선택지를 새로 켜면, 같은 항목의 auto 선택지('발표함')도 자동 체크
-    const clickedOpt=state.rubric[ci].opts[oi];
+    const clickedOpt=rubricForStudent(s)[ci].opts[oi];
     if(turningOn && clickedOpt && !clickedOpt.auto){
-      state.rubric[ci].opts.forEach((o,j)=>{if(o.auto && !arr.includes(j))arr.push(j);});
+      rubricForStudent(s)[ci].opts.forEach((o,j)=>{if(o.auto && !arr.includes(j))arr.push(j);});
     }
     s.checks[ci]=arr;
     save();renderRoster();renderStage();
@@ -1144,18 +1198,27 @@ function renderStage(){
   stage.querySelectorAll('.optmemo').forEach(inp=>{autoGrowTextarea(inp);inp.oninput=()=>{autoGrowTextarea(inp);setOptMemo(s,+inp.dataset.ci,+inp.dataset.oi,+inp.dataset.mi,inp.value);save();renderRoster()}});
   document.getElementById('memo').oninput=e=>{s.memo=e.target.value;save();renderRoster()};
   stage.querySelectorAll('.topicbtn').forEach(b=>b.onclick=()=>{const i=+b.dataset.topic;s.topic=(s.topic===i)?null:i;save();renderRoster();renderStage();});
-  stage.querySelectorAll('.stancebtn').forEach(b=>b.onclick=()=>{const v=b.dataset.stance;s.stance=(s.stance===v)?null:v;save();renderRoster();renderStage();});
+  stage.querySelectorAll('.choice-set-btn').forEach(b=>b.onclick=()=>{
+    const next=+b.dataset.choiceSet;
+    if(s.choiceSet===next)return;
+    const first=state.rubric.length;
+    if([0,1,2].some(offset=>checksOf(s,first+offset).length||(s.cmemos&&s.cmemos[first+offset])||(s.optmemos&&s.optmemos[first+offset])) &&
+       !confirm('다른 뽑기로 바꾸면 이전 선택문제 1·2·3의 채점과 메모가 지워집니다. 계속할까요?'))return;
+    for(let i=first;i<first+3;i++){delete s.checks[i];delete s.cmemos[i];delete s.optmemos[i];}
+    s.choiceSet=next<0?null:next;save();renderRoster();renderStage();castState();
+  });
+  stage.querySelectorAll('.stancebtn[data-stance]').forEach(b=>b.onclick=()=>{const v=b.dataset.stance;s.stance=(s.stance===v)?null:v;save();renderRoster();renderStage();});
   stage.querySelectorAll('.fbtn').forEach(b=>b.onclick=()=>{const m=document.getElementById('memo');m.value+=(m.value&&!/\s$/.test(m.value)?' ':'')+b.dataset.p+' ';s.memo=m.value;save();renderRoster();m.focus()});
   document.getElementById('doneBtn').onclick=()=>{s.done=!s.done;save();renderRoster();renderStage();toast(s.done?'채점 완료 — 입력 잠금':'잠금 해제됨')};
   document.getElementById('absentBtn').onclick=()=>{
     s.absent=!s.absent;
     if(s.absent){s.checks={};s.paperMissing=false;s.paperSubmitted=false;s.done=true;}
     save();renderRoster();renderStage();
-    toast(s.absent?`미응시 처리 — 최저 ${rubricMin()}점`:'미응시 해제');
+    toast(s.absent?`미응시 처리 — 최저 ${rubricMin(s)}점`:'미응시 해제');
   };
   document.getElementById('simpleBtn').onclick=()=>{
     if(s.absent){toast('미응시 상태예요 — 먼저 해제해 주세요');return;}
-    const targets=state.rubric.flatMap((c,ci)=>c.opts.map((o,oi)=>({ci,oi,simple:!!o.simple}))).filter(x=>x.simple);
+    const targets=rubricForStudent(s).flatMap((c,ci)=>c.opts.map((o,oi)=>({ci,oi,simple:!!o.simple}))).filter(x=>x.simple);
     if(!targets.length){toast('루브릭 설정에서 간이발표 항목을 먼저 체크해 주세요');return;}
     if(!s.checks)s.checks={};
     targets.forEach(({ci,oi})=>{if(!Array.isArray(s.checks[ci]))s.checks[ci]=[];if(!s.checks[ci].includes(oi))s.checks[ci].push(oi);});
@@ -1164,7 +1227,7 @@ function renderStage(){
   };
   document.getElementById('absenceBtn').onclick=()=>{
     if(!confirm(`${s.name} 학생을 결시 처리할까요?\n입력된 모든 데이터가 삭제되고 미입력 상태로 초기화됩니다.`))return;
-    s.checks={};s.cmemos={};s.optmemos={};s.memo='';s.topic=null;s.stance=null;s.absent=false;s.done=false;s.recordedTime=null;s.transcript=null;s.paperMissing=false;s.paperSubmitted=false;
+    s.checks={};s.cmemos={};s.optmemos={};s.memo='';s.topic=null;s.stance=null;s.choiceSet=null;s.absent=false;s.done=false;s.recordedTime=null;s.transcript=null;s.paperMissing=false;s.paperSubmitted=false;
     save();renderRoster();renderStage();
     toast(`${s.name} 결시 처리 — 데이터 초기화됨`);
   };
@@ -1202,13 +1265,14 @@ function renderStage(){
   applyStudentLock(s);
 }
 function critHTML(s,c,ci){
-  const mx=(Number(c.base)||0)+c.opts.reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0);
+  const mx=(Number(c.base)||0)+c.opts.reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0)+(bonusRequirements(c).length?5:0);
   const cur=critScore(s,ci);
   const chk=checksOf(s,ci);
   const baseTxt=Number(c.base)?`<span class="basetag">기본 ${c.base}점 보장</span>`:'';
   const om=(s.optmemos&&s.optmemos[ci])||{};
   return `<div class="crit">
     <div class="clabel"><span class="cname">${esc(c.name)} ${baseTxt}</span><span class="cmax"><b class="cscore">${cur}</b> / ${mx}점</span></div>
+    ${c.prompt?`<div style="padding:8px 12px;white-space:pre-wrap;font-size:13px;line-height:1.5">${esc(c.prompt)}</div>`:''}
     <div class="opts">${c.opts.map((o,oi)=>{
       const labels=memoLabelsFor(o);
       const optMemoBox = o.memo ? labels.map((label,mi)=>`<div class="optmemo-row">${labels.length>1?`<div class="optmemo-label">${esc(label)}</div>`:'<div></div>'}<textarea class="optmemo" data-ci="${ci}" data-oi="${oi}" data-mi="${mi}" rows="1" placeholder="${esc(label)} 메모…">${esc(optMemoValue(om,oi,mi))}</textarea></div>`).join('') : '';
@@ -1216,6 +1280,7 @@ function critHTML(s,c,ci){
       const ptText=pt>0?`+${pt}`:`${pt}`;
       return `<div class="optwrap"><button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}"><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${optMemoBox}</div>`;
     }).join('')}</div>
+    ${bonusRequirements(c).length?`<div class="bonus-award ${bonusEarned(s,ci)?'active':''}"><div><strong>${bonusEarned(s,ci)?'✓ ':''}모두 충족 보너스 +5</strong></div><div class="bonus-requires">${bonusRequirements(c).map(i=>`<span class="bonus-chip ${chk.includes(i)?'met':''}">${esc(c.opts[i].desc||`항목 ${i+1}`)}</span>`).join('')}</div></div>`:''}
     <textarea class="cmemo" data-ci="${ci}" rows="2" placeholder="이 항목 채점 근거 메모… (줄바꿈 가능)">${esc((s.cmemos&&s.cmemos[ci])||'')}</textarea>
   </div>`;
 }
@@ -1256,7 +1321,7 @@ function stashRecordedTimeInMemo(s){
 function applyTimeJudge(){
   const s=curStudent();if(!s||s.absent)return;if(!s.checks)s.checks={};
   const ok=inOkRange(effectiveTime());
-  state.rubric.forEach((c,ci)=>{
+  rubricForStudent(s).forEach((c,ci)=>{
     c.opts.forEach((o,oi)=>{
       if(!o.timed)return;
       const arr=Array.isArray(s.checks[ci])?s.checks[ci]:[];
@@ -1387,6 +1452,7 @@ function castState(){
     okMinT:fmt(state.okMin), okMaxT:fmt(state.okMax),
     who: s?`${s.no} ${s.name}`:'', cls: clsLabel(currentClass),
     order,
+    choiceQuestions:choiceRubric(s).map((question,i)=>({label:`선택문제 ${i+1}`,prompt:String(question.prompt||'')})),
     micOn: mic.on, micLevel: mic.level||0, micThr: mic.sens,
     upNext
   });
@@ -1417,6 +1483,11 @@ body.excluding{background:#2b2620}
 .who{font-size:5.5vw;font-weight:800;color:#f6f2e9;margin-bottom:2vh;letter-spacing:.5px}
 .who .wcls{font-size:2.6vw;color:#a89e8d;font-weight:700;margin-right:1.2vw;vertical-align:middle}
 .who.empty{color:#5d564b}
+.choice-list{width:min(70vw,960px);max-height:25vh;overflow:auto;margin-bottom:1.5vh;text-align:left}
+.choice-row{display:grid;grid-template-columns:9vw 1fr;gap:1vw;align-items:start;padding:.5vh 1vw;font-size:1.65vw;line-height:1.35;white-space:pre-wrap}
+.choice-row b{color:#e8a766;white-space:nowrap}
+body.presenter .choice-list{width:85vw}
+body.presenter.has-choices .time{font-size:22vw}
 .time{font-size:24vw;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.5px}
 body.ok .time{color:#7fe0b8}
 .sub{margin-top:2.5vh;font-size:4vw;font-weight:700;min-height:5vh}
@@ -1459,6 +1530,7 @@ body.tv .stage{padding-right:22vw}
 <div class="stage">
   <div class="order hidden" id="order"></div>
   <div class="who empty" id="who">발표 대기</div>
+  <div class="choice-list hidden" id="choiceList"></div>
   <div class="time" id="t">0:00</div>
   <div class="sub" id="sub"></div>
   <div class="range" id="rng"></div>
@@ -1483,6 +1555,17 @@ ch.onmessage=e=>{
   const ord=document.getElementById('order');
   if(d.order){ord.textContent='발표 순서 '+d.order+'번';ord.classList.remove('hidden');}
   else {ord.classList.add('hidden');}
+  const choiceList=document.getElementById('choiceList');
+  choiceList.replaceChildren();
+  const questions=Array.isArray(d.choiceQuestions)?d.choiceQuestions:[];
+  questions.forEach(question=>{
+    const row=document.createElement('div');row.className='choice-row';
+    const label=document.createElement('b');label.textContent=question.label;
+    const prompt=document.createElement('span');prompt.textContent=question.prompt||'문제 내용 미입력';
+    row.append(label,prompt);choiceList.append(row);
+  });
+  choiceList.classList.toggle('hidden',!questions.length);
+  document.body.classList.toggle('has-choices',!!questions.length);
   const tEl=document.getElementById('t');
   if(d.countdown>0){tEl.textContent=d.countdown;tEl.style.color='#9b8ec4';tEl.style.fontSize='120px';}
   else{tEl.textContent=fmt(d.eff);tEl.style.color='';tEl.style.fontSize='';}
@@ -2196,12 +2279,92 @@ function showSettingTab(tab){
 }
 function openSettings(tab='basic'){
   const titleInput=document.getElementById('titleInput');if(titleInput)titleInput.value=appTitle;
+  updateSelectionModeSettings();
   initRosterSettings();
   renderSpeakingClassChoices();
+  initChoiceSetEditor();
   renderCritEdit();document.getElementById('fbPhrases').value=state.phrases.join(', ');document.getElementById('okMin').value=fmt(state.okMin);document.getElementById('okMax').value=fmt(state.okMax);
   showSettingTab(tab);
   openOv('ovSettings');
 }
+function updateSelectionModeSettings(){
+  document.querySelectorAll('input[name="selectionMode"]').forEach(input=>{input.checked=input.value===selectionMode;input.closest('label').classList.toggle('on',input.checked);});
+  const choicesTab=document.querySelector('.settingtab[data-tab="choices"]');
+  if(choicesTab)choicesTab.style.display=selectionMode==='draw'?'':'none';
+}
+document.querySelectorAll('input[name="selectionMode"]').forEach(input=>input.onchange=()=>{
+  if(!input.checked)return;
+  selectionMode=input.value;
+  updateSelectionModeSettings();save(true);renderRoster();renderStage();renderResult();castState();
+});
+let editChoiceSets=[];
+let editChoiceTemplate=defaultChoiceTemplate();
+let editChoiceSetIndex=-1;
+function initChoiceSetEditor(){
+  editChoiceSets=JSON.parse(JSON.stringify(choiceSets));
+  editChoiceTemplate=JSON.parse(JSON.stringify(choiceTemplate));
+  renderChoiceSetEditor();
+}
+function renderChoiceSetEditor(){
+  const tabs=document.getElementById('choiceSetTabs');
+  const host=document.getElementById('choiceSetEditor');
+  const isTemplate=editChoiceSetIndex===-1;
+  const questions=isTemplate?[editChoiceTemplate]:editChoiceSets[editChoiceSetIndex];
+  tabs.innerHTML=`<button class="rostertab ${isTemplate?'on':''}" data-index="-1">공통 루브릭</button>`+editChoiceSets.map((_,i)=>`<button class="rostertab ${i===editChoiceSetIndex?'on':''}" data-index="${i}">뽑기 ${i+1}</button>`).join('');
+  tabs.querySelectorAll('button').forEach(button=>button.onclick=()=>{editChoiceSetIndex=+button.dataset.index;renderChoiceSetEditor();});
+  host.innerHTML=questions.map((question,qi)=>`<div class="recrit">
+    <div class="rctop"><span class="rc-name choice-fixed-name">${isTemplate?'공통 루브릭':`선택문제 ${qi+1}`}</span><label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label></div>
+    ${isTemplate?'':`<div class="choice-prompt-row"><div class="mlabel">문제 내용</div><textarea class="choice-prompt" data-qi="${qi}" rows="2" placeholder="TV·발표자 화면에 보일 문제 내용">${esc(question.prompt||'')}</textarea></div>`}
+    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label><button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}`).join('')}
+    <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
+    ${bonusEditorHTML(question,qi)}
+  </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="15개 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다. 문제 내용은 유지됩니다.">모든 선택문제에 적용</button></div>':'');
+  host.querySelectorAll('.choice-base').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].base=Number(input.value)||0);
+  host.querySelectorAll('.choice-prompt').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].prompt=input.value);
+  host.querySelectorAll('.choice-desc').forEach(input=>{input.oninput=()=>questions[+input.dataset.qi].opts[+input.dataset.oi].desc=input.value;input.onchange=renderChoiceSetEditor;});
+  host.querySelectorAll('.choice-pt').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].opts[+input.dataset.oi].pt=Number(input.value)||0);
+  const choiceOption=element=>questions[Number(element.dataset.ci??element.dataset.qi)].opts[+element.dataset.oi];
+  host.querySelectorAll('.choice-timed').forEach(input=>input.onchange=()=>choiceOption(input).timed=input.checked);
+  host.querySelectorAll('.choice-memo').forEach(input=>input.onchange=()=>{const option=choiceOption(input);option.memo=input.checked;if(input.checked&&!option.memoLabels)option.memoLabels=['근거 메모'];if(!input.checked)delete option.memoLabels;renderChoiceSetEditor();});
+  host.querySelectorAll('.choice-auto').forEach(input=>input.onchange=()=>choiceOption(input).auto=input.checked);
+  host.querySelectorAll('.choice-simple').forEach(input=>input.onchange=()=>choiceOption(input).simple=input.checked);
+  host.querySelectorAll('.ro-memolabel').forEach(input=>input.oninput=()=>{const option=choiceOption(input);option.memoLabels=memoLabelsFor(option);option.memoLabels[+input.dataset.mi]=input.value;});
+  host.querySelectorAll('.memo-add').forEach(button=>button.onclick=()=>{const option=choiceOption(button);option.memoLabels=memoLabelsFor(option);option.memoLabels.push(`메모 ${option.memoLabels.length+1}`);renderChoiceSetEditor();});
+  host.querySelectorAll('.memo-del').forEach(button=>button.onclick=()=>{const option=choiceOption(button);option.memoLabels=memoLabelsFor(option);option.memoLabels.splice(+button.dataset.mi,1);if(!option.memoLabels.length)option.memoLabels=['근거 메모'];renderChoiceSetEditor();});
+  host.querySelectorAll('.choice-del').forEach(button=>button.onclick=()=>{removeRubricOption(questions[+button.dataset.qi],+button.dataset.oi);renderChoiceSetEditor();});
+  host.querySelectorAll('.choice-add').forEach(button=>button.onclick=()=>{questions[+button.dataset.qi].opts.push({desc:'',pt:0});renderChoiceSetEditor();});
+  wireBonusEditor(host,questions,renderChoiceSetEditor);
+  const applyButton=document.getElementById('applyCommonChoice');if(applyButton)applyButton.onclick=()=>{
+    if(!(editChoiceTemplate.opts||[]).some(option=>String(option.desc||'').trim())){toast('공통 루브릭에 채점 항목을 추가해 주세요');return;}
+    if((editChoiceTemplate.opts||[]).some(option=>!String(option.desc||'').trim()&&Number(option.pt))){toast('채점 항목의 설명을 입력해 주세요');return;}
+    const base=Number(editChoiceTemplate.base)||0;
+    const opts=JSON.parse(JSON.stringify(editChoiceTemplate.opts||[]));
+    editChoiceSets.forEach(set=>set.forEach(question=>{question.base=base;question.opts=JSON.parse(JSON.stringify(opts));}));
+    if(saveChoiceSetSettings())toast('공통 루브릭을 모든 선택문제에 적용했어요');
+  };
+}
+function saveChoiceSetSettings(){
+  const invalid=question=>(question.opts||[]).some(option=>!String(option.desc||'').trim()&&Number(option.pt));
+  if(invalid(editChoiceTemplate)||editChoiceSets.some(set=>set.some(invalid))){
+    toast('채점 항목의 설명을 입력해 주세요');return;
+  }
+  const clean=question=>{
+    const keep=(question.opts||[]).map((option,i)=>String(option.desc||'').trim()?i:null).filter(i=>i!==null);
+    const {allBonus:ignored,...rest}=question;
+    const bonus=normalizedBonus(question,keep);
+    return {...rest,opts:keep.map(i=>({...question.opts[i],desc:question.opts[i].desc.trim()})),...(bonus?{allBonus:bonus}:{})};
+  };
+  const nextTemplate=clean(editChoiceTemplate);
+  const nextSets=editChoiceSets.map(set=>set.map((question,i)=>({...clean(question),name:`선택문제 ${i+1}`})));
+  if([nextTemplate,...nextSets.flat()].some(question=>question.allBonus&&!question.allBonus.requires.length)){
+    toast('모두 체크 보너스에 필요한 항목을 선택해 주세요');return;
+  }
+  choiceTemplate=nextTemplate;
+  choiceSets=nextSets;
+  save(true);renderStage();renderResult();castState();toast('선택문제 루브릭 저장됨');
+  return true;
+}
+document.getElementById('choiceSetsApply').onclick=saveChoiceSetSettings;
 document.getElementById('btnSettings').onclick=()=>openSettings('basic');
 document.querySelectorAll('.settingtab').forEach(b=>b.onclick=()=>showSettingTab(b.dataset.tab));
 document.getElementById('titleApply').onclick=()=>{
@@ -2291,7 +2454,7 @@ document.getElementById('rosterApply').onclick=()=>{
 };
 // 같은 학번+이름의 기존 채점을 새 명단에 옮겨 보존
 function preserveInto(freshList,oldList){
-  freshList.forEach(f=>{const old=(oldList||[]).find(o=>o.no===f.no&&o.name===f.name);if(old){f.checks=old.checks||{};f.cmemos=old.cmemos||{};f.optmemos=old.optmemos||{};f.memo=old.memo;f.topic=old.topic??null;f.stance=old.stance??null;f.absent=old.absent||false;f.done=old.done;f.recordedTime=old.recordedTime??null;f.transcript=old.transcript??null;f.paperMissing=old.paperMissing||false;f.paperSubmitted=old.paperSubmitted||false;}});
+  freshList.forEach(f=>{const old=(oldList||[]).find(o=>o.no===f.no&&o.name===f.name);if(old){f.checks=old.checks||{};f.cmemos=old.cmemos||{};f.optmemos=old.optmemos||{};f.memo=old.memo;f.topic=old.topic??null;f.stance=old.stance??null;f.choiceSet=old.choiceSet??null;f.absent=old.absent||false;f.done=old.done;f.recordedTime=old.recordedTime??null;f.transcript=old.transcript??null;f.paperMissing=old.paperMissing||false;f.paperSubmitted=old.paperSubmitted||false;}});
   return freshList;
 }
 /* 루브릭 모달 */
@@ -2308,6 +2471,34 @@ function memoEditorHTML(o,ci,oi){
     <button class="memo-add" data-ci="${ci}" data-oi="${oi}">+ 메모칸</button>
   </div>`;
 }
+function bonusEditorHTML(c,ci){
+  const selected=bonusRequirements(c);
+  return `<div class="bonus-editor"><label><input class="bonus-enable" type="checkbox" data-ci="${ci}" ${c.allBonus?'checked':''}>지정한 항목 모두 체크 시 +5점</label>${c.allBonus?`<div class="bonus-options">${c.opts.map((option,oi)=>`<label class="bonus-chip ${selected.includes(oi)?'selected':''}"><input class="bonus-require" type="checkbox" data-ci="${ci}" data-oi="${oi}" ${selected.includes(oi)?'checked':''}>${esc(option.desc||`항목 ${oi+1}`)}</label>`).join('')}</div>`:''}</div>`;
+}
+function removeRubricOption(c,oi){
+  const required=bonusRequirements(c);
+  c.opts.splice(oi,1);
+  if(c.allBonus)c.allBonus.requires=required.filter(i=>i!==oi).map(i=>i>oi?i-1:i);
+}
+function normalizedBonus(c,keptIndices){
+  if(!c.allBonus)return null;
+  const positions=new Map(keptIndices.map((oldIndex,newIndex)=>[oldIndex,newIndex]));
+  return {requires:bonusRequirements(c).map(i=>positions.get(i)).filter(i=>i!==undefined)};
+}
+function wireBonusEditor(host,criteria,redraw){
+  host.querySelectorAll('.bonus-enable').forEach(input=>input.onchange=()=>{
+    const c=criteria[+input.dataset.ci];
+    if(input.checked)c.allBonus={requires:[]};else delete c.allBonus;
+    redraw();
+  });
+  host.querySelectorAll('.bonus-require').forEach(input=>input.onchange=()=>{
+    const c=criteria[+input.dataset.ci],oi=+input.dataset.oi;
+    const required=new Set(bonusRequirements(c));
+    if(input.checked)required.add(oi);else required.delete(oi);
+    c.allBonus.requires=[...required].sort((a,b)=>a-b);
+    redraw();
+  });
+}
 function drawCritEdit(){
   const el=document.getElementById('critEditList');
   el.innerHTML=editRubric.map((c,ci)=>`
@@ -2315,11 +2506,12 @@ function drawCritEdit(){
       <div class="rctop"><input class="rc-name" data-ci="${ci}" value="${esc(c.name)}" placeholder="항목 이름"><label class="rc-base">기본점 <input class="rc-baseinp" type="number" min="0" data-ci="${ci}" value="${Number(c.base)||0}"></label><button class="rc-del" data-ci="${ci}" title="항목 삭제">×</button></div>
       ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label><button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}`).join('')}
       <button class="addopt" data-ci="${ci}">+ 체크 항목 추가</button>
+      ${bonusEditorHTML(c,ci)}
     </div>`).join('');
   // 입력 동기화
   el.querySelectorAll('.rc-name').forEach(i=>i.oninput=()=>editRubric[+i.dataset.ci].name=i.value);
   el.querySelectorAll('.rc-baseinp').forEach(i=>i.oninput=()=>editRubric[+i.dataset.ci].base=Number(i.value)||0);
-  el.querySelectorAll('.ro-desc').forEach(i=>i.oninput=()=>editRubric[+i.dataset.ci].opts[+i.dataset.oi].desc=i.value);
+  el.querySelectorAll('.ro-desc').forEach(i=>{i.oninput=()=>editRubric[+i.dataset.ci].opts[+i.dataset.oi].desc=i.value;i.onchange=drawCritEdit;});
   el.querySelectorAll('.ro-pt').forEach(i=>i.oninput=()=>editRubric[+i.dataset.ci].opts[+i.dataset.oi].pt=Number(i.value)||0);
   el.querySelectorAll('.ro-timedchk').forEach(i=>i.onchange=()=>editRubric[+i.dataset.ci].opts[+i.dataset.oi].timed=i.checked);
   el.querySelectorAll('.ro-memochk').forEach(i=>i.onchange=()=>{const o=editRubric[+i.dataset.ci].opts[+i.dataset.oi];o.memo=i.checked;if(i.checked&&!o.memoLabels)o.memoLabels=['근거 메모'];if(!i.checked)delete o.memoLabels;drawCritEdit();});
@@ -2329,13 +2521,31 @@ function drawCritEdit(){
   el.querySelectorAll('.ro-autochk').forEach(i=>i.onchange=()=>editRubric[+i.dataset.ci].opts[+i.dataset.oi].auto=i.checked);
   el.querySelectorAll('.ro-simplechk').forEach(i=>i.onchange=()=>editRubric[+i.dataset.ci].opts[+i.dataset.oi].simple=i.checked);
   el.querySelectorAll('.rc-del').forEach(b=>b.onclick=()=>{editRubric.splice(+b.dataset.ci,1);drawCritEdit()});
-  el.querySelectorAll('.ro-del').forEach(b=>b.onclick=()=>{editRubric[+b.dataset.ci].opts.splice(+b.dataset.oi,1);drawCritEdit()});
+  el.querySelectorAll('.ro-del').forEach(b=>b.onclick=()=>{removeRubricOption(editRubric[+b.dataset.ci],+b.dataset.oi);drawCritEdit()});
   el.querySelectorAll('.addopt').forEach(b=>b.onclick=()=>{editRubric[+b.dataset.ci].opts.push({desc:"",pt:0});drawCritEdit()});
+  wireBonusEditor(el,editRubric,drawCritEdit);
 }
 document.getElementById('addCrit').onclick=()=>{editRubric.push({name:"",base:0,opts:[{desc:"",pt:0}]});drawCritEdit()};
 document.getElementById('rubricApply').onclick=()=>{
-  const nr=editRubric.filter(c=>c.name.trim()).map(c=>({name:c.name.trim(),base:Number(c.base)||0,opts:c.opts.filter(o=>o.desc.trim()||o.pt).map(o=>({desc:o.desc,pt:Number(o.pt)||0,...(o.timed?{timed:true}:{}),...(o.memo?{memo:true}:{}),...(o.memo&&o.memoLabels&&o.memoLabels.length?{memoLabels:o.memoLabels}:{}),...(o.auto?{auto:true}:{}),...(o.simple?{simple:true}:{})}))}));
+  const nr=editRubric.filter(c=>c.name.trim()).map(c=>{
+    const keep=c.opts.map((o,i)=>o.desc.trim()||o.pt?i:null).filter(i=>i!==null);
+    const bonus=normalizedBonus(c,keep);
+    return {name:c.name.trim(),base:Number(c.base)||0,opts:keep.map(i=>{const o=c.opts[i];return {desc:o.desc,pt:Number(o.pt)||0,...(o.timed?{timed:true}:{}),...(o.memo?{memo:true}:{}),...(o.memo&&o.memoLabels&&o.memoLabels.length?{memoLabels:o.memoLabels}:{}),...(o.auto?{auto:true}:{}),...(o.simple?{simple:true}:{})};}),...(bonus?{allBonus:bonus}:{})};
+  });
   if(!nr.length){toast('항목을 1개 이상 넣어주세요');return}
+  if(nr.some(c=>c.allBonus&&!c.allBonus.requires.length)){toast('모두 체크 보너스에 필요한 항목을 선택해 주세요');return}
+  if(nr.length!==state.rubric.length){
+    classStudents[currentClass]=state.students;
+    Object.values(classStudents).flat().forEach(student=>{
+      if(student.choiceSet==null)return;
+      for(const field of ['checks','cmemos','optmemos']){
+        const values=student[field]||{};
+        const old=Array.from({length:3},(_,i)=>values[state.rubric.length+i]);
+        for(let i=0;i<3;i++)delete values[state.rubric.length+i];
+        for(let i=0;i<3;i++)if(old[i]!==undefined)values[nr.length+i]=old[i];
+      }
+    });
+  }
   state.rubric=nr;
   state.phrases=document.getElementById('fbPhrases').value.split(',').map(s=>s.trim()).filter(Boolean);
   const lo=parseMS(document.getElementById('okMin').value);const hi=parseMS(document.getElementById('okMax').value);
@@ -2364,7 +2574,7 @@ document.getElementById('btnTranscriptFolder').onclick=()=>loadTranscriptFolder(
 // 주제·입장 표시 헬퍼
 function topicShort(s){return (s.topic!=null&&TOPICS[s.topic])?TOPICS[s.topic].short:''}
 function topicFull(s){return (s.topic!=null&&TOPICS[s.topic])?TOPICS[s.topic].full:''}
-function topicStanceText(s){const t=topicFull(s);if(!t&&!s.stance)return '';return [t,s.stance].filter(Boolean).join(' / ');}
+function topicStanceText(s){if(selectionMode!=='topic')return '';const t=topicFull(s);if(!t&&!s.stance)return '';return [t,s.stance].filter(Boolean).join(' / ');}
 function topicCellHTML(s){
   const t=topicShort(s);if(!t&&!s.stance)return '<span class="tpempty">-</span>';
   const st=s.stance?`<span class="tpstance ${s.stance==='찬성'?'agree':'oppose'}">${s.stance}</span>`:'';
@@ -2373,31 +2583,33 @@ function topicCellHTML(s){
 function renderResult(){
   const rt=document.getElementById('resultTitle');if(rt)rt.textContent=`결과 · NEIS 정리 — ${clsLabel(currentClass)}`;
   document.querySelectorAll('.sortbtn').forEach(b=>b.classList.toggle('on',b.dataset.sort===resultSort));
-  const max=rubricMax();
   if(!state.students.length){document.getElementById('resultTable').innerHTML='<p style="color:var(--muted);padding:20px;text-align:center">이 반은 아직 학생이 없습니다.</p>';return}
   const list=sortedStudents();
-  let h=`<table class="rtable"><thead><tr><th>발표<br>순서</th><th>번호</th><th>이름</th><th>주제·입장</th>${state.rubric.map(c=>`<th>${esc(c.name)}</th>`).join('')}<th>종이</th><th>총점<br><small>(${max})</small></th><th>등급</th><th>발표<br>시간</th><th>총평</th></tr></thead><tbody>`;
-  list.forEach((s)=>{const tot=studentTotal(s),pct=max?Math.round(tot/max*100):0;const ord=state.students.indexOf(s)+1;const rt=s.recordedTime?fmt(s.recordedTime.eff):'-';const paper=paperStatusText(s);h+=`<tr class="${s.absent?'rowabsent':''}"><td class="ord">${ord}</td><td>${s.no}</td><td class="nm">${esc(s.name)}</td><td class="tpcell">${topicCellHTML(s)}</td>${state.rubric.map((c,i)=>{const cm=(s.cmemos&&s.cmemos[i])||'';const shown=s.absent?`<b>${critScore(s,i)}</b>`:(checksOf(s,i).length?`<b>${critScore(s,i)}</b>`:'·');return `<td>${shown}${cm&&!s.absent?`<div class="cellmemo">${esc(cm)}</div>`:''}</td>`}).join('')}<td>${paper?`<b style="color:${hasPaperMissing(s)?'var(--amber)':'var(--accent)'}">${esc(paper)}</b>`:'-'}</td><td><b>${tot}</b></td><td>${s.absent?'<span class="tagabsent">발표안함</span>':(s.done?gradeOf(pct):'-')}</td><td class="trcell">${rt}</td><td class="memo">${esc(s.memo||'')}</td></tr>`});
+  let h=`<table class="rtable"><thead><tr><th>발표<br>순서</th><th>번호</th><th>이름</th>${selectionMode==='draw'?'<th>뽑기</th>':'<th>주제·입장</th>'}${state.rubric.map(c=>`<th>${esc(c.name)}</th>`).join('')}${selectionMode==='draw'?[1,2,3].map(i=>`<th>선택문제 ${i}</th>`).join(''):''}<th>종이</th><th>총점<br><small>학생별 만점</small></th><th>등급</th><th>발표<br>시간</th><th>총평</th></tr></thead><tbody>`;
+  list.forEach((s)=>{const studentMax=rubricMax(s),tot=studentTotal(s),pct=studentMax?Math.round(tot/studentMax*100):0;const ord=state.students.indexOf(s)+1;const rt=s.recordedTime?fmt(s.recordedTime.eff):'-';const paper=paperStatusText(s);h+=`<tr class="${s.absent?'rowabsent':''}"><td class="ord">${ord}</td><td>${s.no}</td><td class="nm">${esc(s.name)}</td>${selectionMode==='draw'?`<td>${s.choiceSet!=null?s.choiceSet+1:'-'}</td>`:`<td class="tpcell">${topicCellHTML(s)}</td>`}${rubricForStudent(s).map((c,i)=>{const cm=(s.cmemos&&s.cmemos[i])||'';const shown=s.absent?`<b>${critScore(s,i)}</b>`:(checksOf(s,i).length?`<b>${critScore(s,i)}</b>`:'·');return `<td title="${esc(c.prompt||'')}">${shown}${cm&&!s.absent?`<div class="cellmemo">${esc(cm)}</div>`:''}</td>`}).join('')}${selectionMode==='draw'&&!choiceRubric(s).length?'<td>-</td><td>-</td><td>-</td>':''}<td>${paper?`<b style="color:${hasPaperMissing(s)?'var(--amber)':'var(--accent)'}">${esc(paper)}</b>`:'-'}</td><td><b>${tot}</b>/${studentMax}</td><td>${s.absent?'<span class="tagabsent">발표안함</span>':(s.done?gradeOf(pct):'-')}</td><td class="trcell">${rt}</td><td class="memo">${esc(s.memo||'')}</td></tr>`});
   h+=`</tbody></table>`;document.getElementById('resultTable').innerHTML=h;
 }
 document.querySelectorAll('.sortbtn').forEach(b=>b.onclick=()=>{resultSort=b.dataset.sort;renderResult()});
-function neisText(){const max=rubricMax();return sortedStudents().map(s=>{const tot=studentTotal(s),pct=max?Math.round(tot/max*100):0;const rt=s.recordedTime?fmt(s.recordedTime.eff):'';return [state.students.indexOf(s)+1,s.no,s.name,topicStanceText(s),paperStatusText(s),tot,s.absent?'발표안함':gradeOf(pct),rt,(s.memo||'').replace(/\s+/g,' ')].join('\t')}).join('\n')}
+function neisText(){return sortedStudents().map(s=>{const max=rubricMax(s),tot=studentTotal(s),pct=max?Math.round(tot/max*100):0;const rt=s.recordedTime?fmt(s.recordedTime.eff):'';return [state.students.indexOf(s)+1,s.no,s.name,topicStanceText(s),paperStatusText(s),tot,s.absent?'발표안함':gradeOf(pct),rt,(s.memo||'').replace(/\s+/g,' ')].join('\t')}).join('\n')}
 function fullTsv(){
-  const head=['발표순서','번호','이름','주제','입장'];
+  const head=['발표순서','번호','이름',...(selectionMode==='draw'?['뽑기']:['주제','입장'])];
   state.rubric.forEach(c=>{head.push(c.name);head.push(c.name+' 근거')});
+  if(selectionMode==='draw')[1,2,3].forEach(i=>{head.push(`선택문제 ${i} 내용`,`선택문제 ${i} 점수`,`선택문제 ${i} 근거`)});
   head.push('종이','총점','등급','발표시간','총평');
-  const max=rubricMax();
   const rows=sortedStudents().map(s=>{
+    const max=rubricMax(s);
     const tot=studentTotal(s),pct=max?Math.round(tot/max*100):0;
-    const cells=[state.students.indexOf(s)+1,s.no,s.name,topicFull(s),s.stance||''];
-    state.rubric.forEach((c,i)=>{
+    const cells=[state.students.indexOf(s)+1,s.no,s.name,...(selectionMode==='draw'?[s.choiceSet!=null?s.choiceSet+1:'']:[topicFull(s),s.stance||''])];
+    rubricForStudent(s).forEach((c,i)=>{
+      if(i>=state.rubric.length)cells.push((c.prompt||'').replace(/\s+/g,' '));
       const has=checksOf(s,i).length>0;
       cells.push(s.absent?critScore(s,i):(has?critScore(s,i):''));
       const om=(s.optmemos&&s.optmemos[i])||{};
-      const checkedDescs=s.absent?'':checksOf(s,i).map(oi=>{const o=c.opts[oi];const d=o?.desc;const mm=optMemoText(om,oi,o);return d?(mm?`${d}(${mm})`:d):''}).filter(Boolean).join(', ');
+      const checkedDescs=s.absent?'':[...checksOf(s,i).map(oi=>{const o=c.opts[oi];const d=o?.desc;const mm=optMemoText(om,oi,o);return d?(mm?`${d}(${mm})`:d):''}).filter(Boolean),...(bonusEarned(s,i)?['모두 충족 보너스(+5)']:[])].join(', ');
       const cm=((s.cmemos&&s.cmemos[i])||'').replace(/\s+/g,' ');
       cells.push(s.absent?'':[checkedDescs,cm].filter(Boolean).join(' / '));
     });
+    if(selectionMode==='draw'&&!choiceRubric(s).length)for(let i=0;i<3;i++)cells.push('','','');
     cells.push(paperStatusText(s),tot,s.absent?'발표안함':gradeOf(pct),s.recordedTime?fmt(s.recordedTime.eff):'',(s.memo||'').replace(/\s+/g,' '));
     return cells.join('\t');
   });
@@ -2410,7 +2622,7 @@ document.getElementById('dlCsv').onclick=async()=>{const csv=fullTsv().split('\n
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
 async function downloadBackup(){
   classStudents[currentClass]=state.students;
-  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubric:state.rubric,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
+  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
   try{localStorage.setItem(LAST_BACKUP_KEY,String(Date.now()));}catch(e){}
   return saved;
 }
@@ -2488,6 +2700,9 @@ document.getElementById('resetAll').onclick=async()=>{
     classStudents={};classes.forEach(c=>{classStudents[c]=[]});
     excludedSpeakingClasses=new Set();
     state.rubric=JSON.parse(JSON.stringify(DEFAULT_RUBRIC));
+    choiceSets=defaultChoiceSets();
+    choiceTemplate=defaultChoiceTemplate();
+    selectionMode='draw';
     state.phrases=["목소리 또렷함","시선 처리 좋음","근거 보강 필요","반박 인상적","시간 초과"];
     state.okMin=150;state.okMax=180;
     currentClass=classes[0];state.students=classStudents[currentClass];state.current=null;
