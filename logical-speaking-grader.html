@@ -378,6 +378,7 @@
       <button class="tbtn" id="btnPreview">🎬 미리보기</button>
       <button class="tbtn" id="btnSettings">설정</button>
       <button class="tbtn" id="btnResult">결과 · NEIS 정리</button>
+      <button class="tbtn" id="btnSpeakingDraw">🎲 돌려돌려돌림판</button>
       <button class="tbtn" id="btnTranscriptFolder">🔄 전사본 새로고침</button>
     </div>
   </header>
@@ -415,6 +416,11 @@
 
     <section class="settingpanel" id="setting-roster">
       <div data-shared-roster-status></div>
+      <div class="folderbox" id="speakingClassFilter" style="margin-bottom:16px">
+        <div class="mlabel" style="margin-top:0">말하기 수행평가 채점 반</div>
+        <p class="hint">채점할 반만 선택하세요. 제외한 반의 기존 채점 기록은 보관됩니다. OMR 채점에는 영향을 주지 않습니다.</p>
+        <div id="speakingClassChoices" style="display:flex;flex-wrap:wrap;gap:10px 18px"></div>
+      </div>
       <p class="hint">엑셀·한셀에서 이름 열을 복사해 붙여넣으세요. 한 줄에 한 명. <b>3 김민수</b>처럼 번호가 붙어 있어도 자동 인식합니다.</p>
       <div class="classedit">
         <div class="classedit-head"><span class="classedit-title">반 구성</span><button class="classedit-add" id="addClassBtn">+ 반 추가</button></div>
@@ -656,6 +662,15 @@ function blockIfTimerLocked(){
 // 반 목록
 const DEFAULT_CLASSES=["1","2","3","4","5","6"];
 let classes=[...DEFAULT_CLASSES];
+let excludedSpeakingClasses=new Set();
+function speakingClasses(){return classes.filter(c=>!excludedSpeakingClasses.has(c))}
+function ensureVisibleSpeakingClass(){
+  if(!classes.includes(currentClass)||excludedSpeakingClasses.has(currentClass)){
+    currentClass=speakingClasses()[0]||classes[0];
+    state.students=classStudents[currentClass]||(classStudents[currentClass]=[]);
+    state.current=null;
+  }
+}
 function clsLabel(c){return String(c)}
 function normalizeClassName(c){
   const s=String(c||'').trim().replace(/\s+/g,' ').replace(/반$/,'').trim();
@@ -679,7 +694,7 @@ function save(manual){
   if(previewMode)return; // 미리보기 모드에서는 저장하지 않음
   classStudents[currentClass]=state.students; // 현재 반 학생 반영
   const payload=JSON.stringify({
-    shared:{appTitle,rubric:state.rubric,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true},
+    shared:{appTitle,rubric:state.rubric,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
     classes:classStudents, currentClass, savedAt:Date.now()
   });
   let okMain=false, okMirror=false;
@@ -705,6 +720,8 @@ function applyLoaded(d){
     const sh=d.shared||{};
     appTitle=sh.appTitle||DEFAULT_APP_TITLE;
     classes=Array.isArray(sh.classList)&&sh.classList.length?sh.classList.map(x=>sh.classNamesRaw?String(x).trim():normalizeClassName(String(x).trim())).filter(Boolean):[...DEFAULT_CLASSES];
+    excludedSpeakingClasses=new Set((Array.isArray(sh.excludedSpeakingClasses)?sh.excludedSpeakingClasses:[]).filter(c=>classes.includes(c)));
+    if(excludedSpeakingClasses.size===classes.length)excludedSpeakingClasses.clear();
     if((sh.rubricVersion||1)>=RUBRIC_VERSION && sh.rubric){state.rubric=sh.rubric;}
     else {state.rubric=JSON.parse(JSON.stringify(DEFAULT_RUBRIC));}
     state.phrases=sh.phrases||state.phrases;state.okMin=sh.okMin??150;state.okMax=sh.okMax??180;
@@ -712,8 +729,10 @@ function applyLoaded(d){
     const loadedCurrent=sh.classNamesRaw?String(d.currentClass):normalizeClassName(d.currentClass);
     currentClass=classes.includes(loadedCurrent)?loadedCurrent:classes[0];
     state.students=classStudents[currentClass];
+    ensureVisibleSpeakingClass();
   } else {
     classes=[...DEFAULT_CLASSES];
+    excludedSpeakingClasses=new Set();
     appTitle=d.appTitle||DEFAULT_APP_TITLE;
     state.rubric=d.rubric||state.rubric;state.phrases=d.phrases||state.phrases;state.okMin=d.okMin??150;state.okMax=d.okMax??180;
     const migrated=migrateChecks(d.students||[]);
@@ -751,6 +770,7 @@ function load(){
   }
 }
 function switchClass(cls){
+  if(excludedSpeakingClasses.has(cls))return;
   if(cls===currentClass)return;
   classStudents[currentClass]=state.students; // 현재 반 보존
   currentClass=cls;
@@ -791,14 +811,26 @@ function openLinkedStudentFromUrl(){
 }
 function renderClassBar(){
   const el=document.getElementById('classbar');if(!el)return;
-  el.innerHTML=`<span class="clabel">반</span>`+classes.map((c,idx)=>{
+  el.innerHTML=`<span class="clabel">반</span>`+speakingClasses().map(c=>{
     const arr=(c===currentClass?state.students:classStudents[c])||[];
     const n=arr.length;
     const nPresent=n?arr.filter(s=>hasAnyData(s)).length:0;
     const nDone=n?arr.filter(s=>s.done).length:0;
-    return `<button class="clsbtn ${c===currentClass?'on':''}" data-idx="${idx}">${esc(clsLabel(c))}${n?`<span class="cnt">${nPresent}/${nDone}/${n}</span>`:''}</button>`;
+    return `<button class="clsbtn ${c===currentClass?'on':''}" data-class="${esc(c)}">${esc(clsLabel(c))}${n?`<span class="cnt">${nPresent}/${nDone}/${n}</span>`:''}</button>`;
   }).join('')+`<span class="classlegend">발표완료 / 채점완료 / 재적</span>`;
-  el.querySelectorAll('.clsbtn').forEach(b=>b.onclick=()=>switchClass(classes[+b.dataset.idx]));
+  el.querySelectorAll('.clsbtn').forEach(b=>b.onclick=()=>switchClass(b.dataset.class));
+}
+function renderSpeakingClassChoices(){
+  const host=document.getElementById('speakingClassChoices');if(!host)return;
+  host.innerHTML=classes.map(c=>`<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" data-class="${esc(c)}" ${excludedSpeakingClasses.has(c)?'':'checked'}> ${esc(clsLabel(c))}반</label>`).join('');
+  host.querySelectorAll('input').forEach(input=>input.onchange=()=>{
+    const cls=input.dataset.class;
+    if(input.checked)excludedSpeakingClasses.delete(cls);
+    else if(speakingClasses().length<=1){input.checked=true;toast('채점할 반을 최소 1개 선택해 주세요');return;}
+    else excludedSpeakingClasses.add(cls);
+    if(excludedSpeakingClasses.has(currentClass))switchClass(speakingClasses()[0]);
+    else{save();renderClassBar();renderRoster();renderStage();}
+  });
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600)}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -811,10 +843,21 @@ function updateAppTitle(){
 function applySharedSpeakingRoster(data){
   SharedRoster.backup(LS, data.revision);
   classStudents[currentClass] = state.students;
-  classStudents = SharedRoster.project(data, classStudents, s=>({...parseRoster(`${s.number} ${s.name}`)[0],id:`shared_${s.className}_${s.number}_${crypto.randomUUID()}`}));
+  const previousStudents=classStudents;
+  const projected=SharedRoster.project(data, previousStudents, s=>({...parseRoster(`${s.number} ${s.name}`)[0],id:`shared_${s.className}_${s.number}_${crypto.randomUUID()}`}));
+  // 공통 명단은 학생 정보를 갱신하고, 이 화면의 발표 순서는 기존 순서대로 유지한다.
+  Object.entries(projected).forEach(([cls,list])=>{
+    const old=SharedRoster.oldClass(previousStudents,{className:cls,classNumber:cls.split('-').pop()},data);
+    const positions=new Map(old.map((student,index)=>[`${student.no}\u0000${student.name}`,index]));
+    list.sort((a,b)=>(positions.get(`${a.no}\u0000${a.name}`)??Infinity)-(positions.get(`${b.no}\u0000${b.name}`)??Infinity)||a.no-b.no);
+  });
+  classStudents=projected;
   classes = Object.keys(classStudents);
+  excludedSpeakingClasses=new Set([...excludedSpeakingClasses].filter(c=>classes.includes(c)));
+  if(excludedSpeakingClasses.size===classes.length)excludedSpeakingClasses.clear();
   if(!classes.includes(currentClass)) currentClass = classes[0];
   state.students = classStudents[currentClass];
+  ensureVisibleSpeakingClass();
   if(!state.students.some(s=>s.id === state.current)) state.current = null;
   save();
 }
@@ -857,6 +900,40 @@ function renderRoster(){
   const nDone=state.students.filter(s=>s.done).length;
   document.getElementById('doneCount').textContent=`${nPresent}/${nDone}/${total}`;
 }
+let speakingDrawWindow=null;
+let speakingDrawClass=null;
+let speakingDrawEntries=[];
+document.getElementById('btnSpeakingDraw').onclick=()=>{
+  if(!state.students.length){toast('먼저 현재 반 명단을 입력해 주세요');return;}
+  speakingDrawClass=currentClass;
+  speakingDrawEntries=state.students.map((student,index)=>({
+    id:student.id,
+    label:`${student.no} ${student.name}${state.students.some((other,i)=>i!==index&&other.no===student.no&&other.name===student.name)?` (${index+1})`:''}`
+  }));
+  speakingDrawWindow=window.open('./논리적인 말하기 수행평가 돌려돌려돌림판.html','speakingOrderDraw');
+  if(!speakingDrawWindow){toast('추첨기 팝업을 허용해 주세요');return;}
+  speakingDrawWindow.focus();
+};
+window.addEventListener('message',event=>{
+  if(event.source!==speakingDrawWindow||!event.data||event.data.channel!=='speaking-order-draw')return;
+  if(event.data.type==='ready'){
+    speakingDrawWindow.postMessage({channel:'speaking-order-draw',type:'roster',className:speakingDrawClass,entries:speakingDrawEntries},'*');
+    return;
+  }
+  if(event.data.type!=='result')return;
+  if(currentClass!==speakingDrawClass){toast('추첨한 반으로 돌아가서 다시 뽑아 주세요');return;}
+  const labels=event.data.labels;
+  const expected=new Set(speakingDrawEntries.map(entry=>entry.label));
+  if(!Array.isArray(labels)||labels.length!==speakingDrawEntries.length||new Set(labels).size!==expected.size||!labels.every(label=>expected.has(label))){
+    toast('현재 명단과 추첨 결과가 달라 적용하지 않았어요');return;
+  }
+  const byId=new Map(state.students.map(student=>[student.id,student]));
+  const byLabel=new Map(speakingDrawEntries.map(entry=>[entry.label,entry.id]));
+  if(speakingDrawEntries.some(entry=>!byId.has(entry.id))){toast('명단이 바뀌어 다시 추첨해야 해요');return;}
+  state.students=labels.map(label=>byId.get(byLabel.get(label)));
+  save();renderRoster();renderStage();
+  toast(`${currentClass}반 발표 순서가 저장됐어요`);
+});
 /* 채점 */
 function selectStudent(id){if(previewMode)exitPreview();state.current=id;renderRoster();renderStage();resetTimer()}
 // ===== 미리보기(데모) =====
@@ -2119,6 +2196,7 @@ function showSettingTab(tab){
 function openSettings(tab='basic'){
   const titleInput=document.getElementById('titleInput');if(titleInput)titleInput.value=appTitle;
   initRosterSettings();
+  renderSpeakingClassChoices();
   renderCritEdit();document.getElementById('fbPhrases').value=state.phrases.join(', ');document.getElementById('okMin').value=fmt(state.okMin);document.getElementById('okMax').value=fmt(state.okMax);
   showSettingTab(tab);
   openOv('ovSettings');
@@ -2196,8 +2274,11 @@ function applyClassConfig(){
   });
   classes=next;
   classStudents=nextStudents;
+  excludedSpeakingClasses=new Set([...excludedSpeakingClasses].filter(c=>classes.includes(c)));
+  if(excludedSpeakingClasses.size===classes.length)excludedSpeakingClasses.clear();
   currentClass=classes.includes(currentClass)?currentClass:classes[Math.min(oldCurrentIndex,classes.length-1)];
   state.students=classStudents[currentClass]||(classStudents[currentClass]=[]);
+  ensureVisibleSpeakingClass();renderSpeakingClassChoices();
   state.current=null;
   save();renderClassBar();renderRoster();renderStage();
   return true;
@@ -2328,7 +2409,7 @@ document.getElementById('dlCsv').onclick=async()=>{const csv=fullTsv().split('\n
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
 async function downloadBackup(){
   classStudents[currentClass]=state.students;
-  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubric:state.rubric,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
+  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubric:state.rubric,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
   try{localStorage.setItem(LAST_BACKUP_KEY,String(Date.now()));}catch(e){}
   return saved;
 }
@@ -2404,6 +2485,7 @@ document.getElementById('resetAll').onclick=async()=>{
     // localStorage 비우고 빈 명단으로 재구성
     localStorage.removeItem(LS);localStorage.removeItem(LS_MIRROR);
     classStudents={};classes.forEach(c=>{classStudents[c]=[]});
+    excludedSpeakingClasses=new Set();
     state.rubric=JSON.parse(JSON.stringify(DEFAULT_RUBRIC));
     state.phrases=["목소리 또렷함","시선 처리 좋음","근거 보강 필요","반박 인상적","시간 초과"];
     state.okMin=150;state.okMax=180;
