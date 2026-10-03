@@ -466,6 +466,11 @@
     </section>
 
     <section class="settingpanel" id="setting-rubric">
+      <div class="folderbox" style="margin-bottom:12px">
+        <div class="mlabel" style="margin-top:0">세부 항목에 표시할 옵션</div>
+        <div id="rubricOptionVisibility" class="bonus-options"></div>
+        <p class="hint">기본·선택문제 루브릭에 함께 적용됩니다. 끄면 편집 옵션만 숨겨지며, 이미 설정한 기능과 채점은 유지됩니다.</p>
+      </div>
       <p class="hint">항목마다 <b>기본점</b>(발표만 해도 보장되는 최저점)과 <b>체크 항목·가점</b>을 정합니다. 총점 = 기본점 + 체크한 가점의 합. ⏱ 표시한 항목은 발표 타이머가 준수 구간일 때 자동 체크됩니다.</p>
       <div id="critEditList"></div>
       <button class="addcrit" id="addCrit">+ 항목 추가</button>
@@ -578,6 +583,7 @@ function defaultChoiceTemplate(){return {name:'공통 루브릭',base:0,opts:[]}
 let choiceSets=defaultChoiceSets();
 let choiceTemplate=defaultChoiceTemplate();
 let selectionMode='draw';
+let rubricOptionVisibility={};
 function choiceRubric(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)&&s.choiceSet>=0&&s.choiceSet<5?choiceSets[s.choiceSet]:[]}
 function migrateAutoChecks(c){
   if(c.allBonus){
@@ -738,7 +744,7 @@ function save(manual){
   if(previewMode)return; // 미리보기 모드에서는 저장하지 않음
   classStudents[currentClass]=state.students; // 현재 반 학생 반영
   const payload=JSON.stringify({
-    shared:{appTitle,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
+    shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
     classes:classStudents, currentClass, savedAt:Date.now()
   });
   let okMain=false, okMirror=false;
@@ -760,6 +766,7 @@ function showSaveError(){
 function applyLoaded(d){
   if(!d)return false;
   if(d.savedAt)lastSavedAt=d.savedAt;
+  rubricOptionVisibility=d.shared?.rubricOptionVisibility||{};
   if(d.classes){
     const sh=d.shared||{};
     appTitle=sh.appTitle||DEFAULT_APP_TITLE;
@@ -2328,9 +2335,9 @@ function renderChoiceSetEditor(){
   host.innerHTML=questions.map((question,qi)=>`<div class="recrit">
     <div class="rctop"><span class="rc-name choice-fixed-name">${isTemplate?'공통 루브릭':`선택문제 ${qi+1}`}</span><label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label></div>
     ${isTemplate?'':`<div class="choice-prompt-row"><div class="mlabel">문제 내용</div><textarea class="choice-prompt" data-qi="${qi}" rows="2" placeholder="TV·발표자 화면에 보일 문제 내용">${esc(question.prompt||'')}</textarea></div>`}
-    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label><button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}`).join('')}
+    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
-    ${bonusEditorHTML(question,qi)}
+
   </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="15개 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다. 문제 내용은 유지됩니다.">모든 선택문제에 적용</button></div>':'');
   host.querySelectorAll('.choice-base').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].base=Number(input.value)||0);
   host.querySelectorAll('.choice-prompt').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].prompt=input.value);
@@ -2347,6 +2354,7 @@ function renderChoiceSetEditor(){
   host.querySelectorAll('.choice-del').forEach(button=>button.onclick=()=>{removeRubricOption(questions[+button.dataset.qi],+button.dataset.oi);renderChoiceSetEditor();});
   host.querySelectorAll('.choice-add').forEach(button=>button.onclick=()=>{questions[+button.dataset.qi].opts.push({desc:'',pt:0});renderChoiceSetEditor();});
   wireBonusEditor(host,questions,renderChoiceSetEditor);
+  applyRubricOptionVisibility(host);
   const applyButton=document.getElementById('applyCommonChoice');if(applyButton)applyButton.onclick=()=>{
     if(!(editChoiceTemplate.opts||[]).some(option=>String(option.desc||'').trim())){toast('공통 루브릭에 채점 항목을 추가해 주세요');return;}
     if((editChoiceTemplate.opts||[]).some(option=>!String(option.desc||'').trim()&&Number(option.pt))){toast('채점 항목의 설명을 입력해 주세요');return;}
@@ -2473,21 +2481,43 @@ function preserveInto(freshList,oldList){
 /* 루브릭 모달 */
 let editRubric=[];
 function renderCritEdit(){
+  renderRubricOptionVisibility();
   editRubric=JSON.parse(JSON.stringify(state.rubric)).map(migrateAutoChecks);
   drawCritEdit();
 }
 function memoEditorHTML(o,ci,oi){
   if(!o.memo)return '';
   const labels=memoLabelsFor(o);
-  return `<div class="memo-labels">
+  return `<div class="memo-labels" data-rubric-feature="memo">
     ${labels.map((label,mi)=>`<div class="memo-label-row"><input class="ro-memolabel" data-ci="${ci}" data-oi="${oi}" data-mi="${mi}" value="${esc(label)}" placeholder="메모칸 이름"><button class="memo-del" data-ci="${ci}" data-oi="${oi}" data-mi="${mi}" title="메모칸 삭제">×</button></div>`).join('')}
     <button class="memo-add" data-ci="${ci}" data-oi="${oi}">+ 메모칸</button>
   </div>`;
 }
-function bonusEditorHTML(c,ci){
-  migrateAutoChecks(c);
-  return c.opts.map((o,oi)=>`<div class="bonus-editor"><label><input class="condition-enable" type="checkbox" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)?'checked':''}>${esc(o.desc||`항목 ${oi+1}`)}: 조건 충족 시 자동 체크</label>${Array.isArray(o.requires)?`<div class="hint">같은 루브릭에서 아래에 선택한 항목이 모두 체크되면 자동 체크됩니다. 조건이 풀리면 해제됩니다.</div><div class="bonus-options">${c.opts.map((other,j)=>j===oi?'':`<label class="bonus-chip"><input class="condition-require" type="checkbox" data-ci="${ci}" data-oi="${oi}" data-required="${j}" ${o.requires.includes(j)?'checked':''}>${esc(other.desc||`항목 ${j+1}`)}</label>`).join('')}</div>`:''}</div>`).join('');
+function conditionEditorHTML(c,ci,oi){
+  const o=c.opts[oi];
+  if(!Array.isArray(o.requires))return '';
+  return `<div class="bonus-editor" data-rubric-feature="condition"><div class="hint">아래 항목이 모두 체크되면 자동 체크됩니다. 조건이 풀리면 해제됩니다.</div><div class="bonus-options">${c.opts.map((other,j)=>j===oi?'':`<label class="bonus-chip"><input class="condition-require" type="checkbox" data-ci="${ci}" data-oi="${oi}" data-required="${j}" ${o.requires.includes(j)?'checked':''}>${esc(other.desc||`항목 ${j+1}`)}</label>`).join('')}</div></div>`;
 }
+function conditionToggleHTML(o,ci,oi){
+  return `<label class="ro-simple" data-rubric-feature="condition" title="같은 루브릭의 지정한 항목이 모두 체크되면 자동 체크"><input class="condition-enable" type="checkbox" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)?'checked':''}>조건</label>`;
+}
+function applyRubricOptionVisibility(host){
+  host.querySelectorAll('[data-rubric-feature]').forEach(el=>{
+    el.style.display=rubricOptionVisibility[el.dataset.rubricFeature]===false?'none':'';
+  });
+}
+function renderRubricOptionVisibility(){
+  const host=document.getElementById('rubricOptionVisibility');
+  const options={timed:'⏱ 타이머',memo:'📝 메모',auto:'🔗 다른 항목 선택 시 자동 체크',simple:'간이발표',condition:'조건 충족 시 자동 체크'};
+  host.innerHTML=Object.entries(options).map(([key,label])=>`<label class="bonus-chip"><input type="checkbox" data-feature="${key}" ${rubricOptionVisibility[key]===false?'':'checked'}>${label}</label>`).join('');
+  host.querySelectorAll('input').forEach(input=>input.onchange=()=>{
+    rubricOptionVisibility[input.dataset.feature]=input.checked;
+    applyRubricOptionVisibility(document.getElementById('critEditList'));
+    applyRubricOptionVisibility(document.getElementById('choiceSetEditor'));
+    save();
+  });
+}
+
 function removeRubricOption(c,oi){
   migrateAutoChecks(c);
   c.opts.splice(oi,1);
@@ -2527,9 +2557,9 @@ function drawCritEdit(){
   el.innerHTML=editRubric.map((c,ci)=>`
     <div class="recrit">
       <div class="rctop"><input class="rc-name" data-ci="${ci}" value="${esc(c.name)}" placeholder="항목 이름"><label class="rc-base">기본점 <input class="rc-baseinp" type="number" min="0" data-ci="${ci}" value="${Number(c.base)||0}"></label><button class="rc-del" data-ci="${ci}" title="항목 삭제">×</button></div>
-      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label><button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}`).join('')}
+      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label>${conditionToggleHTML(o,ci,oi)}<button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}${conditionEditorHTML(c,ci,oi)}`).join('')}
       <button class="addopt" data-ci="${ci}">+ 체크 항목 추가</button>
-      ${bonusEditorHTML(c,ci)}
+
     </div>`).join('');
   // 입력 동기화
   el.querySelectorAll('.rc-name').forEach(i=>i.oninput=()=>editRubric[+i.dataset.ci].name=i.value);
@@ -2547,6 +2577,7 @@ function drawCritEdit(){
   el.querySelectorAll('.ro-del').forEach(b=>b.onclick=()=>{removeRubricOption(editRubric[+b.dataset.ci],+b.dataset.oi);drawCritEdit()});
   el.querySelectorAll('.addopt').forEach(b=>b.onclick=()=>{editRubric[+b.dataset.ci].opts.push({desc:"",pt:0});drawCritEdit()});
   wireBonusEditor(el,editRubric,drawCritEdit);
+  applyRubricOptionVisibility(el);
 }
 document.getElementById('addCrit').onclick=()=>{editRubric.push({name:"",base:0,opts:[{desc:"",pt:0}]});drawCritEdit()};
 document.getElementById('rubricApply').onclick=()=>{
@@ -2644,7 +2675,7 @@ document.getElementById('dlCsv').onclick=async()=>{const csv=fullTsv().split('\n
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
 async function downloadBackup(){
   classStudents[currentClass]=state.students;
-  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
+  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
   try{localStorage.setItem(LAST_BACKUP_KEY,String(Date.now()));}catch(e){}
   return saved;
 }
