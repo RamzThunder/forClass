@@ -22,12 +22,12 @@ test('모두 체크 보너스는 지정된 항목이 전부 체크된 경우에�
   assert.equal(context.critScore(student,0),5);
 });
 
-test('항목을 삭제하거나 빈 항목을 제외해도 보너스 조건 번호가 유지된다', () => {
-  const criterion={opts:[{desc:'삭제'},{desc:'조건 A'},{desc:'조건 B'}],allBonus:{requires:[1,2]}};
+test('삭제와 빈 항목 제외 후 자동 체크 조건 번호를 보정한다', () => {
+  const criterion={opts:[{desc:'삭제'},{desc:'조건 A'},{desc:'자동',requires:[1]}]};
   context.removeRubricOption(criterion,0);
-  assert.deepEqual(Array.from(criterion.allBonus.requires),[0,1]);
-  const normalized=context.normalizedBonus({opts:[{desc:'A'},{desc:''},{desc:'B'}],allBonus:{requires:[0,2]}},[0,2]);
-  assert.deepEqual(Array.from(normalized.requires),[0,1]);
+  assert.deepEqual(Array.from(criterion.opts[1].requires),[0]);
+  const normalized=context.normalizedOptions({opts:[{desc:'A'},{desc:''},{desc:'B',requires:[0]}]},[0,2]);
+  assert.deepEqual(Array.from(normalized[1].requires),[0]);
 });
 
 test('선택문제 루브릭에도 같은 보너스 규칙을 적용한다', () => {
@@ -41,4 +41,25 @@ test('선택문제 루브릭에도 같은 보너스 규칙을 적용한다', () 
   const student={choiceSet:0,checks:{1:[0,1]},absent:false};
   assert.equal(context.critScore(student,1),7);
   assert.equal(context.studentTotal(student),8);
+});
+
+test('자동 항목은 모든 조건 충족 시 자신의 배점을 더하고 조건 해제 시 연쇄 해제된다', () => {
+  context.selectionMode='topic';
+  context.state.rubric=[{base:0,opts:[{pt:1},{pt:2},{pt:7,requires:[0,1]},{pt:3,requires:[2]}]}];
+  const student={checks:{0:[0,2,3]}};
+  assert.equal(context.critScore(student,0),1);
+  student.checks[0].push(1);
+  assert.deepEqual(Array.from(context.checksOf(student,0)),[0,1,2,3]);
+  assert.equal(context.critScore(student,0),13);
+  student.checks[0]=[1,2,3];
+  assert.equal(context.critScore(student,0),2);
+});
+
+test('비어 있거나 순환하는 조건은 저장을 막고 자동 체크하지 않는다', () => {
+  for(const opts of [[{requires:[]}],[{requires:[0]}],[{requires:[1]},{requires:[0]}]]){
+    assert.equal(context.invalidAutoChecks({opts}),true);
+    context.state.rubric=[{base:0,opts}];
+    assert.deepEqual(Array.from(context.checksOf({checks:{0:[0,1]}},0)),[]);
+  }
+  assert.equal(context.invalidAutoChecks({opts:[{}, {requires:[0]}, {requires:[1]}]}),false);
 });

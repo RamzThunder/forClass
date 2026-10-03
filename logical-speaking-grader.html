@@ -579,7 +579,14 @@ let choiceSets=defaultChoiceSets();
 let choiceTemplate=defaultChoiceTemplate();
 let selectionMode='draw';
 function choiceRubric(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)&&s.choiceSet>=0&&s.choiceSet<5?choiceSets[s.choiceSet]:[]}
-function rubricForStudent(s){return state.rubric.concat(choiceRubric(s))}
+function migrateAutoChecks(c){
+  if(c.allBonus){
+    c.opts.push({desc:'모두 충족',pt:5,requires:[...new Set(c.allBonus.requires||[])]});
+    delete c.allBonus;
+  }
+  return c;
+}
+function rubricForStudent(s){return state.rubric.concat(choiceRubric(s)).map(migrateAutoChecks)}
 let timer={elapsed:0,running:false,handle:null,excludes:[],exRunning:false,exStart:null,countdown:null,_countVal:0};
 // 마이크 자동 감지 상태
 let mic={on:false,stream:null,ctx:null,analyser:null,data:null,raf:null,sens:15,quietSince:null,autoEx:false,level:0};
@@ -1012,20 +1019,25 @@ function exitPreview(){
   toast('미리보기 종료');
 }
 function togglePreview(){previewMode?exitPreview():enterPreview();}
-function checksOf(s,ci){return Array.isArray(s.checks&&s.checks[ci])?s.checks[ci]:[]}
-function bonusRequirements(c){
-  if(!c||!c.allBonus||!Array.isArray(c.allBonus.requires))return [];
-  return [...new Set(c.allBonus.requires)].filter(i=>Number.isInteger(i)&&i>=0&&i<c.opts.length);
-}
-function bonusEarned(s,ci){
-  const c=rubricForStudent(s)[ci],required=bonusRequirements(c);
-  return !!(s&&!s.absent&&required.length&&required.every(i=>checksOf(s,ci).includes(i)));
+function checksOf(s,ci){
+  const c=rubricForStudent(s)[ci];
+  if(!c||s.absent)return [];
+  const checked=new Set((Array.isArray(s.checks&&s.checks[ci])?s.checks[ci]:[]).filter(i=>c.opts[i]&&!Array.isArray(c.opts[i].requires)));
+  // Start from manual checks each time so broken conditions and cycles cannot stay checked.
+  for(let pass=0;pass<c.opts.length;pass++){
+    let changed=false;
+    c.opts.forEach((o,i)=>{
+      if(Array.isArray(o.requires)&&o.requires.length&&!checked.has(i)&&o.requires.every(j=>Number.isInteger(j)&&j!==i&&c.opts[j]&&checked.has(j))){checked.add(i);changed=true;}
+    });
+    if(!changed)break;
+  }
+  return [...checked];
 }
 function critBase(ci,s){return Number(rubricForStudent(s)[ci]?.base)||0}
-function critScore(s,ci){const c=rubricForStudent(s)[ci];if(!c)return 0;if(s&&s.absent)return critBase(ci,s);return critBase(ci,s)+checksOf(s,ci).reduce((a,oi)=>a+(Number(c.opts[oi]?.pt)||0),0)+(bonusEarned(s,ci)?5:0)}
+function critScore(s,ci){const c=rubricForStudent(s)[ci];if(!c)return 0;if(s&&s.absent)return critBase(ci,s);return critBase(ci,s)+checksOf(s,ci).reduce((a,oi)=>a+(Number(c.opts[oi]?.pt)||0),0)}
 function paperMissingPenalty(s){return s&&s.paperMissing&&!s.absent?-5:0}
 function studentTotal(s){return rubricForStudent(s).reduce((a,c,i)=>a+critScore(s,i),0)+paperMissingPenalty(s)}
-function rubricMax(s){return rubricForStudent(s).reduce((a,c)=>a+(Number(c.base)||0)+(c.opts||[]).reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0)+(bonusRequirements(c).length?5:0),0)}
+function rubricMax(s){return rubricForStudent(s).reduce((a,c)=>a+(Number(c.base)||0)+(c.opts||[]).reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0),0)}
 function rubricMin(s){return rubricForStudent(s).reduce((a,c)=>a+(Number(c.base)||0),0)}
 function missingCount(s){return rubricForStudent(s).reduce((n,c,i)=>n+(checksOf(s,i).length===0?1:0),0)}
 function gradeOf(pct){if(pct>=90)return"A";if(pct>=80)return"B";if(pct>=70)return"C";if(pct>=60)return"D";return"E"}
@@ -1182,6 +1194,7 @@ function renderStage(){
     collectMemos(s); // 입력 중이던 메모 먼저 저장
     const ci=+b.dataset.ci,oi=+b.dataset.oi;
     if(!s.checks)s.checks={};
+    if(Array.isArray(rubricForStudent(s)[ci].opts[oi].requires))return;
     const arr=Array.isArray(s.checks[ci])?s.checks[ci]:[];
     const pos=arr.indexOf(oi);
     const turningOn=(pos<0);
@@ -1265,7 +1278,7 @@ function renderStage(){
   applyStudentLock(s);
 }
 function critHTML(s,c,ci){
-  const mx=(Number(c.base)||0)+c.opts.reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0)+(bonusRequirements(c).length?5:0);
+  const mx=(Number(c.base)||0)+c.opts.reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0);
   const cur=critScore(s,ci);
   const chk=checksOf(s,ci);
   const baseTxt=Number(c.base)?`<span class="basetag">기본 ${c.base}점 보장</span>`:'';
@@ -1278,9 +1291,8 @@ function critHTML(s,c,ci){
       const optMemoBox = o.memo ? labels.map((label,mi)=>`<div class="optmemo-row">${labels.length>1?`<div class="optmemo-label">${esc(label)}</div>`:'<div></div>'}<textarea class="optmemo" data-ci="${ci}" data-oi="${oi}" data-mi="${mi}" rows="1" placeholder="${esc(label)} 메모…">${esc(optMemoValue(om,oi,mi))}</textarea></div>`).join('') : '';
       const pt=Number(o.pt)||0;
       const ptText=pt>0?`+${pt}`:`${pt}`;
-      return `<div class="optwrap"><button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}"><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${optMemoBox}</div>`;
+      return `<div class="optwrap"><button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)?'disabled':''}><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${Array.isArray(o.requires)?' <span class="autohint2">조건 충족 시 자동 체크</span>':o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${optMemoBox}</div>`;
     }).join('')}</div>
-    ${bonusRequirements(c).length?`<div class="bonus-award ${bonusEarned(s,ci)?'active':''}"><div><strong>${bonusEarned(s,ci)?'✓ ':''}모두 충족 보너스 +5</strong></div><div class="bonus-requires">${bonusRequirements(c).map(i=>`<span class="bonus-chip ${chk.includes(i)?'met':''}">${esc(c.opts[i].desc||`항목 ${i+1}`)}</span>`).join('')}</div></div>`:''}
     <textarea class="cmemo" data-ci="${ci}" rows="2" placeholder="이 항목 채점 근거 메모… (줄바꿈 가능)">${esc((s.cmemos&&s.cmemos[ci])||'')}</textarea>
   </div>`;
 }
@@ -2306,6 +2318,7 @@ function initChoiceSetEditor(){
   renderChoiceSetEditor();
 }
 function renderChoiceSetEditor(){
+  migrateAutoChecks(editChoiceTemplate);editChoiceSets.flat().forEach(migrateAutoChecks);
   const tabs=document.getElementById('choiceSetTabs');
   const host=document.getElementById('choiceSetEditor');
   const isTemplate=editChoiceSetIndex===-1;
@@ -2351,13 +2364,13 @@ function saveChoiceSetSettings(){
   const clean=question=>{
     const keep=(question.opts||[]).map((option,i)=>String(option.desc||'').trim()?i:null).filter(i=>i!==null);
     const {allBonus:ignored,...rest}=question;
-    const bonus=normalizedBonus(question,keep);
-    return {...rest,opts:keep.map(i=>({...question.opts[i],desc:question.opts[i].desc.trim()})),...(bonus?{allBonus:bonus}:{})};
+
+    return {...rest,opts:normalizedOptions(question,keep)};
   };
   const nextTemplate=clean(editChoiceTemplate);
   const nextSets=editChoiceSets.map(set=>set.map((question,i)=>({...clean(question),name:`선택문제 ${i+1}`})));
-  if([nextTemplate,...nextSets.flat()].some(question=>question.allBonus&&!question.allBonus.requires.length)){
-    toast('모두 체크 보너스에 필요한 항목을 선택해 주세요');return;
+  if([nextTemplate,...nextSets.flat()].some(invalidAutoChecks)){
+    toast('자동 체크 조건을 하나 이상 선택하고, 서로 순환하지 않도록 설정해 주세요');return;
   }
   choiceTemplate=nextTemplate;
   choiceSets=nextSets;
@@ -2460,7 +2473,7 @@ function preserveInto(freshList,oldList){
 /* 루브릭 모달 */
 let editRubric=[];
 function renderCritEdit(){
-  editRubric=JSON.parse(JSON.stringify(state.rubric));
+  editRubric=JSON.parse(JSON.stringify(state.rubric)).map(migrateAutoChecks);
   drawCritEdit();
 }
 function memoEditorHTML(o,ci,oi){
@@ -2472,34 +2485,44 @@ function memoEditorHTML(o,ci,oi){
   </div>`;
 }
 function bonusEditorHTML(c,ci){
-  const selected=bonusRequirements(c);
-  return `<div class="bonus-editor"><label><input class="bonus-enable" type="checkbox" data-ci="${ci}" ${c.allBonus?'checked':''}>지정한 항목 모두 체크 시 +5점</label>${c.allBonus?`<div class="bonus-options">${c.opts.map((option,oi)=>`<label class="bonus-chip ${selected.includes(oi)?'selected':''}"><input class="bonus-require" type="checkbox" data-ci="${ci}" data-oi="${oi}" ${selected.includes(oi)?'checked':''}>${esc(option.desc||`항목 ${oi+1}`)}</label>`).join('')}</div>`:''}</div>`;
+  migrateAutoChecks(c);
+  return c.opts.map((o,oi)=>`<div class="bonus-editor"><label><input class="condition-enable" type="checkbox" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)?'checked':''}>${esc(o.desc||`항목 ${oi+1}`)}: 조건 충족 시 자동 체크</label>${Array.isArray(o.requires)?`<div class="hint">같은 루브릭에서 아래에 선택한 항목이 모두 체크되면 자동 체크됩니다. 조건이 풀리면 해제됩니다.</div><div class="bonus-options">${c.opts.map((other,j)=>j===oi?'':`<label class="bonus-chip"><input class="condition-require" type="checkbox" data-ci="${ci}" data-oi="${oi}" data-required="${j}" ${o.requires.includes(j)?'checked':''}>${esc(other.desc||`항목 ${j+1}`)}</label>`).join('')}</div>`:''}</div>`).join('');
 }
 function removeRubricOption(c,oi){
-  const required=bonusRequirements(c);
+  migrateAutoChecks(c);
   c.opts.splice(oi,1);
-  if(c.allBonus)c.allBonus.requires=required.filter(i=>i!==oi).map(i=>i>oi?i-1:i);
+  c.opts.forEach(o=>{if(Array.isArray(o.requires))o.requires=o.requires.filter(i=>i!==oi).map(i=>i>oi?i-1:i);});
 }
-function normalizedBonus(c,keptIndices){
-  if(!c.allBonus)return null;
+function normalizedOptions(c,keptIndices){
   const positions=new Map(keptIndices.map((oldIndex,newIndex)=>[oldIndex,newIndex]));
-  return {requires:bonusRequirements(c).map(i=>positions.get(i)).filter(i=>i!==undefined)};
+  return keptIndices.map(i=>({...c.opts[i],desc:c.opts[i].desc.trim(),pt:Number(c.opts[i].pt)||0,...(Array.isArray(c.opts[i].requires)?{requires:c.opts[i].requires.map(j=>positions.get(j)).filter(j=>j!==undefined)}:{})}));
+}
+function invalidAutoChecks(c){
+  const visiting=new Set(),done=new Set();
+  function visit(i){
+    if(visiting.has(i))return true;
+    if(done.has(i))return false;
+    visiting.add(i);
+    const required=c.opts[i].requires;
+    if(Array.isArray(required)&&(!required.length||required.some(j=>!Number.isInteger(j)||!c.opts[j]||visit(j))))return true;
+    visiting.delete(i);done.add(i);return false;
+  }
+  return c.opts.some((_,i)=>visit(i));
 }
 function wireBonusEditor(host,criteria,redraw){
-  host.querySelectorAll('.bonus-enable').forEach(input=>input.onchange=()=>{
-    const c=criteria[+input.dataset.ci];
-    if(input.checked)c.allBonus={requires:[]};else delete c.allBonus;
+  host.querySelectorAll('.condition-enable').forEach(input=>input.onchange=()=>{
+    const o=criteria[+input.dataset.ci].opts[+input.dataset.oi];
+    if(input.checked)o.requires=[];else delete o.requires;
     redraw();
   });
-  host.querySelectorAll('.bonus-require').forEach(input=>input.onchange=()=>{
-    const c=criteria[+input.dataset.ci],oi=+input.dataset.oi;
-    const required=new Set(bonusRequirements(c));
-    if(input.checked)required.add(oi);else required.delete(oi);
-    c.allBonus.requires=[...required].sort((a,b)=>a-b);
-    redraw();
+  host.querySelectorAll('.condition-require').forEach(input=>input.onchange=()=>{
+    const o=criteria[+input.dataset.ci].opts[+input.dataset.oi],required=new Set(o.requires);
+    if(input.checked)required.add(+input.dataset.required);else required.delete(+input.dataset.required);
+    o.requires=[...required].sort((a,b)=>a-b);redraw();
   });
 }
 function drawCritEdit(){
+  editRubric.forEach(migrateAutoChecks);
   const el=document.getElementById('critEditList');
   el.innerHTML=editRubric.map((c,ci)=>`
     <div class="recrit">
@@ -2529,11 +2552,10 @@ document.getElementById('addCrit').onclick=()=>{editRubric.push({name:"",base:0,
 document.getElementById('rubricApply').onclick=()=>{
   const nr=editRubric.filter(c=>c.name.trim()).map(c=>{
     const keep=c.opts.map((o,i)=>o.desc.trim()||o.pt?i:null).filter(i=>i!==null);
-    const bonus=normalizedBonus(c,keep);
-    return {name:c.name.trim(),base:Number(c.base)||0,opts:keep.map(i=>{const o=c.opts[i];return {desc:o.desc,pt:Number(o.pt)||0,...(o.timed?{timed:true}:{}),...(o.memo?{memo:true}:{}),...(o.memo&&o.memoLabels&&o.memoLabels.length?{memoLabels:o.memoLabels}:{}),...(o.auto?{auto:true}:{}),...(o.simple?{simple:true}:{})};}),...(bonus?{allBonus:bonus}:{})};
+    return {name:c.name.trim(),base:Number(c.base)||0,opts:normalizedOptions(c,keep)};
   });
   if(!nr.length){toast('항목을 1개 이상 넣어주세요');return}
-  if(nr.some(c=>c.allBonus&&!c.allBonus.requires.length)){toast('모두 체크 보너스에 필요한 항목을 선택해 주세요');return}
+  if(nr.some(invalidAutoChecks)){toast('자동 체크 조건을 하나 이상 선택하고, 서로 순환하지 않도록 설정해 주세요');return}
   if(nr.length!==state.rubric.length){
     classStudents[currentClass]=state.students;
     Object.values(classStudents).flat().forEach(student=>{
@@ -2605,7 +2627,7 @@ function fullTsv(){
       const has=checksOf(s,i).length>0;
       cells.push(s.absent?critScore(s,i):(has?critScore(s,i):''));
       const om=(s.optmemos&&s.optmemos[i])||{};
-      const checkedDescs=s.absent?'':[...checksOf(s,i).map(oi=>{const o=c.opts[oi];const d=o?.desc;const mm=optMemoText(om,oi,o);return d?(mm?`${d}(${mm})`:d):''}).filter(Boolean),...(bonusEarned(s,i)?['모두 충족 보너스(+5)']:[])].join(', ');
+      const checkedDescs=s.absent?'':[...checksOf(s,i).map(oi=>{const o=c.opts[oi];const d=o?.desc;const mm=optMemoText(om,oi,o);return d?(mm?`${d}(${mm})`:d):''}).filter(Boolean)].join(', ');
       const cm=((s.cmemos&&s.cmemos[i])||'').replace(/\s+/g,' ');
       cells.push(s.absent?'':[checkedDescs,cm].filter(Boolean).join(' / '));
     });
