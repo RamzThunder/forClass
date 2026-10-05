@@ -1,4 +1,4 @@
-(function(root){
+(function installSharedRoster(root){
   'use strict';
   const KEY = 'forClass.sharedRoster.v1';
   function rows(text){
@@ -134,6 +134,7 @@
       try{if(load()?.revision !== data.revision) notice('공통 명렬이 변경되었습니다. 현재 작업을 저장한 뒤 이 화면을 새로고침하면 반영됩니다.');}catch{}
     });
   }
+  root.SharedRosterStandaloneSource = '('+installSharedRoster.toString()+')(window);';
   root.SharedRoster = {KEY, rows, parse, readFile, load, save, groups, oldClass, backup, project, connect};
   if(typeof module !== 'undefined') module.exports = root.SharedRoster;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -532,9 +532,12 @@
       <button class="mbtn ghost" id="expPaper">종이 데이터 저장</button>
       <button class="mbtn ghost" id="impPaper">종이 데이터 불러오기</button>
       <span style="flex:1"></span>
+      <label class="hint"><input type="checkbox" id="shareIncludeStudents"> 공유 HTML에 명단·채점 기록 포함</label>
+      <button class="mbtn ghost" id="expHtml">공유용 HTML</button>
       <button class="mbtn ghost" id="expJson">백업(JSON)</button>
       <button class="mbtn ghost" id="impJson">불러오기</button>
     </div>
+    <p class="hint" style="color:var(--muted);font-size:12px">공유용 HTML은 파일을 열면 설정이 자동 적용됩니다. 기본은 설정만 포함하며, 체크하면 모든 반의 명단·채점 기록도 포함합니다. 녹음 파일은 별도로 전달해 주세요.</p>
     <div style="overflow-x:auto"><div id="resultTable"></div></div>
     <div class="mactions" style="justify-content:space-between">
       <button class="mbtn danger" id="resetAll">전체 초기화</button>
@@ -549,15 +552,18 @@
 
 <script src="shared-roster.js"></script>
 <script>
-const LS="public_logical_speaking_grader_v1";
-const LS_MIRROR="public_logical_speaking_grader_v1_mirror"; // 이중 저장용 백업 슬롯
-const TAB_KEY="public_logical_speaking_grader_tab"; // 다중 탭 감지용
+const INITIAL_HTML='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+const EMBEDDED_SHARE=JSON.parse(document.getElementById('embedded-share')?.textContent||'null');
+const SHARE_SUFFIX=EMBEDDED_SHARE?'_'+EMBEDDED_SHARE.id:'';
+const LS="public_logical_speaking_grader_v1"+SHARE_SUFFIX;
+const LS_MIRROR="public_logical_speaking_grader_v1_mirror"+SHARE_SUFFIX; // 이중 저장용 백업 슬롯
+const TAB_KEY="public_logical_speaking_grader_tab"+SHARE_SUFFIX; // 다중 탭 감지용
 const myTabId=Date.now()+"_"+Math.random().toString(36).slice(2,8);
 const RUBRIC_VERSION=8; // 루브릭 구성 변경 시 올림 → 저장된 구버전 루브릭 자동 갱신
 const DEFAULT_APP_TITLE="말하기 채점표 템플릿";
 let appTitle=DEFAULT_APP_TITLE;
-const TIMER_LOCK_KEY="public_logical_speaking_grader_timer_locked";
-const LAST_BACKUP_KEY="public_logical_speaking_grader_lastbackup";
+const TIMER_LOCK_KEY="public_logical_speaking_grader_timer_locked"+SHARE_SUFFIX;
+const LAST_BACKUP_KEY="public_logical_speaking_grader_lastbackup"+SHARE_SUFFIX;
 let timerLocked=localStorage.getItem(TIMER_LOCK_KEY)==='1';
 
 // 토론 주제 — short: 화면 표시용, full: 내보내기용
@@ -638,7 +644,7 @@ async function findChildDirectory(base,candidates){
 
 function idbGet(key){
   return new Promise(resolve=>{
-    const req=indexedDB.open('public_logical_speaking_grader_fs',1);
+    const req=indexedDB.open('public_logical_speaking_grader_fs'+SHARE_SUFFIX,1);
     req.onupgradeneeded=e=>e.target.result.createObjectStore('h');
     req.onsuccess=e=>{
       const r=e.target.result.transaction('h','readonly').objectStore('h').get(key);
@@ -649,7 +655,7 @@ function idbGet(key){
 }
 function idbSet(key,val){
   return new Promise(resolve=>{
-    const req=indexedDB.open('public_logical_speaking_grader_fs',1);
+    const req=indexedDB.open('public_logical_speaking_grader_fs'+SHARE_SUFFIX,1);
     req.onupgradeneeded=e=>e.target.result.createObjectStore('h');
     req.onsuccess=e=>{
       const tx=e.target.result.transaction('h','readwrite');
@@ -830,6 +836,7 @@ function load(){
   if(main&&mirror){ if((mirror.savedAt||0)>(main.savedAt||0)){chosen=mirror;fromMirror=true;} else chosen=main; }
   else if(main){ chosen=main; }
   else if(mirror){ chosen=mirror; fromMirror=true; }
+  if(!chosen&&EMBEDDED_SHARE)chosen=EMBEDDED_SHARE.data;
   if(!chosen)return; // 저장된 데이터 없음 (정상 첫 실행)
   try{
     applyLoaded(chosen);
@@ -1510,7 +1517,7 @@ function refreshElapsedDisplay(){
 }
 
 /* ===== 학생 화면 송출 (BroadcastChannel) ===== */
-const castCh = ('BroadcastChannel' in window) ? new BroadcastChannel('debate_timer_cast') : null;
+const castCh = ('BroadcastChannel' in window) ? new BroadcastChannel('debate_timer_cast'+SHARE_SUFFIX) : null;
 let studentWin=null;
 function castState(){
   if(!castCh)return;
@@ -1631,7 +1638,7 @@ body.tv .stage{padding-right:22vw}
 </div>
 <div class="upnext" id="upnext"><h4>다음 발표 순서</h4><div id="uplist"></div></div>
 <script>
-const ch=new BroadcastChannel('debate_timer_cast');
+const ch=new BroadcastChannel(${JSON.stringify('debate_timer_cast'+SHARE_SUFFIX)});
 const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 ch.onmessage=e=>{
   const d=e.data;if(!d)return;
@@ -2524,7 +2531,7 @@ function initRosterSettings(){
   const ta=document.getElementById('rosterText');if(ta){ta.value=editRosterTexts[editRosterIndex]||'';ta.oninput=()=>{saveDraftRosterText();updateRosterEditCount();};}
 }
 function applyClassConfig(){
-  if(SharedRoster.load()){toast("공통 명렬은 홈에서 수정해 주세요.");return false;}
+  if(!EMBEDDED_SHARE&&SharedRoster.load()){toast("공통 명렬은 홈에서 수정해 주세요.");return false;}
   saveDraftRosterText();
   const next=editClasses.map(x=>String(x).trim());
   if(!next.length||next.some(x=>!x)){toast('반 이름을 모두 입력해 주세요');return false;}
@@ -2812,6 +2819,34 @@ document.getElementById('copyNeis').onclick=()=>copy(neisText(),'NEIS용 표 복
 document.getElementById('copyTsv').onclick=()=>copy(fullTsv(),'전체 표 복사됨');
 document.getElementById('dlCsv').onclick=async()=>{const csv=fullTsv().split('\n').map(r=>r.split('\t').map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const saved=await saveOutputFile(new Blob(["\uFEFF"+csv],{type:'text/csv'}),`${safeFileName(appTitle)}_${clsLabel(currentClass)}.csv`);toast(saved?'CSV가 녹음 폴더에 저장됨':'CSV 내려받음')};
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
+function currentShareData(includeStudents){
+  classStudents[currentClass]=state.students;
+  return JSON.parse(JSON.stringify({shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:includeStudents?classStudents:Object.fromEntries(classes.map(c=>[c,[]])),currentClass}));
+}
+function sharePayloadJson(data,id){return JSON.stringify({id,data}).replace(/</g,'\\u003c')}
+function buildSharedHtml(source,data,id,rosterSource){
+  const doc=new DOMParser().parseFromString(source,'text/html');
+  doc.getElementById('embedded-share')?.remove();
+  const external=doc.querySelector('script[src="shared-roster.js"]');
+  if(external){
+    const bundled=doc.createElement('script');
+    bundled.textContent=rosterSource;
+    external.replaceWith(bundled);
+  }
+  const payload=doc.createElement('script');payload.id='embedded-share';payload.type='application/json';
+  payload.textContent=sharePayloadJson(data,id);
+  doc.head.prepend(payload);
+  return '<!DOCTYPE html>\n'+doc.documentElement.outerHTML;
+}
+async function downloadSharedHtml(){
+  try{
+    const includeStudents=document.getElementById('shareIncludeStudents').checked;
+    const html=buildSharedHtml(INITIAL_HTML,currentShareData(includeStudents),crypto.randomUUID(),SharedRosterStandaloneSource);
+    const filename=`${safeFileName(appTitle)}_${includeStudents?'기록포함':'설정공유'}.html`;
+    dl(new Blob([html],{type:'text/html;charset=utf-8'}),filename);
+    toast('공유용 HTML 내려받음 — 파일을 열면 설정이 자동 적용됩니다');
+  }catch(e){toast('공유용 HTML 생성에 실패했습니다');console.error(e);}
+}
 async function downloadBackup(){
   classStudents[currentClass]=state.students;
   const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
@@ -2870,6 +2905,7 @@ function importPaperData(d){
   save();renderRoster();renderResult();renderStage();
   return {updated,skipped,unmatched};
 }
+document.getElementById('expHtml').onclick=downloadSharedHtml;
 document.getElementById('expJson').onclick=async()=>{const saved=await downloadBackup();toast(saved?'전체 백업이 녹음 폴더에 저장됨':'전체 백업 내려받음')};
 document.getElementById('impJson').onclick=()=>document.getElementById('jsonFile').click();
 document.getElementById('expPaper').onclick=exportPaperData;
@@ -2899,7 +2935,7 @@ document.getElementById('resetAll').onclick=async()=>{
     state.phrases=["목소리 또렷함","시선 처리 좋음","근거 보강 필요","반박 인상적","시간 초과"];
     state.okMin=150;state.okMax=180;
     currentClass=classes[0];state.students=classStudents[currentClass];state.current=null;
-    if(SharedRoster.load()) applySharedSpeakingRoster(SharedRoster.load());
+    if(!EMBEDDED_SHARE&&SharedRoster.load()) applySharedSpeakingRoster(SharedRoster.load());
     save();
     closeOv(document.getElementById('ovResult'));
     renderClassBar();renderRoster();renderStage();
@@ -2908,7 +2944,7 @@ document.getElementById('resetAll').onclick=async()=>{
 };
 document.getElementById('jsonFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
   if(!applyLoaded(d))throw new Error('load failed');
-  if(SharedRoster.load()) applySharedSpeakingRoster(SharedRoster.load());
+  if(!EMBEDDED_SHARE&&SharedRoster.load()) applySharedSpeakingRoster(SharedRoster.load());
   state.current=null;save();renderClassBar();renderRoster();renderResult();renderStage();toast('불러오기 완료')}catch(x){toast('파일을 읽을 수 없습니다')}};r.readAsText(f);e.target.value=''};
 document.getElementById('paperFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);const res=importPaperData(d);if(!res)throw new Error('paper load failed');const extra=res.unmatched?` · 미매칭 ${res.unmatched}명`:'';toast(`종이 데이터 반영 ${res.updated}명${extra}`);}catch(x){toast('종이 데이터 파일을 읽을 수 없습니다')}};r.readAsText(f);e.target.value=''};
 function dl(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
@@ -2966,7 +3002,7 @@ const hadSaved=!!(localStorage.getItem(LS)||localStorage.getItem(LS_MIRROR));
 load();
 classes.forEach(c=>{if(!classStudents[c])classStudents[c]=[]});
 // 최초 실행(저장 데이터 전혀 없음)일 때는 빈 명단으로 시작
-if(!hadSaved){
+if(!hadSaved&&!EMBEDDED_SHARE){
   classes.forEach(c=>{classStudents[c]=[]});
   currentClass=classes[0];
   state.students=classStudents[currentClass];
@@ -2974,7 +3010,7 @@ if(!hadSaved){
 }
 if(!classStudents[currentClass])classStudents[currentClass]=state.students;
 state.students=classStudents[currentClass]||[];
-SharedRoster.connect(applySharedSpeakingRoster, ['#rosterText', '#rosterApply', '#addClassBtn']);
+if(!EMBEDDED_SHARE)SharedRoster.connect(applySharedSpeakingRoster, ['#rosterText', '#rosterApply', '#addClassBtn']);
 updateAppTitle();
 renderClassBar();renderRoster();renderStage();
 openLinkedStudentFromUrl();
