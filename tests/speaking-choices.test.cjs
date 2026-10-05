@@ -30,9 +30,16 @@ test('문제 수가 서로 다르고 뽑기를 선택하지 않아도 TSV 열 �
   assert.ok(rows[0].includes('선택문제 5 점수'));
 });
 
-test('과거 개별 제목은 채점 화면에서 문제 번호로 표시한다',()=>{
+test('개별 제목은 채점 화면에 유지하고 빈 제목은 문제 번호로 보완한다',()=>{
   const c=setup();
   c.choiceSets[0][0].name='과거 제목';
-  assert.equal(c.choiceRubric({choiceSet:0})[0].name,'선택문제 1');
+  assert.equal(c.choiceRubric({choiceSet:0})[0].name,'과거 제목');
+  assert.equal(c.choiceQuestionTitle({name:'  '},0),'선택문제 1');
   assert.equal(c.choiceSetTitle({choiceSet:0}),'첫 제목');
+});
+
+test('발표자·TV 송출에는 뽑기 제목만 포함하고 개별 문제 제목은 제외한다',()=>{
+  const cast=html.slice(html.indexOf('function castState('),html.indexOf('function castState(')+5000);
+  assert.match(cast,/choiceSetTitle:choiceSetTitle\(s\)/);
+  assert.ok(!cast.includes('choiceQuestions:'));
 });
