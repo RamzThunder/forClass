@@ -27,7 +27,7 @@ test('문제 수가 서로 다르고 뽑기를 선택하지 않아도 TSV 열 �
   c.sortedStudents=()=>c.state.students;
   const rows=c.fullTsv().split('\n').map(row=>row.split('\t'));
   rows.forEach(row=>assert.equal(row.length,rows[0].length));
-  assert.ok(rows[0].includes('선택문제 5 내용'));
+  assert.ok(rows[0].includes('선택문제 5 제목'));
 });
 
 test('개별 문제 제목을 유지하고 빈 제목만 기본 이름으로 보완한다',()=>{
