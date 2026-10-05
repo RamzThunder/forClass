@@ -476,8 +476,8 @@
       <button class="addcrit" id="addCrit">+ 항목 추가</button>
       <div class="mlabel">발표 준수 시간 <span style="font-weight:400;color:var(--muted)">(⏱ 항목 자동 체크 기준 · 유효 발표 시간이 이 범위면 준수)</span></div>
       <div class="oktimeset">
-        <input id="okMin" type="text" placeholder="2:30"> <span>~</span> <input id="okMax" type="text" placeholder="3:00">
-        <span class="oktimehint">분:초 형식</span>
+        <input id="okMin" type="text" placeholder="2:30"> <span>~</span> <input id="okMax" type="text" placeholder="상한 없음">
+        <span class="oktimehint">분:초 형식 · 최대 시간 공란이면 최소 시간 이상 준수</span>
       </div>
       <div class="mlabel">자주 쓰는 피드백 문구 <span style="font-weight:400;color:var(--muted)">(쉼표 구분)</span></div>
       <input id="fbPhrases" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:13px">
@@ -778,7 +778,7 @@ function applyLoaded(d){
     choiceSets=Array.isArray(sh.choiceSets)&&sh.choiceSets.length===5&&sh.choiceSets.every(set=>Array.isArray(set)&&set.length===3)?sh.choiceSets:defaultChoiceSets();
     choiceTemplate=sh.choiceTemplate&&Array.isArray(sh.choiceTemplate.opts)?sh.choiceTemplate:defaultChoiceTemplate();
     selectionMode=sh.selectionMode==='topic'||sh.selectionMode==='draw'?sh.selectionMode:(sh.choiceSets?'draw':'topic');
-    state.phrases=sh.phrases||state.phrases;state.okMin=sh.okMin??150;state.okMax=sh.okMax??180;
+    state.phrases=sh.phrases||state.phrases;state.okMin=sh.okMin??150;state.okMax=sh.okMax===null?null:(sh.okMax??180);
     classStudents={};classes.forEach(c=>{classStudents[c]=migrateChecks(d.classes[c]||d.classes[Object.keys(d.classes).find(k=>normalizeClassName(k)===c)]||[])});
     const loadedCurrent=sh.classNamesRaw?String(d.currentClass):normalizeClassName(d.currentClass);
     currentClass=classes.includes(loadedCurrent)?loadedCurrent:classes[0];
@@ -791,7 +791,7 @@ function applyLoaded(d){
     choiceTemplate=defaultChoiceTemplate();
     selectionMode='draw';
     appTitle=d.appTitle||DEFAULT_APP_TITLE;
-    state.rubric=d.rubric||state.rubric;state.phrases=d.phrases||state.phrases;state.okMin=d.okMin??150;state.okMax=d.okMax??180;
+    state.rubric=d.rubric||state.rubric;state.phrases=d.phrases||state.phrases;state.okMin=d.okMin??150;state.okMax=d.okMax===null?null:(d.okMax??180);
     const migrated=migrateChecks(d.students||[]);
     classStudents={};classes.forEach(c=>classStudents[c]=[]);
     classStudents[classes[0]]=migrated;currentClass=classes[0];state.students=migrated;
@@ -1322,7 +1322,7 @@ function excludeTotal(){return timer.excludes.reduce((a,e)=>{const dur=e[1]-e[0]
 function excludeTotalLive(){let t=excludeTotal();if(timer.exRunning&&timer.exStart!=null){const dur=Math.max(0,timer.elapsed-timer.exStart);if(dur>EXCLUDE_THRESHOLD)t+=dur;}return t}
 // 유효 발표 시간 = 전체 경과 − 제외 합계
 function effectiveTime(){return Math.max(0,timer.elapsed-excludeTotalLive())}
-function inOkRange(sec){return sec>=state.okMin&&sec<=state.okMax}
+function inOkRange(sec){return sec>=state.okMin&&(state.okMax==null||sec<=state.okMax)}
 function recordedTimeMemoLine(rt){
   if(!rt)return '';
   return `⏱ 발표 시간: 유효 ${fmt(rt.eff)}${rt.excluded?` (전체 ${fmt(rt.total)} - 제외 ${fmt(rt.excluded)})`:''}`;
@@ -1354,7 +1354,7 @@ function applyTimeJudge(){
 function timeJudgeText(){
   const lo=fmt(state.okMin),hi=fmt(state.okMax);
   const eff=effectiveTime();
-  if(!timer.elapsed)return `<span class="tj-wait">목표 ${lo} ~ ${hi}</span>`;
+  if(!timer.elapsed)return `<span class="tj-wait">목표 ${state.okMax==null?`${lo} 이상`:`${lo} ~ ${hi}`}</span>`;
   return inOkRange(eff)
     ? `<span class="tj-ok">✓ 시간 준수 (유효 ${fmt(eff)})</span>`
     : (eff<state.okMin?`<span class="tj-no">아직 ${lo} 안 됨 (유효 ${fmt(eff)})</span>`:`<span class="tj-no">${hi} 초과 (유효 ${fmt(eff)})</span>`);
@@ -1446,7 +1446,7 @@ function castState(){
   // 준수 구간까지 남은 시간 / 초과 시간
   let remainText='';
   if(eff<state.okMin)remainText=`최소까지 ${fmt(state.okMin-eff)}`;
-  else if(inOkRange(eff))remainText=`종료까지 ${fmt(state.okMax-eff)}`;
+  else if(inOkRange(eff))remainText=state.okMax==null?'최소 시간 충족':`종료까지 ${fmt(state.okMax-eff)}`;
   else remainText=`권장 +${fmt(eff-state.okMax)} 초과`;
   const s=curStudent();
   // 발표 순서 번호 (명단 배열 순서)
@@ -1592,7 +1592,7 @@ ch.onmessage=e=>{
   const sub=document.getElementById('sub');
   sub.className='sub '+d.zone;
   sub.textContent = d.zone==='ok'?'✓ 적정 시간':(d.zone==='under'?'':(d.zone==='over'?'시간 초과':''));
-  document.getElementById('rng').textContent='권장 '+d.okMinT+' ~ '+d.okMaxT+'  ·  '+(d.remainText||'');
+  document.getElementById('rng').textContent='권장 '+d.okMinT+(d.okMax==null?' 이상':' ~ '+d.okMaxT)+'  ·  '+(d.remainText||'');
   updateMeter(d.micOn,d.micLevel,d.micThr);
   // 다음 발표 순서
   const ul=document.getElementById('uplist');
@@ -2266,11 +2266,11 @@ function toggleTimer(){
         const eff=effectiveTime();
         d3.textContent=fmt(timer.elapsed);
         d3.classList.toggle('okzone',inOkRange(eff));
-        d3.classList.toggle('over',eff>state.okMax);
+        d3.classList.toggle('over',state.okMax!=null&&eff>state.okMax);
         refreshJudge();refreshElapsedDisplay();castState();
         if(timer.exRunning)renderExcludes();
         if(eff===state.okMin)toast('✓ 준수 구간 진입(유효)');
-        if(eff===state.okMax+1)toast('⏱ 권장 시간 초과(유효)');
+        if(state.okMax!=null&&eff===state.okMax+1)toast('⏱ 권장 시간 초과(유효)');
       },1000);
     } else {
       if(d2)d2.textContent=timer._countVal;
@@ -2302,7 +2302,7 @@ function openSettings(tab='basic'){
   initRosterSettings();
   renderSpeakingClassChoices();
   initChoiceSetEditor();
-  renderCritEdit();document.getElementById('fbPhrases').value=state.phrases.join(', ');document.getElementById('okMin').value=fmt(state.okMin);document.getElementById('okMax').value=fmt(state.okMax);
+  renderCritEdit();document.getElementById('fbPhrases').value=state.phrases.join(', ');document.getElementById('okMin').value=fmt(state.okMin);document.getElementById('okMax').value=state.okMax==null?'':fmt(state.okMax);
   showSettingTab(tab);
   openOv('ovSettings');
 }
@@ -2601,8 +2601,8 @@ document.getElementById('rubricApply').onclick=()=>{
   }
   state.rubric=nr;
   state.phrases=document.getElementById('fbPhrases').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const lo=parseMS(document.getElementById('okMin').value);const hi=parseMS(document.getElementById('okMax').value);
-  if(lo>0)state.okMin=lo;if(hi>0)state.okMax=Math.max(lo,hi);
+  const lo=parseMS(document.getElementById('okMin').value);const maxText=document.getElementById('okMax').value.trim();const hi=parseMS(maxText);
+  if(lo>0)state.okMin=lo;if(!maxText)state.okMax=null;else if(hi>0)state.okMax=Math.max(state.okMin,hi);
   save();renderStage();toast('루브릭 저장됨');
 };
 
