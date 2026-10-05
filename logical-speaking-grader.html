@@ -128,9 +128,9 @@
   .crit .clabel{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
   .crit .cname{font-weight:700;font-size:15px}
   .crit .cmax{font-size:12px;color:var(--muted)}
-  .opts{display:flex;flex-direction:column;gap:6px}
+  .opts{--opt-padding-x:12px;--opt-check-size:19px;--opt-gap:11px;display:flex;flex-direction:column;gap:6px}
   .opt{
-    display:flex;align-items:center;gap:11px;padding:9px 12px;border:1px solid var(--line);
+    display:flex;align-items:center;gap:var(--opt-gap);padding:9px var(--opt-padding-x);border:1px solid var(--line);
     border-radius:8px;background:var(--card);text-align:left;transition:.1s;width:100%;
   }
   .opt:hover{border-color:var(--accent);background:var(--hi)}
@@ -144,7 +144,7 @@
   .opt.sel.deduct .check::after{color:var(--amber)}
   .opt .desc{flex:1;min-width:0;font-size:13.5px;line-height:1.4;white-space:normal;overflow-wrap:anywhere}
   .opt.sel .desc{color:#eafaf3}
-  .opt .check{width:19px;height:19px;border-radius:5px;border:2px solid var(--line);flex-shrink:0;transition:.1s}
+  .opt .check{width:var(--opt-check-size);height:var(--opt-check-size);border-radius:5px;border:2px solid var(--line);flex-shrink:0;transition:.1s}
   .opt.sel .check{border-color:#fff;background:#fff;position:relative}
   .opt.sel .check::after{content:"✓";position:absolute;inset:0;color:var(--accent);font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:900}
   .cscore{color:var(--accent);font-size:14px}
@@ -163,6 +163,7 @@
   .detail-label{width:120px;min-width:0;border:0;background:transparent;font:inherit}
   .has-details{border:1px solid var(--line);border-radius:9px;padding-bottom:4px}
   .has-details>.opt{border:0;margin:0}
+  .has-details>.detail-badges{padding-left:calc(var(--opt-padding-x) + var(--opt-check-size) + var(--opt-gap));padding-right:var(--opt-padding-x)}
   .optwrap{display:flex;flex-direction:column}
   .optmemo-row{margin:4px 0 2px 8px;width:calc(100% - 8px);display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:7px}
   .optmemo{width:100%;height:31px;min-height:31px;padding:5px 9px;border:1px solid #e7dfd0;border-left:2px solid rgba(47,107,84,.3);border-radius:0 6px 6px 0;font-size:12.5px;background:#fcfaf5;font-family:inherit;line-height:1.45;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -274,7 +275,8 @@
   .overlay.show{display:flex}
   .modal{background:var(--card);border-radius:14px;max-width:680px;width:100%;max-height:88vh;overflow-y:auto;padding:26px}
   .modal h2{font-size:20px;font-weight:800;margin-bottom:5px}
-  .modal p.hint{color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:16px}
+  .modal .hint{color:var(--muted);font-size:13px;font-weight:400;line-height:1.6;margin-bottom:16px}
+  .modal .bonus-editor .hint{margin-bottom:8px}
   .modal textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:9px;padding:12px;font-size:14px;line-height:1.6;font-family:ui-monospace,Menlo,monospace;resize:vertical}
   .modal textarea:focus{outline:none;border-color:var(--accent)}
   .mlabel{font-size:13px;font-weight:700;margin:14px 0 7px}
@@ -1319,7 +1321,7 @@ function critHTML(s,c,ci){
       const optMemoBox = o.memo ? labels.map((label,mi)=>`<div class="optmemo-row">${labels.length>1?`<div class="optmemo-label">${esc(label)}</div>`:'<div></div>'}<textarea class="optmemo" data-ci="${ci}" data-oi="${oi}" data-mi="${mi}" rows="1" placeholder="${esc(label)} 메모…">${esc(optMemoValue(om,oi,mi))}</textarea></div>`).join('') : '';
       const pt=Number(o.pt)||0;
       const ptText=pt>0?`+${pt}`:`${pt}`;
-      return `<div class="optwrap ${detailItems(o).length?'has-details':''}"><button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)||detailItems(o).length?'disabled':''}><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${Array.isArray(o.requires)?' <span class="autohint2">조건 충족 시 자동 체크</span>':o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${detailBadgesHTML(s,o,ci,oi)}${optMemoBox}</div>`;
+      return `<div class="optwrap">${detailItems(o).length?'<div class="has-details">':''}<button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)||detailItems(o).length?'disabled':''}><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${Array.isArray(o.requires)?' <span class="autohint2">조건 충족 시 자동 체크</span>':o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${detailBadgesHTML(s,o,ci,oi)}${detailItems(o).length?'</div>':''}${optMemoBox}</div>`;
     }).join('')}</div>
     <textarea class="cmemo" data-ci="${ci}" rows="2" placeholder="이 항목 채점 근거 메모… (줄바꿈 가능)">${esc((s.cmemos&&s.cmemos[ci])||'')}</textarea>
   </div>`;
