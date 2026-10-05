@@ -594,9 +594,8 @@ let choiceTemplate=defaultChoiceTemplate();
 let selectionMode='draw';
 let rubricOptionVisibility={};
 function choiceSetTitle(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)?String(choiceSetTitles[s.choiceSet]||''):''}
-function choiceQuestionTitle(question,index){return String(question.name||'').trim()||`선택문제 ${index+1}`}
 function choiceQuestionNumbers(){return Array.from({length:Math.max(0,...choiceSets.map(set=>set.length))},(_,i)=>i+1)}
-function choiceRubric(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)&&s.choiceSet>=0&&s.choiceSet<5?choiceSets[s.choiceSet]:[]}
+function choiceRubric(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)&&s.choiceSet>=0&&s.choiceSet<5?choiceSets[s.choiceSet].map((question,i)=>({...migrateAutoChecks(question),name:`선택문제 ${i+1}`})):[]}
 function migrateAutoChecks(c){
   if(c.allBonus){
     c.opts.push({desc:'모두 충족',pt:5,requires:[...new Set(c.allBonus.requires||[])]});
@@ -1501,7 +1500,6 @@ function castState(){
     who: s?`${s.no} ${s.name}`:'', cls: clsLabel(currentClass),
     order,
     choiceSetTitle:choiceSetTitle(s),
-    choiceQuestions:choiceRubric(s).map((question,i)=>({label:choiceQuestionTitle(question,i)})),
     micOn: mic.on, micLevel: mic.level||0, micThr: mic.sens,
     upNext
   });
@@ -1606,15 +1604,9 @@ ch.onmessage=e=>{
   else {ord.classList.add('hidden');}
   const choiceList=document.getElementById('choiceList');
   choiceList.replaceChildren();
-  const questions=Array.isArray(d.choiceQuestions)?d.choiceQuestions:[];
   if(d.choiceSetTitle){const title=document.createElement('h2');title.textContent=d.choiceSetTitle;title.style.cssText='margin:0 0 12px;font-size:1.3em;overflow-wrap:anywhere';choiceList.append(title);}
-  questions.forEach(question=>{
-    const row=document.createElement('div');row.className='choice-row';
-    const label=document.createElement('b');label.textContent=question.label;
-    row.append(label);choiceList.append(row);
-  });
-  choiceList.classList.toggle('hidden',!questions.length);
-  document.body.classList.toggle('has-choices',!!questions.length);
+  choiceList.classList.toggle('hidden',!d.choiceSetTitle);
+  document.body.classList.toggle('has-choices',!!d.choiceSetTitle);
   const tEl=document.getElementById('t');
   if(d.countdown>0){tEl.textContent=d.countdown;tEl.style.color='#9b8ec4';tEl.style.fontSize='120px';}
   else{tEl.textContent=fmt(d.eff);tEl.style.color='';tEl.style.fontSize='';}
@@ -2366,11 +2358,11 @@ function renderChoiceSetEditor(){
   tabs.innerHTML=`<button class="rostertab ${isTemplate?'on':''}" data-index="-1">공통 루브릭</button>`+editChoiceSets.map((_,i)=>`<button class="rostertab ${i===editChoiceSetIndex?'on':''}" data-index="${i}">뽑기 ${i+1}</button>`).join('');
   tabs.querySelectorAll('button').forEach(button=>button.onclick=()=>{editChoiceSetIndex=+button.dataset.index;renderChoiceSetEditor();});
   host.innerHTML=(isTemplate?'':`<div class="folderbox" style="margin-bottom:12px"><label class="mlabel" for="choiceSetTitleInput">뽑기 ${editChoiceSetIndex+1} 제목</label><input id="choiceSetTitleInput" style="width:100%" value="${esc(editChoiceSetTitles[editChoiceSetIndex]||'')}" placeholder="발표자·TV·채점 화면에 표시할 제목"><p class="hint">선택문제 ${questions.length}개 · 아래에서 문제를 추가하거나 삭제할 수 있습니다.</p><button type="button" class="mbtn ghost" id="addChoiceQuestion">+ 선택문제 추가</button></div>`)+questions.map((question,qi)=>`<div class="recrit">
-    <div class="rctop">${isTemplate?'<span class="rc-name choice-fixed-name">공통 루브릭</span>':`<input class="rc-name choice-name" data-qi="${qi}" value="${esc(question.name||'')}" placeholder="선택문제 ${qi+1}" aria-label="선택문제 ${qi+1} 제목">`}<label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label>${isTemplate?'':`<button type="button" class="choice-question-delete mbtn ghost" data-qi="${qi}" ${questions.length<=1?'disabled':''}>문제 삭제</button>`}</div>
+    <div class="rctop"><span class="rc-name choice-fixed-name">${isTemplate?'공통 루브릭':`선택문제 ${qi+1}`}</span><label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label>${isTemplate?'':`<button type="button" class="choice-question-delete mbtn ghost" data-qi="${qi}" ${questions.length<=1?'disabled':''}>문제 삭제</button>`}</div>
     ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}${orderButtons('option',oi,question.opts.length,qi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
 
-  </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="모든 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다. 문제 제목은 유지됩니다.">모든 선택문제에 적용</button></div>':'');
+  </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="모든 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다.">모든 선택문제에 적용</button></div>':'');
   const titleInput=host.querySelector('#choiceSetTitleInput');
   if(titleInput)titleInput.oninput=()=>{editChoiceSetTitles[editChoiceSetIndex]=titleInput.value;};
   const addQuestion=host.querySelector('#addChoiceQuestion');
@@ -2380,7 +2372,6 @@ function renderChoiceSetEditor(){
     if(!confirm('이 문제를 삭제할까요? 저장하면 해당 문제의 채점 기록과 메모도 삭제됩니다.'))return;
     questions.splice(+button.dataset.qi,1);renderChoiceSetEditor();
   });
-  host.querySelectorAll('.choice-name').forEach(input=>input.oninput=()=>{questions[+input.dataset.qi].name=input.value;});
   host.querySelectorAll('.choice-base').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].base=Number(input.value)||0);
   host.querySelectorAll('.choice-desc').forEach(input=>{input.oninput=()=>questions[+input.dataset.qi].opts[+input.dataset.oi].desc=input.value;input.onchange=renderChoiceSetEditor;});
   host.querySelectorAll('.choice-pt').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].opts[+input.dataset.oi].pt=Number(input.value)||0);
@@ -2418,7 +2409,7 @@ function saveChoiceSetSettings(){
     return {...rest,opts:normalizedOptions(question,keep)};
   };
   const nextTemplate=clean(editChoiceTemplate);
-  const nextSets=editChoiceSets.map(set=>set.map((question,i)=>({...clean(question),name:choiceQuestionTitle(question,i)})));
+  const nextSets=editChoiceSets.map(set=>set.map((question,i)=>({...clean(question),name:`선택문제 ${i+1}`})));
   if([nextTemplate,...nextSets.flat()].some(invalidAutoChecks)){
     toast('자동 체크 조건을 하나 이상 선택하고 순환을 피해주세요. 세부항목 이름도 모두 입력해 주세요');return;
   }
@@ -2748,14 +2739,13 @@ function neisText(){return sortedStudents().map(s=>{const max=rubricMax(s),tot=s
 function fullTsv(){
   const head=['발표순서','번호','이름',...(selectionMode==='draw'?['뽑기']:['주제','입장'])];
   state.rubric.forEach(c=>{head.push(c.name);head.push(c.name+' 근거')});
-  if(selectionMode==='draw')choiceQuestionNumbers().forEach(i=>{head.push(`선택문제 ${i} 제목`,`선택문제 ${i} 점수`,`선택문제 ${i} 근거`)});
+  if(selectionMode==='draw')choiceQuestionNumbers().forEach(i=>{head.push(`선택문제 ${i} 점수`,`선택문제 ${i} 근거`)});
   head.push('종이','총점','등급','발표시간','총평');
   const rows=sortedStudents().map(s=>{
     const max=rubricMax(s);
     const tot=studentTotal(s),pct=max?Math.round(tot/max*100):0;
     const cells=[state.students.indexOf(s)+1,s.no,s.name,...(selectionMode==='draw'?[s.choiceSet!=null?s.choiceSet+1:'']:[topicFull(s),s.stance||''])];
     rubricForStudent(s).forEach((c,i)=>{
-      if(i>=state.rubric.length)cells.push((c.name||'').replace(/\s+/g,' '));
       const has=checksOf(s,i).length>0;
       cells.push(s.absent?critScore(s,i):(has?critScore(s,i):''));
       const om=(s.optmemos&&s.optmemos[i])||{};
@@ -2763,7 +2753,7 @@ function fullTsv(){
       const cm=((s.cmemos&&s.cmemos[i])||'').replace(/\s+/g,' ');
       cells.push(s.absent?'':[checkedDescs,cm].filter(Boolean).join(' / '));
     });
-    if(selectionMode==='draw')for(let i=choiceRubric(s).length;i<choiceQuestionNumbers().length;i++)cells.push('','','');
+    if(selectionMode==='draw')for(let i=choiceRubric(s).length;i<choiceQuestionNumbers().length;i++)cells.push('','');
     cells.push(paperStatusText(s),tot,s.absent?'발표안함':gradeOf(pct),s.recordedTime?fmt(s.recordedTime.eff):'',(s.memo||'').replace(/\s+/g,' '));
     return cells.join('\t');
   });

@@ -27,14 +27,12 @@ test('문제 수가 서로 다르고 뽑기를 선택하지 않아도 TSV 열 �
   c.sortedStudents=()=>c.state.students;
   const rows=c.fullTsv().split('\n').map(row=>row.split('\t'));
   rows.forEach(row=>assert.equal(row.length,rows[0].length));
-  assert.ok(rows[0].includes('선택문제 5 제목'));
+  assert.ok(rows[0].includes('선택문제 5 점수'));
 });
 
-test('개별 문제 제목을 유지하고 빈 제목만 기본 이름으로 보완한다',()=>{
+test('과거 개별 제목은 채점 화면에서 문제 번호로 표시한다',()=>{
   const c=setup();
-  assert.equal(c.choiceQuestionTitle({name:'  문장의 짜임 탐구  '},0),'문장의 짜임 탐구');
-  assert.equal(c.choiceQuestionTitle({name:'   '},3),'선택문제 4');
-  assert.equal(c.choiceQuestionTitle({},1),'선택문제 2');
-  c.choiceSets[0][0].name='직접 정한 제목';
-  assert.equal(c.choiceRubric({choiceSet:0})[0].name,'직접 정한 제목');
+  c.choiceSets[0][0].name='과거 제목';
+  assert.equal(c.choiceRubric({choiceSet:0})[0].name,'선택문제 1');
+  assert.equal(c.choiceSetTitle({choiceSet:0}),'첫 제목');
 });
