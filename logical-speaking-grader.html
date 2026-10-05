@@ -308,6 +308,9 @@
   .ro-simple input{cursor:pointer}
   .ro-timed input{cursor:pointer}
   .recrit .rc-del{color:var(--amber);font-size:20px;padding:0 6px}
+  .order-buttons{display:inline-flex;gap:2px;flex-shrink:0}
+  .order-move{padding:3px 5px;border:1px solid var(--line);border-radius:5px;color:var(--muted)}
+  .order-move:disabled{opacity:.3;cursor:default}
   .reopt{display:flex;gap:7px;align-items:center;margin-bottom:6px}
   .reopt .ro-desc{flex:1;padding:6px 9px;border:1px solid var(--line);border-radius:7px;font-size:13px}
   .reopt .ro-pt{width:60px;padding:6px;border:1px solid var(--line);border-radius:7px;font-size:13px;text-align:center;font-weight:700}
@@ -2343,12 +2346,13 @@ let editChoiceSets=[];
 let editChoiceTemplate=defaultChoiceTemplate();
 let editChoiceSetIndex=-1;
 function initChoiceSetEditor(){
+  ensureRubricIds(state.rubric);choiceSets.forEach(ensureRubricIds);ensureRubricIds([choiceTemplate]);
   editChoiceSets=JSON.parse(JSON.stringify(choiceSets));
   editChoiceTemplate=JSON.parse(JSON.stringify(choiceTemplate));
   renderChoiceSetEditor();
 }
 function renderChoiceSetEditor(){
-  migrateAutoChecks(editChoiceTemplate);editChoiceSets.flat().forEach(migrateAutoChecks);
+  ensureRubricIds([editChoiceTemplate]);editChoiceSets.forEach(ensureRubricIds);
   const tabs=document.getElementById('choiceSetTabs');
   const host=document.getElementById('choiceSetEditor');
   const isTemplate=editChoiceSetIndex===-1;
@@ -2358,7 +2362,7 @@ function renderChoiceSetEditor(){
   host.innerHTML=questions.map((question,qi)=>`<div class="recrit">
     <div class="rctop"><span class="rc-name choice-fixed-name">${isTemplate?'공통 루브릭':`선택문제 ${qi+1}`}</span><label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label></div>
     ${isTemplate?'':`<div class="choice-prompt-row"><div class="mlabel">문제 내용</div><textarea class="choice-prompt" data-qi="${qi}" rows="2" placeholder="TV·발표자 화면에 보일 문제 내용">${esc(question.prompt||'')}</textarea></div>`}
-    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
+    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}${orderButtons('option',oi,question.opts.length,qi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
 
   </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="15개 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다. 문제 내용은 유지됩니다.">모든 선택문제에 적용</button></div>':'');
@@ -2376,6 +2380,7 @@ function renderChoiceSetEditor(){
   host.querySelectorAll('.memo-del').forEach(button=>button.onclick=()=>{const option=choiceOption(button);option.memoLabels=memoLabelsFor(option);option.memoLabels.splice(+button.dataset.mi,1);if(!option.memoLabels.length)option.memoLabels=['근거 메모'];renderChoiceSetEditor();});
   host.querySelectorAll('.choice-del').forEach(button=>button.onclick=()=>{removeRubricOption(questions[+button.dataset.qi],+button.dataset.oi);renderChoiceSetEditor();});
   host.querySelectorAll('.choice-add').forEach(button=>button.onclick=()=>{questions[+button.dataset.qi].opts.push({desc:'',pt:0});renderChoiceSetEditor();});
+  wireOrderButtons(host,questions,renderChoiceSetEditor);
   wireBonusEditor(host,questions,renderChoiceSetEditor);
   applyRubricOptionVisibility(host);
   const applyButton=document.getElementById('applyCommonChoice');if(applyButton)applyButton.onclick=()=>{
@@ -2403,6 +2408,7 @@ function saveChoiceSetSettings(){
   if([nextTemplate,...nextSets.flat()].some(invalidAutoChecks)){
     toast('자동 체크 조건을 하나 이상 선택하고 순환을 피해주세요. 세부항목 이름도 모두 입력해 주세요');return;
   }
+  remapAllRubricRecords(state.rubric,nextSets);
   choiceTemplate=nextTemplate;
   choiceSets=nextSets;
   save(true);renderStage();renderResult();castState();toast('선택문제 루브릭 저장됨');
@@ -2504,6 +2510,7 @@ function preserveInto(freshList,oldList){
 /* 루브릭 모달 */
 let editRubric=[];
 function renderCritEdit(){
+  ensureRubricIds(state.rubric);choiceSets.forEach(ensureRubricIds);
   renderRubricOptionVisibility();
   editRubric=JSON.parse(JSON.stringify(state.rubric)).map(migrateAutoChecks);
   drawCritEdit();
@@ -2548,6 +2555,55 @@ function renderRubricOptionVisibility(){
   });
 }
 
+function ensureRubricIds(criteria){
+  criteria.forEach(c=>{migrateAutoChecks(c);if(!c.rubricId)c.rubricId=crypto.randomUUID();c.opts.forEach(o=>{if(!o.optionId)o.optionId=crypto.randomUUID();});});
+}
+function moveRubricEntry(list,from,to){
+  if(from<0||to<0||from>=list.length||to>=list.length)return;
+  list.splice(to,0,list.splice(from,1)[0]);
+}
+function moveRubricOption(c,from,to){
+  const order=c.opts.map((_,i)=>i);
+  moveRubricEntry(order,from,to);
+  const positions=new Map(order.map((old,i)=>[old,i]));
+  c.opts=order.map(i=>c.opts[i]);
+  c.opts.forEach(o=>{if(Array.isArray(o.requires))o.requires=o.requires.map(i=>positions.get(i));});
+}
+function remapRubricRecords(student,oldRubric,newRubric){
+  const oldPositions=new Map(oldRubric.map((c,i)=>[c.rubricId,i]));
+  const checks={},cmemos={},optmemos={};
+  newRubric.forEach((c,ci)=>{
+    const oldCi=oldPositions.get(c.rubricId);
+    if(oldCi===undefined)return;
+    const oldOpts=new Map(oldRubric[oldCi].opts.map((o,i)=>[o.optionId,i]));
+    if(student.cmemos?.[oldCi]!==undefined)cmemos[ci]=student.cmemos[oldCi];
+    c.opts.forEach((o,oi)=>{
+      const oldOi=oldOpts.get(o.optionId);
+      if(oldOi===undefined)return;
+      if(student.checks?.[oldCi]?.includes(oldOi))(checks[ci]??=[]).push(oi);
+      if(student.optmemos?.[oldCi]?.[oldOi]!==undefined)(optmemos[ci]??={})[oi]=student.optmemos[oldCi][oldOi];
+    });
+  });
+  student.checks=checks;student.cmemos=cmemos;student.optmemos=optmemos;
+}
+function remapAllRubricRecords(nextRubric,nextSets){
+  classStudents[currentClass]=state.students;
+  Object.values(classStudents).flat().forEach(student=>{
+    const oldChoice=choiceSets[student.choiceSet]||[],newChoice=nextSets[student.choiceSet]||[];
+    remapRubricRecords(student,state.rubric.concat(oldChoice),nextRubric.concat(newChoice));
+  });
+}
+function orderButtons(kind,index,length,ci){
+  return `<span class="order-buttons">${[-1,1].map(step=>`<button type="button" class="order-move" data-kind="${kind}" data-index="${index}" data-ci="${ci}" data-step="${step}" ${index+step<0||index+step>=length?'disabled':''} title="${step<0?'위로':'아래로'} 이동" aria-label="${step<0?'위로':'아래로'} 이동">${step<0?'↑':'↓'}</button>`).join('')}</span>`;
+}
+function wireOrderButtons(host,criteria,redraw){
+  host.querySelectorAll('.order-move').forEach(b=>b.onclick=()=>{
+    const index=+b.dataset.index,to=index+(+b.dataset.step);
+    if(b.dataset.kind==='criterion')moveRubricEntry(criteria,index,to);
+    else moveRubricOption(criteria[+b.dataset.ci],index,to);
+    redraw();
+  });
+}
 function removeRubricOption(c,oi){
   migrateAutoChecks(c);
   c.opts.splice(oi,1);
@@ -2592,12 +2648,12 @@ function wireBonusEditor(host,criteria,redraw){
   });
 }
 function drawCritEdit(){
-  editRubric.forEach(migrateAutoChecks);
+  ensureRubricIds(editRubric);
   const el=document.getElementById('critEditList');
   el.innerHTML=editRubric.map((c,ci)=>`
     <div class="recrit">
-      <div class="rctop"><input class="rc-name" data-ci="${ci}" value="${esc(c.name)}" placeholder="항목 이름"><label class="rc-base">기본점 <input class="rc-baseinp" type="number" min="0" data-ci="${ci}" value="${Number(c.base)||0}"></label><button class="rc-del" data-ci="${ci}" title="항목 삭제">×</button></div>
-      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label>${conditionToggleHTML(o,ci,oi)}${detailToggleHTML(o,ci,oi)}<button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}${conditionEditorHTML(c,ci,oi)}${detailEditorHTML(o,ci,oi)}`).join('')}
+      <div class="rctop"><input class="rc-name" data-ci="${ci}" value="${esc(c.name)}" placeholder="항목 이름"><label class="rc-base">기본점 <input class="rc-baseinp" type="number" min="0" data-ci="${ci}" value="${Number(c.base)||0}"></label>${orderButtons('criterion',ci,editRubric.length,ci)}<button class="rc-del" data-ci="${ci}" title="항목 삭제">×</button></div>
+      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label>${conditionToggleHTML(o,ci,oi)}${detailToggleHTML(o,ci,oi)}${orderButtons('option',oi,c.opts.length,ci)}<button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}${conditionEditorHTML(c,ci,oi)}${detailEditorHTML(o,ci,oi)}`).join('')}
       <button class="addopt" data-ci="${ci}">+ 체크 항목 추가</button>
 
     </div>`).join('');
@@ -2616,6 +2672,7 @@ function drawCritEdit(){
   el.querySelectorAll('.rc-del').forEach(b=>b.onclick=()=>{editRubric.splice(+b.dataset.ci,1);drawCritEdit()});
   el.querySelectorAll('.ro-del').forEach(b=>b.onclick=()=>{removeRubricOption(editRubric[+b.dataset.ci],+b.dataset.oi);drawCritEdit()});
   el.querySelectorAll('.addopt').forEach(b=>b.onclick=()=>{editRubric[+b.dataset.ci].opts.push({desc:"",pt:0});drawCritEdit()});
+  wireOrderButtons(el,editRubric,drawCritEdit);
   wireBonusEditor(el,editRubric,drawCritEdit);
   applyRubricOptionVisibility(el);
 }
@@ -2623,22 +2680,11 @@ document.getElementById('addCrit').onclick=()=>{editRubric.push({name:"",base:0,
 document.getElementById('rubricApply').onclick=()=>{
   const nr=editRubric.filter(c=>c.name.trim()).map(c=>{
     const keep=c.opts.map((o,i)=>o.desc.trim()||o.pt?i:null).filter(i=>i!==null);
-    return {name:c.name.trim(),base:Number(c.base)||0,opts:normalizedOptions(c,keep)};
+    return {rubricId:c.rubricId,name:c.name.trim(),base:Number(c.base)||0,opts:normalizedOptions(c,keep)};
   });
   if(!nr.length){toast('항목을 1개 이상 넣어주세요');return}
   if(nr.some(invalidAutoChecks)){toast('자동 체크 조건을 하나 이상 선택하고 순환을 피해주세요. 세부항목 이름도 모두 입력해 주세요');return}
-  if(nr.length!==state.rubric.length){
-    classStudents[currentClass]=state.students;
-    Object.values(classStudents).flat().forEach(student=>{
-      if(student.choiceSet==null)return;
-      for(const field of ['checks','cmemos','optmemos']){
-        const values=student[field]||{};
-        const old=Array.from({length:3},(_,i)=>values[state.rubric.length+i]);
-        for(let i=0;i<3;i++)delete values[state.rubric.length+i];
-        for(let i=0;i<3;i++)if(old[i]!==undefined)values[nr.length+i]=old[i];
-      }
-    });
-  }
+  remapAllRubricRecords(nr,choiceSets);
   state.rubric=nr;
   state.phrases=document.getElementById('fbPhrases').value.split(',').map(s=>s.trim()).filter(Boolean);
   const lo=parseMS(document.getElementById('okMin').value);const maxText=document.getElementById('okMax').value.trim();const hi=parseMS(maxText);
