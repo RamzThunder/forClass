@@ -1131,6 +1131,7 @@ function applyStudentLock(s){
   if(!s.done)return;
   const stage=document.getElementById('stage');if(!stage)return;
   stage.querySelectorAll('.scard input,.scard textarea,.scard select,.scard button').forEach(el=>{
+    if(s.absent&&el.id==='absentBtn')return;
     if(['doneBtn','prevBtn','nextBtn','openTranscriptPopupBtn','pvExitBtn','paperMissingBtn','paperSubmittedBtn'].includes(el.id))return;
     el.disabled=true;
   });
@@ -1278,6 +1279,7 @@ function renderStage(){
   document.getElementById('absentBtn').onclick=()=>{
     s.absent=!s.absent;
     if(s.absent){s.checks={};s.detailChecks={};s.timedValues={};s.paperMissing=false;s.paperSubmitted=false;s.done=true;}
+    else s.done=false;
     save();renderRoster();renderStage();
     toast(s.absent?`미응시 처리 — 최저 ${rubricMin(s)}점`:'미응시 해제');
   };
