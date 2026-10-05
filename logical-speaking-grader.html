@@ -592,9 +592,12 @@ let state={students:[],rubric:JSON.parse(JSON.stringify(DEFAULT_RUBRIC)),phrases
 function defaultChoiceSets(){return Array.from({length:5},()=>Array.from({length:3},(_,i)=>({name:`선택문제 ${i+1}`,prompt:'',base:0,opts:[]})))}
 function defaultChoiceTemplate(){return {name:'공통 루브릭',base:0,opts:[]}}
 let choiceSets=defaultChoiceSets();
+let choiceSetTitles=Array(5).fill('');
 let choiceTemplate=defaultChoiceTemplate();
 let selectionMode='draw';
 let rubricOptionVisibility={};
+function choiceSetTitle(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)?String(choiceSetTitles[s.choiceSet]||''):''}
+function choiceQuestionNumbers(){return Array.from({length:Math.max(0,...choiceSets.map(set=>set.length))},(_,i)=>i+1)}
 function choiceRubric(s){return selectionMode==='draw'&&s&&Number.isInteger(s.choiceSet)&&s.choiceSet>=0&&s.choiceSet<5?choiceSets[s.choiceSet]:[]}
 function migrateAutoChecks(c){
   if(c.allBonus){
@@ -755,7 +758,7 @@ function save(manual){
   if(previewMode)return; // 미리보기 모드에서는 저장하지 않음
   classStudents[currentClass]=state.students; // 현재 반 학생 반영
   const payload=JSON.stringify({
-    shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
+    shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
     classes:classStudents, currentClass, savedAt:Date.now()
   });
   let okMain=false, okMirror=false;
@@ -786,7 +789,8 @@ function applyLoaded(d){
     if(excludedSpeakingClasses.size===classes.length)excludedSpeakingClasses.clear();
     if((sh.rubricVersion||1)>=RUBRIC_VERSION && sh.rubric){state.rubric=sh.rubric;}
     else {state.rubric=JSON.parse(JSON.stringify(DEFAULT_RUBRIC));}
-    choiceSets=Array.isArray(sh.choiceSets)&&sh.choiceSets.length===5&&sh.choiceSets.every(set=>Array.isArray(set)&&set.length===3)?sh.choiceSets:defaultChoiceSets();
+    choiceSets=Array.isArray(sh.choiceSets)&&sh.choiceSets.length===5&&sh.choiceSets.every(set=>Array.isArray(set)&&set.length>0)?sh.choiceSets:defaultChoiceSets();
+    choiceSetTitles=choiceSets.map((_,i)=>String(sh.choiceSetTitles?.[i]||''));
     choiceTemplate=sh.choiceTemplate&&Array.isArray(sh.choiceTemplate.opts)?sh.choiceTemplate:defaultChoiceTemplate();
     selectionMode=sh.selectionMode==='topic'||sh.selectionMode==='draw'?sh.selectionMode:(sh.choiceSets?'draw':'topic');
     state.phrases=sh.phrases||state.phrases;state.okMin=sh.okMin??150;state.okMax=sh.okMax===null?null:(sh.okMax??180);
@@ -799,6 +803,7 @@ function applyLoaded(d){
     classes=[...DEFAULT_CLASSES];
     excludedSpeakingClasses=new Set();
     choiceSets=defaultChoiceSets();
+    choiceSetTitles=Array(5).fill('');
     choiceTemplate=defaultChoiceTemplate();
     selectionMode='draw';
     appTitle=d.appTitle||DEFAULT_APP_TITLE;
@@ -1178,6 +1183,7 @@ function renderStage(){
         ${selectionMode==='draw'?`<div class="panel">
           <div class="choice-pick-head"><h3>선택 문제 뽑기</h3>${s.choiceSet!=null?'<button class="choice-clear choice-set-btn" data-choice-set="-1">뽑기 선택 취소</button>':''}</div>
           <div class="stancesel">${choiceSets.map((_,i)=>`<button class="stancebtn choice-set-btn ${s.choiceSet===i?'on agree':''}" data-choice-set="${i}" aria-pressed="${s.choiceSet===i}">${i+1}번</button>`).join('')}</div>
+          ${choiceSetTitle(s)?`<div class="choice-set-title" style="margin-top:8px;font-weight:700;overflow-wrap:anywhere">${esc(choiceSetTitle(s))}</div>`:''}
         </div>`:`<div class="panel">
           <h3>주제 · 입장 선택</h3>
           <div class="topicsel">${TOPICS.map((t,i)=>`<button class="topicbtn ${s.topic===i?'on':''}" data-topic="${i}" title="${esc(t.full)}">${esc(t.short)}</button>`).join('')}</div>
@@ -1243,10 +1249,10 @@ function renderStage(){
     const next=+b.dataset.choiceSet;
     if(s.choiceSet===next)return;
     const first=state.rubric.length;
-    if([0,1,2].some(offset=>rubricForStudent(s)[first+offset]?.opts.some(o=>detailItems(o).some(d=>s.detailChecks?.[d.id]))||checksOf(s,first+offset).length||(s.cmemos&&s.cmemos[first+offset])||(s.optmemos&&s.optmemos[first+offset])) &&
-       !confirm('다른 뽑기로 바꾸면 이전 선택문제 1·2·3의 채점과 메모가 지워집니다. 계속할까요?'))return;
+    if(choiceRubric(s).some((_,offset)=>rubricForStudent(s)[first+offset]?.opts.some(o=>detailItems(o).some(d=>s.detailChecks?.[d.id]))||checksOf(s,first+offset).length||(s.cmemos&&s.cmemos[first+offset])||(s.optmemos&&s.optmemos[first+offset])) &&
+       !confirm('다른 뽑기로 바꾸면 이전 선택문제의 채점과 메모가 지워집니다. 계속할까요?'))return;
     choiceRubric(s).forEach(c=>c.opts.forEach(o=>detailItems(o).forEach(d=>{if(s.detailChecks)delete s.detailChecks[d.id];})));
-    for(let i=first;i<first+3;i++){delete s.checks[i];delete s.cmemos[i];delete s.optmemos[i];}
+    for(let i=first;i<first+choiceRubric(s).length;i++){delete s.checks[i];delete s.cmemos[i];delete s.optmemos[i];}
     s.choiceSet=next<0?null:next;save();renderRoster();renderStage();castState();
   });
   stage.querySelectorAll('.stancebtn[data-stance]').forEach(b=>b.onclick=()=>{const v=b.dataset.stance;s.stance=(s.stance===v)?null:v;save();renderRoster();renderStage();});
@@ -1497,6 +1503,7 @@ function castState(){
     okMinT:fmt(state.okMin), okMaxT:fmt(state.okMax),
     who: s?`${s.no} ${s.name}`:'', cls: clsLabel(currentClass),
     order,
+    choiceSetTitle:choiceSetTitle(s),
     choiceQuestions:choiceRubric(s).map((question,i)=>({label:`선택문제 ${i+1}`,prompt:String(question.prompt||'')})),
     micOn: mic.on, micLevel: mic.level||0, micThr: mic.sens,
     upNext
@@ -1603,6 +1610,7 @@ ch.onmessage=e=>{
   const choiceList=document.getElementById('choiceList');
   choiceList.replaceChildren();
   const questions=Array.isArray(d.choiceQuestions)?d.choiceQuestions:[];
+  if(d.choiceSetTitle){const title=document.createElement('h2');title.textContent=d.choiceSetTitle;title.style.cssText='margin:0 0 12px;font-size:1.3em;overflow-wrap:anywhere';choiceList.append(title);}
   questions.forEach(question=>{
     const row=document.createElement('div');row.className='choice-row';
     const label=document.createElement('b');label.textContent=question.label;
@@ -2343,11 +2351,13 @@ document.querySelectorAll('input[name="selectionMode"]').forEach(input=>input.on
   updateSelectionModeSettings();save(true);renderRoster();renderStage();renderResult();castState();
 });
 let editChoiceSets=[];
+let editChoiceSetTitles=[];
 let editChoiceTemplate=defaultChoiceTemplate();
 let editChoiceSetIndex=-1;
 function initChoiceSetEditor(){
   ensureRubricIds(state.rubric);choiceSets.forEach(ensureRubricIds);ensureRubricIds([choiceTemplate]);
   editChoiceSets=JSON.parse(JSON.stringify(choiceSets));
+  editChoiceSetTitles=[...choiceSetTitles];
   editChoiceTemplate=JSON.parse(JSON.stringify(choiceTemplate));
   renderChoiceSetEditor();
 }
@@ -2359,13 +2369,22 @@ function renderChoiceSetEditor(){
   const questions=isTemplate?[editChoiceTemplate]:editChoiceSets[editChoiceSetIndex];
   tabs.innerHTML=`<button class="rostertab ${isTemplate?'on':''}" data-index="-1">공통 루브릭</button>`+editChoiceSets.map((_,i)=>`<button class="rostertab ${i===editChoiceSetIndex?'on':''}" data-index="${i}">뽑기 ${i+1}</button>`).join('');
   tabs.querySelectorAll('button').forEach(button=>button.onclick=()=>{editChoiceSetIndex=+button.dataset.index;renderChoiceSetEditor();});
-  host.innerHTML=questions.map((question,qi)=>`<div class="recrit">
-    <div class="rctop"><span class="rc-name choice-fixed-name">${isTemplate?'공통 루브릭':`선택문제 ${qi+1}`}</span><label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label></div>
+  host.innerHTML=(isTemplate?'':`<div class="folderbox" style="margin-bottom:12px"><label class="mlabel" for="choiceSetTitleInput">뽑기 ${editChoiceSetIndex+1} 제목</label><input id="choiceSetTitleInput" style="width:100%" value="${esc(editChoiceSetTitles[editChoiceSetIndex]||'')}" placeholder="발표자·TV·채점 화면에 표시할 제목"><p class="hint">선택문제 ${questions.length}개 · 아래에서 문제를 추가하거나 삭제할 수 있습니다.</p><button type="button" class="mbtn ghost" id="addChoiceQuestion">+ 선택문제 추가</button></div>`)+questions.map((question,qi)=>`<div class="recrit">
+    <div class="rctop"><span class="rc-name choice-fixed-name">${isTemplate?'공통 루브릭':`선택문제 ${qi+1}`}</span><label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label>${isTemplate?'':`<button type="button" class="choice-question-delete mbtn ghost" data-qi="${qi}" ${questions.length<=1?'disabled':''}>문제 삭제</button>`}</div>
     ${isTemplate?'':`<div class="choice-prompt-row"><div class="mlabel">문제 내용</div><textarea class="choice-prompt" data-qi="${qi}" rows="2" placeholder="TV·발표자 화면에 보일 문제 내용">${esc(question.prompt||'')}</textarea></div>`}
     ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}${orderButtons('option',oi,question.opts.length,qi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
 
-  </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="15개 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다. 문제 내용은 유지됩니다.">모든 선택문제에 적용</button></div>':'');
+  </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="모든 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다. 문제 내용은 유지됩니다.">모든 선택문제에 적용</button></div>':'');
+  const titleInput=host.querySelector('#choiceSetTitleInput');
+  if(titleInput)titleInput.oninput=()=>{editChoiceSetTitles[editChoiceSetIndex]=titleInput.value;};
+  const addQuestion=host.querySelector('#addChoiceQuestion');
+  if(addQuestion)addQuestion.onclick=()=>{questions.push({name:`선택문제 ${questions.length+1}`,prompt:'',base:0,opts:[]});renderChoiceSetEditor();};
+  host.querySelectorAll('.choice-question-delete').forEach(button=>button.onclick=()=>{
+    if(questions.length<=1)return;
+    if(!confirm('이 문제를 삭제할까요? 저장하면 해당 문제의 채점 기록과 메모도 삭제됩니다.'))return;
+    questions.splice(+button.dataset.qi,1);renderChoiceSetEditor();
+  });
   host.querySelectorAll('.choice-base').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].base=Number(input.value)||0);
   host.querySelectorAll('.choice-prompt').forEach(input=>input.oninput=()=>questions[+input.dataset.qi].prompt=input.value);
   host.querySelectorAll('.choice-desc').forEach(input=>{input.oninput=()=>questions[+input.dataset.qi].opts[+input.dataset.oi].desc=input.value;input.onchange=renderChoiceSetEditor;});
@@ -2411,6 +2430,7 @@ function saveChoiceSetSettings(){
   remapAllRubricRecords(state.rubric,nextSets);
   choiceTemplate=nextTemplate;
   choiceSets=nextSets;
+  choiceSetTitles=editChoiceSetTitles.map(title=>title.trim());
   save(true);renderStage();renderResult();castState();toast('선택문제 루브릭 저장됨');
   return true;
 }
@@ -2724,8 +2744,8 @@ function renderResult(){
   document.querySelectorAll('.sortbtn').forEach(b=>b.classList.toggle('on',b.dataset.sort===resultSort));
   if(!state.students.length){document.getElementById('resultTable').innerHTML='<p style="color:var(--muted);padding:20px;text-align:center">이 반은 아직 학생이 없습니다.</p>';return}
   const list=sortedStudents();
-  let h=`<table class="rtable"><thead><tr><th>발표<br>순서</th><th>번호</th><th>이름</th>${selectionMode==='draw'?'<th>뽑기</th>':'<th>주제·입장</th>'}${state.rubric.map(c=>`<th>${esc(c.name)}</th>`).join('')}${selectionMode==='draw'?[1,2,3].map(i=>`<th>선택문제 ${i}</th>`).join(''):''}<th>종이</th><th>총점<br><small>학생별 만점</small></th><th>등급</th><th>발표<br>시간</th><th>총평</th></tr></thead><tbody>`;
-  list.forEach((s)=>{const studentMax=rubricMax(s),tot=studentTotal(s),pct=studentMax?Math.round(tot/studentMax*100):0;const ord=state.students.indexOf(s)+1;const rt=s.recordedTime?fmt(s.recordedTime.eff):'-';const paper=paperStatusText(s);h+=`<tr class="${s.absent?'rowabsent':''}"><td class="ord">${ord}</td><td>${s.no}</td><td class="nm">${esc(s.name)}</td>${selectionMode==='draw'?`<td>${s.choiceSet!=null?s.choiceSet+1:'-'}</td>`:`<td class="tpcell">${topicCellHTML(s)}</td>`}${rubricForStudent(s).map((c,i)=>{const cm=(s.cmemos&&s.cmemos[i])||'';const shown=s.absent?`<b>${critScore(s,i)}</b>`:(checksOf(s,i).length?`<b>${critScore(s,i)}</b>`:'·');return `<td title="${esc(c.prompt||'')}">${shown}${cm&&!s.absent?`<div class="cellmemo">${esc(cm)}</div>`:''}</td>`}).join('')}${selectionMode==='draw'&&!choiceRubric(s).length?'<td>-</td><td>-</td><td>-</td>':''}<td>${paper?`<b style="color:${hasPaperMissing(s)?'var(--amber)':'var(--accent)'}">${esc(paper)}</b>`:'-'}</td><td><b>${tot}</b>/${studentMax}</td><td>${s.absent?'<span class="tagabsent">발표안함</span>':(s.done?gradeOf(pct):'-')}</td><td class="trcell">${rt}</td><td class="memo">${esc(s.memo||'')}</td></tr>`});
+  let h=`<table class="rtable"><thead><tr><th>발표<br>순서</th><th>번호</th><th>이름</th>${selectionMode==='draw'?'<th>뽑기</th>':'<th>주제·입장</th>'}${state.rubric.map(c=>`<th>${esc(c.name)}</th>`).join('')}${selectionMode==='draw'?choiceQuestionNumbers().map(i=>`<th>선택문제 ${i}</th>`).join(''):''}<th>종이</th><th>총점<br><small>학생별 만점</small></th><th>등급</th><th>발표<br>시간</th><th>총평</th></tr></thead><tbody>`;
+  list.forEach((s)=>{const studentMax=rubricMax(s),tot=studentTotal(s),pct=studentMax?Math.round(tot/studentMax*100):0;const ord=state.students.indexOf(s)+1;const rt=s.recordedTime?fmt(s.recordedTime.eff):'-';const paper=paperStatusText(s);h+=`<tr class="${s.absent?'rowabsent':''}"><td class="ord">${ord}</td><td>${s.no}</td><td class="nm">${esc(s.name)}</td>${selectionMode==='draw'?`<td>${s.choiceSet!=null?s.choiceSet+1:'-'}</td>`:`<td class="tpcell">${topicCellHTML(s)}</td>`}${rubricForStudent(s).map((c,i)=>{const cm=(s.cmemos&&s.cmemos[i])||'';const shown=s.absent?`<b>${critScore(s,i)}</b>`:(checksOf(s,i).length?`<b>${critScore(s,i)}</b>`:'·');return `<td title="${esc(c.prompt||'')}">${shown}${cm&&!s.absent?`<div class="cellmemo">${esc(cm)}</div>`:''}</td>`}).join('')}${selectionMode==='draw'?'<td>-</td>'.repeat(choiceQuestionNumbers().length-choiceRubric(s).length):''}<td>${paper?`<b style="color:${hasPaperMissing(s)?'var(--amber)':'var(--accent)'}">${esc(paper)}</b>`:'-'}</td><td><b>${tot}</b>/${studentMax}</td><td>${s.absent?'<span class="tagabsent">발표안함</span>':(s.done?gradeOf(pct):'-')}</td><td class="trcell">${rt}</td><td class="memo">${esc(s.memo||'')}</td></tr>`});
   h+=`</tbody></table>`;document.getElementById('resultTable').innerHTML=h;
 }
 document.querySelectorAll('.sortbtn').forEach(b=>b.onclick=()=>{resultSort=b.dataset.sort;renderResult()});
@@ -2733,7 +2753,7 @@ function neisText(){return sortedStudents().map(s=>{const max=rubricMax(s),tot=s
 function fullTsv(){
   const head=['발표순서','번호','이름',...(selectionMode==='draw'?['뽑기']:['주제','입장'])];
   state.rubric.forEach(c=>{head.push(c.name);head.push(c.name+' 근거')});
-  if(selectionMode==='draw')[1,2,3].forEach(i=>{head.push(`선택문제 ${i} 내용`,`선택문제 ${i} 점수`,`선택문제 ${i} 근거`)});
+  if(selectionMode==='draw')choiceQuestionNumbers().forEach(i=>{head.push(`선택문제 ${i} 내용`,`선택문제 ${i} 점수`,`선택문제 ${i} 근거`)});
   head.push('종이','총점','등급','발표시간','총평');
   const rows=sortedStudents().map(s=>{
     const max=rubricMax(s);
@@ -2748,7 +2768,7 @@ function fullTsv(){
       const cm=((s.cmemos&&s.cmemos[i])||'').replace(/\s+/g,' ');
       cells.push(s.absent?'':[checkedDescs,cm].filter(Boolean).join(' / '));
     });
-    if(selectionMode==='draw'&&!choiceRubric(s).length)for(let i=0;i<3;i++)cells.push('','','');
+    if(selectionMode==='draw')for(let i=choiceRubric(s).length;i<choiceQuestionNumbers().length;i++)cells.push('','','');
     cells.push(paperStatusText(s),tot,s.absent?'발표안함':gradeOf(pct),s.recordedTime?fmt(s.recordedTime.eff):'',(s.memo||'').replace(/\s+/g,' '));
     return cells.join('\t');
   });
@@ -2761,7 +2781,7 @@ document.getElementById('dlCsv').onclick=async()=>{const csv=fullTsv().split('\n
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
 async function downloadBackup(){
   classStudents[currentClass]=state.students;
-  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
+  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
   try{localStorage.setItem(LAST_BACKUP_KEY,String(Date.now()));}catch(e){}
   return saved;
 }
@@ -2840,6 +2860,7 @@ document.getElementById('resetAll').onclick=async()=>{
     excludedSpeakingClasses=new Set();
     state.rubric=JSON.parse(JSON.stringify(DEFAULT_RUBRIC));
     choiceSets=defaultChoiceSets();
+    choiceSetTitles=Array(5).fill('');
     choiceTemplate=defaultChoiceTemplate();
     selectionMode='draw';
     state.phrases=["목소리 또렷함","시선 처리 좋음","근거 보강 필요","반박 인상적","시간 초과"];
