@@ -29,3 +29,12 @@ test('문제 수가 서로 다르고 뽑기를 선택하지 않아도 TSV 열 �
   rows.forEach(row=>assert.equal(row.length,rows[0].length));
   assert.ok(rows[0].includes('선택문제 5 내용'));
 });
+
+test('개별 문제 제목을 유지하고 빈 제목만 기본 이름으로 보완한다',()=>{
+  const c=setup();
+  assert.equal(c.choiceQuestionTitle({name:'  문장의 짜임 탐구  '},0),'문장의 짜임 탐구');
+  assert.equal(c.choiceQuestionTitle({name:'   '},3),'선택문제 4');
+  assert.equal(c.choiceQuestionTitle({},1),'선택문제 2');
+  c.choiceSets[0][0].name='직접 정한 제목';
+  assert.equal(c.choiceRubric({choiceSet:0})[0].name,'직접 정한 제목');
+});
