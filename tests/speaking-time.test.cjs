@@ -58,3 +58,15 @@ test('수동 시간 입력과 삭제는 시간 준수 체크를 갱신한다',()
   const loaded=JSON.parse(JSON.stringify(student));
   assert.equal(c.timedValue(loaded,0,0),'');
 });
+
+test('분과 초를 따로 입력하고 0~59초 범위를 검증한다',()=>{
+  const {context:c}=setup(null);
+  assert.equal(c.parseTimedParts('2','30'),150);
+  assert.equal(c.parseTimedParts('2',''),120);
+  assert.equal(c.parseTimedParts('','30'),30);
+  assert.equal(c.parseTimedParts('',''),null);
+  assert.equal(c.parseTimedParts('0','0'),0);
+  assert.equal(c.parseTimedParts('2','60'),undefined);
+  assert.equal(c.parseTimedParts('-1','30'),undefined);
+  assert.equal(c.parseTimedParts('1.5','0'),undefined);
+});
