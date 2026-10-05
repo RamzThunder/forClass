@@ -35,3 +35,11 @@ test('추가·삭제와 순서 변경이 섞여도 새 항목에 옛 기록이 �
   assert.deepEqual(clone(student.checks),{0:[0]});
   assert.deepEqual(clone(student.cmemos),{0:'유지'});
 });
+
+test('순서를 바꿔도 수동 입력 시간은 해당 항목에 유지된다',()=>{
+  const old=[{rubricId:'a',opts:[{optionId:'x'},{optionId:'y'}]}];
+  const next=[{rubricId:'a',opts:[{optionId:'y'},{optionId:'x'}]}];
+  const student={timedValues:{0:{0:150,1:null}}};
+  ctx.remapRubricRecords(student,old,next);
+  assert.deepEqual(clone(student.timedValues),{0:{0:null,1:150}});
+});

@@ -34,3 +34,27 @@ test('상한 없음은 JSON 저장 후에도 유지된다',()=>{
   vm.runInContext(assignment,c);assert.equal(c.state.okMax,null);
   c.sh={};vm.runInContext(assignment,c);assert.equal(c.state.okMax,180);
 });
+
+test('타이머 판정 시 항목 옆 시간도 저장한다',()=>{
+  const {context:c,student}=setup(null);
+  c.timer.elapsed=175;c.applyTimeJudge();
+  assert.equal(student.timedValues[0][0],175);
+  assert.equal(c.timedValue(student,0,0),'2:55');
+});
+test('수동 시간 입력과 삭제는 시간 준수 체크를 갱신한다',()=>{
+  const {context:c,student}=setup(null);
+  assert.equal(c.parseTimedValue('2:30'),150);
+  assert.equal(c.parseTimedValue('150'),150);
+  assert.equal(c.parseTimedValue('2:99'),undefined);
+  assert.equal(c.parseTimedValue('-1'),undefined);
+  assert.equal(c.parseTimedValue(''),null);
+  c.setTimedValue(student,0,0,150);
+  assert.equal(student.checks[0].includes(0),true);
+  c.setTimedValue(student,0,0,149);
+  assert.equal(student.checks[0].includes(0),false);
+  student.recordedTime={eff:175};
+  c.setTimedValue(student,0,0,null);
+  assert.equal(c.timedValue(student,0,0),'');
+  const loaded=JSON.parse(JSON.stringify(student));
+  assert.equal(c.timedValue(loaded,0,0),'');
+});
