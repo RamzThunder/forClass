@@ -157,6 +157,12 @@
   .cmemo{width:100%;margin-top:9px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;background:var(--card);font-family:inherit;line-height:1.5;resize:none;overflow:hidden}
   .cmemo:focus{outline:none;border-color:var(--accent);background:#fff}
   .cmemo::placeholder{color:#b7ad9c}
+  .detail-badges{display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px}
+  .detail-badge{border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:var(--card);font-size:12px;cursor:pointer;overflow-wrap:anywhere;max-width:100%}
+  .detail-badge.selected{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .detail-label{width:120px;min-width:0;border:0;background:transparent;font:inherit}
+  .has-details{border:1px solid var(--line);border-radius:9px;padding-bottom:4px}
+  .has-details>.opt{border:0;margin:0}
   .optwrap{display:flex;flex-direction:column}
   .optmemo-row{margin:4px 0 2px 8px;width:calc(100% - 8px);display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:7px}
   .optmemo{width:100%;height:31px;min-height:31px;padding:5px 9px;border:1px solid #e7dfd0;border-left:2px solid rgba(47,107,84,.3);border-radius:0 6px 6px 0;font-size:12.5px;background:#fcfaf5;font-family:inherit;line-height:1.45;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -929,7 +935,7 @@ function parseRoster(text){
 function hasGradingProgress(s){
   if(!s || s.done || s.absent)return false;
   if(!previewMode && s.id===state.current && (timer.running || timer.elapsed>0 || timer.excludes.length || timer.exRunning))return true;
-  const hasChecks=s.checks&&Object.values(s.checks).some(v=>Array.isArray(v)&&v.length);
+  const hasChecks=Object.values(s.detailChecks||{}).some(Boolean)||(s.checks&&Object.values(s.checks).some(v=>Array.isArray(v)&&v.length));
   const hasCMemos=s.cmemos&&Object.values(s.cmemos).some(v=>String(v||'').trim());
   const hasOptMemos=s.optmemos&&Object.values(s.optmemos).some(g=>g&&Object.values(g).some(v=>String(v||'').trim()));
   return !!(hasChecks || hasCMemos || hasOptMemos || String(s.memo||'').trim() || (selectionMode==='topic'?(s.topic!==null||s.stance!==null):s.choiceSet!=null) || s.recordedTime || s.paperMissing || s.paperSubmitted);
@@ -937,7 +943,7 @@ function hasGradingProgress(s){
 function hasAnyData(s){
   if(!s)return false;
   if(s.done||s.absent)return true;
-  const hasChecks=s.checks&&Object.values(s.checks).some(v=>Array.isArray(v)&&v.length);
+  const hasChecks=Object.values(s.detailChecks||{}).some(Boolean)||(s.checks&&Object.values(s.checks).some(v=>Array.isArray(v)&&v.length));
   const hasCMemos=s.cmemos&&Object.values(s.cmemos).some(v=>String(v||'').trim());
   const hasOptMemos=s.optmemos&&Object.values(s.optmemos).some(g=>g&&Object.values(g).some(v=>String(v||'').trim()));
   return !!(hasChecks||hasCMemos||hasOptMemos||String(s.memo||'').trim()||(selectionMode==='topic'?(s.topic!==null||s.stance!==null):s.choiceSet!=null)||s.recordedTime||s.paperMissing||s.paperSubmitted);
@@ -1029,17 +1035,19 @@ function togglePreview(){previewMode?exitPreview():enterPreview();}
 function checksOf(s,ci){
   const c=rubricForStudent(s)[ci];
   if(!c||s.absent)return [];
-  const checked=new Set((Array.isArray(s.checks&&s.checks[ci])?s.checks[ci]:[]).filter(i=>c.opts[i]&&!Array.isArray(c.opts[i].requires)));
+  const checked=new Set((Array.isArray(s.checks&&s.checks[ci])?s.checks[ci]:[]).filter(i=>c.opts[i]&&!Array.isArray(c.opts[i].requires)&&!detailItems(c.opts[i]).length));
   // Start from manual checks each time so broken conditions and cycles cannot stay checked.
   for(let pass=0;pass<c.opts.length;pass++){
     let changed=false;
     c.opts.forEach((o,i)=>{
-      if(Array.isArray(o.requires)&&o.requires.length&&!checked.has(i)&&o.requires.every(j=>Number.isInteger(j)&&j!==i&&c.opts[j]&&checked.has(j))){checked.add(i);changed=true;}
+      if(!checked.has(i)&&(detailItems(o).length||Array.isArray(o.requires))&&(!detailItems(o).length||detailsMet(s,o))&&(!Array.isArray(o.requires)||(o.requires.length&&o.requires.every(j=>Number.isInteger(j)&&j!==i&&c.opts[j]&&checked.has(j))))){checked.add(i);changed=true;}
     });
     if(!changed)break;
   }
   return [...checked];
 }
+function detailItems(o){return Array.isArray(o.details)?o.details:[]}
+function detailsMet(s,o){return detailItems(o).length>0&&detailItems(o).every(d=>s.detailChecks?.[d.id]===true)}
 function critBase(ci,s){return Number(rubricForStudent(s)[ci]?.base)||0}
 function critScore(s,ci){const c=rubricForStudent(s)[ci];if(!c)return 0;if(s&&s.absent)return critBase(ci,s);return critBase(ci,s)+checksOf(s,ci).reduce((a,oi)=>a+(Number(c.opts[oi]?.pt)||0),0)}
 function paperMissingPenalty(s){return s&&s.paperMissing&&!s.absent?-5:0}
@@ -1196,12 +1204,20 @@ function renderStage(){
     </div></div>
   </div>`;
 
+  stage.querySelectorAll('.detail-badge').forEach(b=>b.onclick=()=>{
+    if(s.absent||s.done)return;
+    collectMemos(s);
+    if(!s.detailChecks)s.detailChecks={};
+    const id=b.dataset.detail;
+    if(s.detailChecks[id])delete s.detailChecks[id];else s.detailChecks[id]=true;
+    save();renderRoster();renderStage();
+  });
   stage.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
     if(s.absent){toast('발표 안함 상태예요 — 먼저 해제해 주세요');return;}
     collectMemos(s); // 입력 중이던 메모 먼저 저장
     const ci=+b.dataset.ci,oi=+b.dataset.oi;
     if(!s.checks)s.checks={};
-    if(Array.isArray(rubricForStudent(s)[ci].opts[oi].requires))return;
+    if(Array.isArray(rubricForStudent(s)[ci].opts[oi].requires)||detailItems(rubricForStudent(s)[ci].opts[oi]).length)return;
     const arr=Array.isArray(s.checks[ci])?s.checks[ci]:[];
     const pos=arr.indexOf(oi);
     const turningOn=(pos<0);
@@ -1222,8 +1238,9 @@ function renderStage(){
     const next=+b.dataset.choiceSet;
     if(s.choiceSet===next)return;
     const first=state.rubric.length;
-    if([0,1,2].some(offset=>checksOf(s,first+offset).length||(s.cmemos&&s.cmemos[first+offset])||(s.optmemos&&s.optmemos[first+offset])) &&
+    if([0,1,2].some(offset=>rubricForStudent(s)[first+offset]?.opts.some(o=>detailItems(o).some(d=>s.detailChecks?.[d.id]))||checksOf(s,first+offset).length||(s.cmemos&&s.cmemos[first+offset])||(s.optmemos&&s.optmemos[first+offset])) &&
        !confirm('다른 뽑기로 바꾸면 이전 선택문제 1·2·3의 채점과 메모가 지워집니다. 계속할까요?'))return;
+    choiceRubric(s).forEach(c=>c.opts.forEach(o=>detailItems(o).forEach(d=>{if(s.detailChecks)delete s.detailChecks[d.id];})));
     for(let i=first;i<first+3;i++){delete s.checks[i];delete s.cmemos[i];delete s.optmemos[i];}
     s.choiceSet=next<0?null:next;save();renderRoster();renderStage();castState();
   });
@@ -1232,7 +1249,7 @@ function renderStage(){
   document.getElementById('doneBtn').onclick=()=>{s.done=!s.done;save();renderRoster();renderStage();toast(s.done?'채점 완료 — 입력 잠금':'잠금 해제됨')};
   document.getElementById('absentBtn').onclick=()=>{
     s.absent=!s.absent;
-    if(s.absent){s.checks={};s.paperMissing=false;s.paperSubmitted=false;s.done=true;}
+    if(s.absent){s.checks={};s.detailChecks={};s.paperMissing=false;s.paperSubmitted=false;s.done=true;}
     save();renderRoster();renderStage();
     toast(s.absent?`미응시 처리 — 최저 ${rubricMin(s)}점`:'미응시 해제');
   };
@@ -1247,7 +1264,7 @@ function renderStage(){
   };
   document.getElementById('absenceBtn').onclick=()=>{
     if(!confirm(`${s.name} 학생을 결시 처리할까요?\n입력된 모든 데이터가 삭제되고 미입력 상태로 초기화됩니다.`))return;
-    s.checks={};s.cmemos={};s.optmemos={};s.memo='';s.topic=null;s.stance=null;s.choiceSet=null;s.absent=false;s.done=false;s.recordedTime=null;s.transcript=null;s.paperMissing=false;s.paperSubmitted=false;
+    s.checks={};s.detailChecks={};s.cmemos={};s.optmemos={};s.memo='';s.topic=null;s.stance=null;s.choiceSet=null;s.absent=false;s.done=false;s.recordedTime=null;s.transcript=null;s.paperMissing=false;s.paperSubmitted=false;
     save();renderRoster();renderStage();
     toast(`${s.name} 결시 처리 — 데이터 초기화됨`);
   };
@@ -1284,6 +1301,10 @@ function renderStage(){
   renderExcludes();updateExBtn();refreshElapsedDisplay();
   applyStudentLock(s);
 }
+function detailBadgesHTML(s,o,ci,oi){
+  if(!detailItems(o).length)return '';
+  return `<div class="detail-badges">${detailItems(o).map(d=>`<button type="button" class="detail-badge ${s.detailChecks?.[d.id]?'selected':''}" data-ci="${ci}" data-oi="${oi}" data-detail="${esc(d.id)}" aria-pressed="${!!s.detailChecks?.[d.id]}" ${s.absent?'disabled':''}>${s.detailChecks?.[d.id]?'✓ ':''}${esc(d.label)}</button>`).join('')}</div>`;
+}
 function critHTML(s,c,ci){
   const mx=(Number(c.base)||0)+c.opts.reduce((x,o)=>x+(Number(o.pt)>0?Number(o.pt):0),0);
   const cur=critScore(s,ci);
@@ -1298,7 +1319,7 @@ function critHTML(s,c,ci){
       const optMemoBox = o.memo ? labels.map((label,mi)=>`<div class="optmemo-row">${labels.length>1?`<div class="optmemo-label">${esc(label)}</div>`:'<div></div>'}<textarea class="optmemo" data-ci="${ci}" data-oi="${oi}" data-mi="${mi}" rows="1" placeholder="${esc(label)} 메모…">${esc(optMemoValue(om,oi,mi))}</textarea></div>`).join('') : '';
       const pt=Number(o.pt)||0;
       const ptText=pt>0?`+${pt}`:`${pt}`;
-      return `<div class="optwrap"><button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)?'disabled':''}><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${Array.isArray(o.requires)?' <span class="autohint2">조건 충족 시 자동 체크</span>':o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${optMemoBox}</div>`;
+      return `<div class="optwrap ${detailItems(o).length?'has-details':''}"><button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)||detailItems(o).length?'disabled':''}><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${Array.isArray(o.requires)?' <span class="autohint2">조건 충족 시 자동 체크</span>':o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${detailBadgesHTML(s,o,ci,oi)}${optMemoBox}</div>`;
     }).join('')}</div>
     <textarea class="cmemo" data-ci="${ci}" rows="2" placeholder="이 항목 채점 근거 메모… (줄바꿈 가능)">${esc((s.cmemos&&s.cmemos[ci])||'')}</textarea>
   </div>`;
@@ -2335,7 +2356,7 @@ function renderChoiceSetEditor(){
   host.innerHTML=questions.map((question,qi)=>`<div class="recrit">
     <div class="rctop"><span class="rc-name choice-fixed-name">${isTemplate?'공통 루브릭':`선택문제 ${qi+1}`}</span><label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label></div>
     ${isTemplate?'':`<div class="choice-prompt-row"><div class="mlabel">문제 내용</div><textarea class="choice-prompt" data-qi="${qi}" rows="2" placeholder="TV·발표자 화면에 보일 문제 내용">${esc(question.prompt||'')}</textarea></div>`}
-    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}`).join('')}
+    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
 
   </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="15개 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다. 문제 내용은 유지됩니다.">모든 선택문제에 적용</button></div>':'');
@@ -2360,7 +2381,7 @@ function renderChoiceSetEditor(){
     if((editChoiceTemplate.opts||[]).some(option=>!String(option.desc||'').trim()&&Number(option.pt))){toast('채점 항목의 설명을 입력해 주세요');return;}
     const base=Number(editChoiceTemplate.base)||0;
     const opts=JSON.parse(JSON.stringify(editChoiceTemplate.opts||[]));
-    editChoiceSets.forEach(set=>set.forEach(question=>{question.base=base;question.opts=JSON.parse(JSON.stringify(opts));}));
+    editChoiceSets.forEach(set=>set.forEach(question=>{question.base=base;question.opts=JSON.parse(JSON.stringify(opts));question.opts.forEach(o=>detailItems(o).forEach(d=>d.id=crypto.randomUUID()));}));
     if(saveChoiceSetSettings())toast('공통 루브릭을 모든 선택문제에 적용했어요');
   };
 }
@@ -2378,7 +2399,7 @@ function saveChoiceSetSettings(){
   const nextTemplate=clean(editChoiceTemplate);
   const nextSets=editChoiceSets.map(set=>set.map((question,i)=>({...clean(question),name:`선택문제 ${i+1}`})));
   if([nextTemplate,...nextSets.flat()].some(invalidAutoChecks)){
-    toast('자동 체크 조건을 하나 이상 선택하고, 서로 순환하지 않도록 설정해 주세요');return;
+    toast('자동 체크 조건을 하나 이상 선택하고 순환을 피해주세요. 세부항목 이름도 모두 입력해 주세요');return;
   }
   choiceTemplate=nextTemplate;
   choiceSets=nextSets;
@@ -2475,7 +2496,7 @@ document.getElementById('rosterApply').onclick=()=>{
 };
 // 같은 학번+이름의 기존 채점을 새 명단에 옮겨 보존
 function preserveInto(freshList,oldList){
-  freshList.forEach(f=>{const old=(oldList||[]).find(o=>o.no===f.no&&o.name===f.name);if(old){f.checks=old.checks||{};f.cmemos=old.cmemos||{};f.optmemos=old.optmemos||{};f.memo=old.memo;f.topic=old.topic??null;f.stance=old.stance??null;f.choiceSet=old.choiceSet??null;f.absent=old.absent||false;f.done=old.done;f.recordedTime=old.recordedTime??null;f.transcript=old.transcript??null;f.paperMissing=old.paperMissing||false;f.paperSubmitted=old.paperSubmitted||false;}});
+  freshList.forEach(f=>{const old=(oldList||[]).find(o=>o.no===f.no&&o.name===f.name);if(old){f.checks=old.checks||{};f.detailChecks=old.detailChecks||{};f.cmemos=old.cmemos||{};f.optmemos=old.optmemos||{};f.memo=old.memo;f.topic=old.topic??null;f.stance=old.stance??null;f.choiceSet=old.choiceSet??null;f.absent=old.absent||false;f.done=old.done;f.recordedTime=old.recordedTime??null;f.transcript=old.transcript??null;f.paperMissing=old.paperMissing||false;f.paperSubmitted=old.paperSubmitted||false;}});
   return freshList;
 }
 /* 루브릭 모달 */
@@ -2498,6 +2519,13 @@ function conditionEditorHTML(c,ci,oi){
   if(!Array.isArray(o.requires))return '';
   return `<div class="bonus-editor" data-rubric-feature="condition"><div class="hint">아래 항목이 모두 체크되면 자동 체크됩니다. 조건이 풀리면 해제됩니다.</div><div class="bonus-options">${c.opts.map((other,j)=>j===oi?'':`<label class="bonus-chip"><input class="condition-require" type="checkbox" data-ci="${ci}" data-oi="${oi}" data-required="${j}" ${o.requires.includes(j)?'checked':''}>${esc(other.desc||`항목 ${j+1}`)}</label>`).join('')}</div></div>`;
 }
+function detailToggleHTML(o,ci,oi){
+  return `<label class="ro-simple" data-rubric-feature="details"><input class="detail-enable" type="checkbox" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.details)?'checked':''}>세부</label>`;
+}
+function detailEditorHTML(o,ci,oi){
+  if(!Array.isArray(o.details))return '';
+  return `<div class="bonus-editor" data-rubric-feature="details"><div class="hint">세부 배지를 모두 체크하면 이 항목이 체크됩니다. 개별 점수는 없습니다. 연계 조건도 설정하면 두 조건을 모두 충족해야 합니다.</div><div class="detail-badges">${o.details.map((d,di)=>`<label class="bonus-chip"><input class="detail-label" data-ci="${ci}" data-oi="${oi}" data-di="${di}" value="${esc(d.label)}" placeholder="세부항목 이름"><button type="button" class="detail-delete" data-ci="${ci}" data-oi="${oi}" data-di="${di}" aria-label="세부항목 삭제">×</button></label>`).join('')}<button type="button" class="detail-add bonus-chip" data-ci="${ci}" data-oi="${oi}">+ 세부항목</button></div></div>`;
+}
 function conditionToggleHTML(o,ci,oi){
   return `<label class="ro-simple" data-rubric-feature="condition" title="같은 루브릭의 지정한 항목이 모두 체크되면 자동 체크"><input class="condition-enable" type="checkbox" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)?'checked':''}>조건</label>`;
 }
@@ -2508,7 +2536,7 @@ function applyRubricOptionVisibility(host){
 }
 function renderRubricOptionVisibility(){
   const host=document.getElementById('rubricOptionVisibility');
-  const options={timed:'⏱ 타이머',memo:'📝 메모',auto:'🔗 다른 항목 선택 시 자동 체크',simple:'간이발표',condition:'조건 충족 시 자동 체크'};
+  const options={timed:'⏱ 타이머',memo:'📝 메모',auto:'🔗 다른 항목 선택 시 자동 체크',simple:'간이발표',condition:'조건 충족 시 자동 체크',details:'세부항목'};
   host.innerHTML=Object.entries(options).map(([key,label])=>`<label class="bonus-chip"><input type="checkbox" data-feature="${key}" ${rubricOptionVisibility[key]===false?'':'checked'}>${label}</label>`).join('');
   host.querySelectorAll('input').forEach(input=>input.onchange=()=>{
     rubricOptionVisibility[input.dataset.feature]=input.checked;
@@ -2528,6 +2556,7 @@ function normalizedOptions(c,keptIndices){
   return keptIndices.map(i=>({...c.opts[i],desc:c.opts[i].desc.trim(),pt:Number(c.opts[i].pt)||0,...(Array.isArray(c.opts[i].requires)?{requires:c.opts[i].requires.map(j=>positions.get(j)).filter(j=>j!==undefined)}:{})}));
 }
 function invalidAutoChecks(c){
+  if(c.opts.some(o=>Array.isArray(o.details)&&(!o.details.length||o.details.some(d=>!d.label.trim()))))return true;
   const visiting=new Set(),done=new Set();
   function visit(i){
     if(visiting.has(i))return true;
@@ -2540,6 +2569,15 @@ function invalidAutoChecks(c){
   return c.opts.some((_,i)=>visit(i));
 }
 function wireBonusEditor(host,criteria,redraw){
+  const option=el=>criteria[+el.dataset.ci].opts[+el.dataset.oi];
+  const newDetail=()=>({id:crypto.randomUUID(),label:''});
+  host.querySelectorAll('.detail-enable').forEach(el=>el.onchange=()=>{
+    if(el.checked)option(el).details=[newDetail()];else delete option(el).details;
+    redraw();
+  });
+  host.querySelectorAll('.detail-add').forEach(el=>el.onclick=()=>{option(el).details.push(newDetail());redraw();});
+  host.querySelectorAll('.detail-delete').forEach(el=>el.onclick=()=>{option(el).details.splice(+el.dataset.di,1);if(!option(el).details.length)delete option(el).details;redraw();});
+  host.querySelectorAll('.detail-label').forEach(el=>el.oninput=()=>{option(el).details[+el.dataset.di].label=el.value;});
   host.querySelectorAll('.condition-enable').forEach(input=>input.onchange=()=>{
     const o=criteria[+input.dataset.ci].opts[+input.dataset.oi];
     if(input.checked)o.requires=[];else delete o.requires;
@@ -2557,7 +2595,7 @@ function drawCritEdit(){
   el.innerHTML=editRubric.map((c,ci)=>`
     <div class="recrit">
       <div class="rctop"><input class="rc-name" data-ci="${ci}" value="${esc(c.name)}" placeholder="항목 이름"><label class="rc-base">기본점 <input class="rc-baseinp" type="number" min="0" data-ci="${ci}" value="${Number(c.base)||0}"></label><button class="rc-del" data-ci="${ci}" title="항목 삭제">×</button></div>
-      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label>${conditionToggleHTML(o,ci,oi)}<button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}${conditionEditorHTML(c,ci,oi)}`).join('')}
+      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label>${conditionToggleHTML(o,ci,oi)}${detailToggleHTML(o,ci,oi)}<button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}${conditionEditorHTML(c,ci,oi)}${detailEditorHTML(o,ci,oi)}`).join('')}
       <button class="addopt" data-ci="${ci}">+ 체크 항목 추가</button>
 
     </div>`).join('');
@@ -2586,7 +2624,7 @@ document.getElementById('rubricApply').onclick=()=>{
     return {name:c.name.trim(),base:Number(c.base)||0,opts:normalizedOptions(c,keep)};
   });
   if(!nr.length){toast('항목을 1개 이상 넣어주세요');return}
-  if(nr.some(invalidAutoChecks)){toast('자동 체크 조건을 하나 이상 선택하고, 서로 순환하지 않도록 설정해 주세요');return}
+  if(nr.some(invalidAutoChecks)){toast('자동 체크 조건을 하나 이상 선택하고 순환을 피해주세요. 세부항목 이름도 모두 입력해 주세요');return}
   if(nr.length!==state.rubric.length){
     classStudents[currentClass]=state.students;
     Object.values(classStudents).flat().forEach(student=>{

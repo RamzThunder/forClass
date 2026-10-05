@@ -63,3 +63,34 @@ test('비어 있거나 순환하는 조건은 저장을 막고 자동 체크하�
   }
   assert.equal(context.invalidAutoChecks({opts:[{}, {requires:[0]}, {requires:[1]}]}),false);
 });
+
+test('세부 배지는 모두 체크해야 부모 배점과 연계 항목이 반영된다',()=>{
+  context.selectionMode='topic';
+  context.state.rubric=[{base:0,opts:[{pt:5,details:[{id:'a',label:'A'},{id:'b',label:'B'}]},{pt:2,requires:[0]}]}];
+  const student={checks:{0:[0]},detailChecks:{a:true}};
+  assert.equal(context.critScore(student,0),0);
+  student.detailChecks.b=true;
+  assert.equal(context.critScore(student,0),7);
+  const restored=JSON.parse(JSON.stringify(student));
+  assert.equal(context.critScore(restored,0),7);
+  delete student.detailChecks.a;
+  assert.equal(context.critScore(student,0),0);
+  assert.equal(context.critScore({checks:{}},0),0);
+  restored.absent=true;
+  assert.equal(context.critScore(restored,0),0);
+});
+
+test('세부항목과 연계 조건을 함께 설정하면 둘 다 충족해야 한다',()=>{
+  context.state.rubric=[{base:0,opts:[{pt:1},{pt:5,details:[{id:'x',label:'X'}],requires:[0]}]}];
+  const student={checks:{0:[]},detailChecks:{x:true}};
+  assert.equal(context.critScore(student,0),0);
+  student.checks[0]=[0];assert.equal(context.critScore(student,0),6);
+  student.detailChecks={};assert.equal(context.critScore(student,0),1);
+});
+
+test('세부항목 이름은 비워서 저장할 수 없고 삭제 후에도 남은 ID가 유지된다',()=>{
+  assert.equal(context.invalidAutoChecks({opts:[{details:[{id:'x',label:' '}]}]}),true);
+  const c={opts:[{desc:'빈칸'},{desc:'부모',details:[{id:'stable',label:'세부'}]}]};
+  const cleaned=context.normalizedOptions(c,[1]);
+  assert.equal(cleaned[0].details[0].id,'stable');
+});
