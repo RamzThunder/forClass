@@ -1196,7 +1196,7 @@ function renderStage(){
         ${selectionMode==='draw'?`<div class="panel">
           <div class="choice-pick-head"><h3>선택 문제 뽑기</h3>${s.choiceSet!=null?'<button class="choice-clear choice-set-btn" data-choice-set="-1">뽑기 선택 취소</button>':''}</div>
           <div class="stancesel">${choiceSets.map((_,i)=>`<button class="stancebtn choice-set-btn ${s.choiceSet===i?'on agree':''}" data-choice-set="${i}" aria-pressed="${s.choiceSet===i}">${i+1}번</button>`).join('')}</div>
-          ${choiceSetTitle(s)?`<div class="choice-set-title" style="margin-top:8px;font-weight:700;overflow-wrap:anywhere">${esc(choiceSetTitle(s))}</div>`:''}
+          ${choiceSetTitle(s)?`<div class="choice-set-title" style="margin-top:8px;font-weight:700;overflow-wrap:anywhere;white-space:pre-line">${esc(choiceSetTitle(s))}</div>`:''}
         </div>`:`<div class="panel">
           <h3>주제 · 입장 선택</h3>
           <div class="topicsel">${TOPICS.map((t,i)=>`<button class="topicbtn ${s.topic===i?'on':''}" data-topic="${i}" title="${esc(t.full)}">${esc(t.short)}</button>`).join('')}</div>
@@ -1586,8 +1586,11 @@ body.excluding{background:#2b2620}
 .choice-list{width:min(70vw,960px);max-height:25vh;overflow:auto;margin-bottom:1.5vh;text-align:left}
 .choice-row{display:block;padding:.5vh 1vw;font-size:1.65vw;line-height:1.35;white-space:pre-wrap}
 .choice-row b{color:#e8a766;white-space:normal;overflow-wrap:anywhere}
-body.presenter .choice-list{width:85vw}
-body.presenter.has-choices .time{font-size:22vw}
+.choice-title{margin:0 0 12px;font-size:1.3em;overflow-wrap:anywhere;white-space:pre-line}
+/* 발표자 모드: 자기 문항을 가운데에 크게 */
+body.presenter .choice-list{width:90vw;max-height:30vh;overflow:hidden;margin:1vh 0 2vh;text-align:center}
+body.presenter .choice-title{margin:0;font-size:4.8vw;font-weight:800;line-height:1.25;color:#ffd9a8;word-break:keep-all}
+body.presenter.has-choices .time{font-size:18vw}
 .time{font-size:24vw;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.5px}
 body.ok .time{color:#7fe0b8}
 .sub{margin-top:2.5vh;font-size:4vw;font-weight:700;min-height:5vh}
@@ -1656,10 +1659,15 @@ ch.onmessage=e=>{
   if(d.order){ord.textContent='발표 순서 '+d.order+'번';ord.classList.remove('hidden');}
   else {ord.classList.add('hidden');}
   const choiceList=document.getElementById('choiceList');
-  choiceList.replaceChildren();
-  if(d.choiceSetTitle){const title=document.createElement('h2');title.textContent=d.choiceSetTitle;title.style.cssText='margin:0 0 12px;font-size:1.3em;overflow-wrap:anywhere';choiceList.append(title);}
-  choiceList.classList.toggle('hidden',!d.choiceSetTitle);
-  document.body.classList.toggle('has-choices',!!d.choiceSetTitle);
+  const choiceTitle=d.choiceSetTitle||'';
+  choiceList.classList.toggle('hidden',!choiceTitle);
+  document.body.classList.toggle('has-choices',!!choiceTitle);
+  if(choiceList.dataset.title!==choiceTitle){
+    choiceList.dataset.title=choiceTitle;
+    choiceList.replaceChildren();
+    if(choiceTitle){const title=document.createElement('h2');title.className='choice-title';title.textContent=choiceTitle;choiceList.append(title);}
+    fitChoiceTitle();
+  }
   const tEl=document.getElementById('t');
   if(d.countdown>0){tEl.textContent=d.countdown;tEl.style.color='#9b8ec4';tEl.style.fontSize='120px';}
   else{tEl.textContent=fmt(d.eff);tEl.style.color='';tEl.style.fontSize='';}
@@ -1676,6 +1684,16 @@ ch.onmessage=e=>{
     ul.innerHTML = list.length ? list.map(x=>'<div class="uprow'+(x.done?' done':'')+'"><span class="uno">'+x.no+'</span>'+x.name+'</div>').join('') : '<div class="upempty">마지막 순서예요</div>';
   }
 };
+// 발표자 화면: 문항이 길어 칸을 넘치면 넘치지 않을 때까지 글자를 줄인다.
+function fitChoiceTitle(){
+  const box=document.getElementById('choiceList');
+  const t=box&&box.querySelector('.choice-title');
+  if(!t||!document.body.classList.contains('presenter'))return;
+  t.style.fontSize='';
+  let size=parseFloat(getComputedStyle(t).fontSize);
+  while(box.scrollHeight>box.clientHeight+1&&size>18){size*=.92;t.style.fontSize=size+'px';}
+}
+window.addEventListener('resize',fitChoiceTitle);
 function updateMeter(on,level,thr){
   const m=document.getElementById('vmeter');if(!m)return;
   // 볼륨이 0이거나 마이크 입력이 잠시 끊겨도 막대 영역은 고정해 둔다.
@@ -2410,7 +2428,7 @@ function renderChoiceSetEditor(){
   const questions=isTemplate?[editChoiceTemplate]:editChoiceSets[editChoiceSetIndex];
   tabs.innerHTML=`<button class="rostertab ${isTemplate?'on':''}" data-index="-1">공통 루브릭</button>`+editChoiceSets.map((_,i)=>`<button class="rostertab ${i===editChoiceSetIndex?'on':''}" data-index="${i}">뽑기 ${i+1}</button>`).join('');
   tabs.querySelectorAll('button').forEach(button=>button.onclick=()=>{editChoiceSetIndex=+button.dataset.index;renderChoiceSetEditor();});
-  host.innerHTML=(isTemplate?'':`<div class="folderbox" style="margin-bottom:12px"><label class="mlabel" for="choiceSetTitleInput">뽑기 ${editChoiceSetIndex+1} 제목</label><input id="choiceSetTitleInput" style="width:100%" value="${esc(editChoiceSetTitles[editChoiceSetIndex]||'')}" placeholder="발표자·TV·채점 화면에 표시할 제목"><p class="hint">선택문제 ${questions.length}개 · 아래에서 문제를 추가하거나 삭제할 수 있습니다.</p><button type="button" class="mbtn ghost" id="addChoiceQuestion">+ 선택문제 추가</button></div>`)+questions.map((question,qi)=>`<div class="recrit">
+  host.innerHTML=(isTemplate?'':`<div class="folderbox" style="margin-bottom:12px"><label class="mlabel" for="choiceSetTitleInput">뽑기 ${editChoiceSetIndex+1} 제목</label><textarea id="choiceSetTitleInput" rows="3" style="width:100%;min-height:0;font-family:inherit" placeholder="발표자·TV·채점 화면에 표시할 제목 (Enter로 줄바꿈)">${esc(editChoiceSetTitles[editChoiceSetIndex]||'')}</textarea><p class="hint">선택문제 ${questions.length}개 · 아래에서 문제를 추가하거나 삭제할 수 있습니다.</p><button type="button" class="mbtn ghost" id="addChoiceQuestion">+ 선택문제 추가</button></div>`)+questions.map((question,qi)=>`<div class="recrit">
     <div class="rctop">${isTemplate?'<span class="rc-name choice-fixed-name">공통 루브릭</span>':`<input class="rc-name choice-name" data-qi="${qi}" value="${esc(question.name||'')}" placeholder="선택문제 ${qi+1}" aria-label="선택문제 ${qi+1} 제목">`}<label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label>${isTemplate?'':`<button type="button" class="choice-question-delete mbtn ghost" data-qi="${qi}" ${questions.length<=1?'disabled':''}>문제 삭제</button>`}</div>
     ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}${orderButtons('option',oi,question.opts.length,qi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
