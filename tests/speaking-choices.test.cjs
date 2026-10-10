@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'../logical-speaking-grader.html'),'utf8');
 function setup(){
   const sets=[1,4,2,3,5].map(n=>Array.from({length:n},(_,i)=>({name:`선택문제 ${i+1}`,prompt:`문제 ${i+1}`,base:0,opts:[]})));
-  const c=vm.createContext({choiceSets:sets,choiceSetTitles:['첫 제목','둘째 제목'],selectionMode:'draw',state:{rubric:[]},paperStatusText:()=>'',topicFull:()=>'',optMemoText:()=>'',fmt:()=>'',gradeOf:()=>''});
+  const c=vm.createContext({preparationSeconds:30,choiceSets:sets,choiceSetTitles:['첫 제목','둘째 제목'],selectionMode:'draw',state:{rubric:[]},paperStatusText:()=>'',topicFull:()=>'',optMemoText:()=>'',fmt:()=>'',gradeOf:()=>''});
   vm.runInContext(html.slice(html.indexOf('function choiceSetTitle('),html.indexOf('\nlet timer=')),c);
   vm.runInContext(html.slice(html.indexOf('function checksOf('),html.indexOf('function gradeOf(')),c);
   vm.runInContext(html.slice(html.indexOf('function fullTsv('),html.indexOf('\nfunction copy(',html.indexOf('function fullTsv('))),c);

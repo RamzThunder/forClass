@@ -179,6 +179,12 @@
   .optmemo-label{font-size:11px;font-weight:800;color:var(--accent);text-align:right;line-height:1.2}
 
   .side{display:flex;flex-direction:column;gap:14px}
+  @media(min-width:761px){
+    .scard{overflow:clip}
+    .row2 .side{position:sticky;top:14px;align-self:start;max-height:calc(100vh - 28px);max-height:calc(100dvh - 28px);overflow-y:auto;scrollbar-width:thin;scrollbar-gutter:stable;padding-right:4px}
+    .row2 .side > .panel{flex-shrink:0}
+  }
+
   .panel{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fffdf9}
   .panel h3{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:7px}
   .recbadge{font-size:11px;font-weight:800;color:#fff;background:#c0392b;border-radius:10px;padding:2px 8px;animation:expulse 1.2s infinite}
@@ -204,6 +210,17 @@
   #openTV:hover, #openPresenter:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
   #tFinish{border-color:#c0392b;color:#c0392b;font-weight:700}
   #tFinish:hover{background:#c0392b;color:#fff;border-color:#c0392b}
+  .prep-section{margin-bottom:14px;padding-bottom:14px;border-bottom:1px dashed var(--line);text-align:left}
+  .prep-heading,.prep-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .prep-heading h3{margin:0}
+  .prep-duration{font-size:10px;letter-spacing:0;font-weight:600;padding:2px 6px;border:1px solid var(--line);border-radius:5px}
+  .prep-display{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;color:var(--accent)}
+  .prep-footer{margin-top:9px;flex-wrap:wrap}
+  #prepStatus{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}
+  .prep-controls{margin:0 0 0 auto;gap:5px}
+  .prep-controls button{min-width:30px;padding:6px 9px;font-size:12px}
+  #prepToggle{min-width:64px;border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  #prepToggle:hover{background:var(--accent);color:#fff}
   .tset{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:9px;font-size:12px;color:var(--muted)}
   .tset input{width:54px;padding:4px;border:1px solid var(--line);border-radius:6px;text-align:center;font-size:13px}
 
@@ -295,6 +312,26 @@
   .mbtn.danger{border:1px solid var(--amber);color:var(--amber);background:var(--card)}
   .mbtn.danger:hover{background:var(--amber);color:#fff}
   .mbtn.ghost:hover{border-color:var(--ink)}
+
+  .concept-editor{margin:8px 0 16px;padding:10px;border:1px solid var(--line);border-radius:8px}
+  .concept-editor summary{cursor:pointer;font-weight:700;font-size:13px}
+  .concept-editor label{display:block;font-size:13px;font-weight:700;line-height:1.5;margin-top:12px}
+  .modal .concept-editor textarea{display:block;min-height:82px;margin:7px 0 12px;padding:9px 11px;font-family:inherit;font-size:13px;font-weight:400;line-height:1.6;border-radius:8px}
+  .modal .concept-editor .hint{margin:10px 0 12px}
+  .modal .concept-editor .hint:last-child{margin-bottom:0}
+  .concept-review{grid-column:1 / -1;min-width:0}
+  .example-match{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff0ed;color:#8f271d;border:1px solid #eab3a9;border-radius:8px;padding:10px;margin-top:8px;line-height:1.6}
+  .term-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .term-chip{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px}
+  .term-chip.found,.term-preview mark{background:#fff09b;color:#352a00}
+  .term-preview{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;padding:10px;border:1px solid var(--line);border-radius:8px;max-height:260px;overflow:auto}
+  .optwrap > .concept-review{margin:4px 0 6px 8px}
+  .concept-review{font-size:11px;line-height:1.4;color:var(--muted)}
+  .concept-review .hint{font-size:11px;line-height:1.4;font-weight:400;margin:2px 0}
+  .concept-review .term-chips{gap:3px;margin:4px 0}
+  .concept-review .term-chip{font-size:10.5px;line-height:1.3;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere;max-width:100%}
+  .concept-review .term-preview{font-size:11px;line-height:1.45;padding:5px 7px;border-radius:5px;max-height:96px;color:var(--ink)}
+  .concept-review .example-match{font-size:11px;line-height:1.45;padding:5px 7px;margin-top:4px;border-radius:5px;max-height:96px;overflow:auto}
 
   /* 루브릭 편집 */
   .recrit{border:1px solid var(--line);border-radius:10px;padding:13px;margin-bottom:12px;background:#fffdf9}
@@ -394,6 +431,9 @@
   .settingpanel.on{display:block}
   .settingrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
   .settingrow input{flex:1;min-width:260px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+  .settingrow > label{font-family:inherit;font-size:13px;font-weight:700;line-height:1.5;min-width:90px;color:var(--ink)}
+  .setting-check{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:500;line-height:1.5;color:var(--ink);cursor:pointer}
+  .setting-check input[type="checkbox"]{margin:0;width:14px;height:14px;flex:none;accent-color:var(--accent)}
   .settingrow input:focus{outline:none;border-color:var(--accent);background:#fff}
   .folderbox{border:1px solid var(--line);border-radius:10px;background:#fffdf9;padding:14px;line-height:1.6}
 </style>
@@ -436,16 +476,35 @@
       <button class="settingtab on" data-tab="basic">기본</button>
       <button class="settingtab" data-tab="roster">명단</button>
       <button class="settingtab" data-tab="rubric">루브릭</button>
+      <button class="settingtab" data-tab="terms" id="legacyTermsTab" style="display:none">이전 공통 용어</button>
+      <button class="settingtab" data-tab="examples">공통 비교 예문</button>
       <button class="settingtab" data-tab="choices">선택문제</button>
       <button class="settingtab" data-tab="folder">저장 폴더</button>
     </div>
 
+    <section class="settingpanel" id="setting-examples">
+      <label class="mlabel" for="referenceExamplesInput">교과서 · 학습지 예문</label>
+      <p class="hint">한 줄에 예문 하나씩 입력하세요. 모든 학생에게 공통 적용됩니다. 학생 발언에 예문 전체가 그대로 포함되면 표시합니다. 연속 공백·줄바꿈은 공백 하나로 처리하며, 단어·문장부호·영문 대소문자는 구분합니다.</p>
+      <textarea id="referenceExamplesInput" placeholder="교과서나 학습지 예문을 입력하세요"></textarea>
+      <div class="mactions"><button class="mbtn primary" id="referenceExamplesApply">예문 저장</button></div>
+    </section>
+    <section class="settingpanel" id="setting-terms">
+      <label class="mlabel" for="requiredTermsInput">포함되어야 하는 용어</label>
+      <p class="hint">한 줄에 한 용어씩 입력하세요. 모든 학생에게 공통 적용됩니다. 입력한 글자가 그대로 포함되면 표시합니다(예: ‘삼투는’에서도 ‘삼투’ 표시). 띄어쓰기와 영문 대소문자는 구분합니다.</p>
+      <textarea id="requiredTermsInput" placeholder="삼투&#10;선택적 투과성 막&#10;물의 이동"></textarea>
+      <div class="mactions"><button class="mbtn primary" id="requiredTermsApply">필수 용어 저장</button></div>
+    </section>
     <section class="settingpanel on" id="setting-basic">
       <div class="mlabel">수행평가 제목</div>
       <div class="settingrow">
         <input id="titleInput" placeholder="수행평가 제목">
         <button class="mbtn primary" id="titleApply">제목 저장</button>
       </div>
+      <div class="mlabel">준비 · 전체 발표 시간</div>
+      <p class="hint">분:초 형식으로 입력하세요. 전체 제한은 제외 시간을 포함합니다. 자동 종료를 끄면 제한 후에도 타이머·녹음·유효 시간 계산이 계속되며 직접 종료해야 합니다. 준비·발표 진행 중에는 변경할 수 없습니다.</p>
+      <div class="settingrow"><label for="preparationDurationInput">준비 시간</label><input id="preparationDurationInput" placeholder="0:30" aria-label="준비 시간 분:초"></div>
+      <div class="settingrow"><label for="presentationLimitInput">전체 발표 제한</label><input id="presentationLimitInput" placeholder="5:00" aria-label="전체 발표 제한 분:초"><button class="mbtn primary" id="timerSettingsApply">시간 설정 저장</button></div>
+      <label class="setting-check"><input type="checkbox" id="autoFinishPresentationInput"> 전체 제한 시간 도달 시 자동 종료</label>
       <div class="mlabel">학생별 선택 방식</div>
       <div class="stancesel" id="selectionModeSettings" style="max-width:440px">
         <label class="stancebtn" style="text-align:center;cursor:pointer"><input type="radio" name="selectionMode" value="topic"> 주제·입장 선택</label>
@@ -562,6 +621,11 @@ const myTabId=Date.now()+"_"+Math.random().toString(36).slice(2,8);
 const RUBRIC_VERSION=8; // 루브릭 구성 변경 시 올림 → 저장된 구버전 루브릭 자동 갱신
 const DEFAULT_APP_TITLE="말하기 채점표 템플릿";
 let appTitle=DEFAULT_APP_TITLE;
+let requiredTerms=[];
+let referenceExamples=[];
+let preparationSeconds=30;
+let PRESENTATION_LIMIT=300;
+let autoFinishPresentation=true;
 const TIMER_LOCK_KEY="public_logical_speaking_grader_timer_locked"+SHARE_SUFFIX;
 const LAST_BACKUP_KEY="public_logical_speaking_grader_lastbackup"+SHARE_SUFFIX;
 let timerLocked=localStorage.getItem(TIMER_LOCK_KEY)==='1';
@@ -618,6 +682,39 @@ function migrateAutoChecks(c){
   return c;
 }
 function rubricForStudent(s){return state.rubric.concat(choiceRubric(s)).map(migrateAutoChecks)}
+const preparation={remaining:preparationSeconds*1000,deadline:null,handle:null,owner:null};
+function resetPreparation(){
+  clearInterval(preparation.handle);preparation.handle=null;
+  preparation.deadline=null;preparation.remaining=preparationSeconds*1000;
+  refreshPreparation();
+}
+function refreshPreparation(){
+  const display=document.getElementById('prepDisplay');
+  if(display)display.textContent=fmt(Math.ceil(preparation.remaining/1000));
+  const button=document.getElementById('prepToggle');
+  if(button)button.textContent=preparation.deadline!==null?'일시정지':preparation.remaining===0?'다시 시작':'시작';
+  const status=document.getElementById('prepStatus');
+  if(status)status.textContent=preparation.remaining===0?'준비 시간 종료':preparation.deadline!==null?'발표 준비 중':preparation.remaining<preparationSeconds*1000?'일시정지':`발표 전 ${fmt(preparationSeconds)} 준비`;
+}
+function tickPreparation(){
+  preparation.remaining=Math.max(0,preparation.deadline-performance.now());
+  if(preparation.remaining===0){clearInterval(preparation.handle);preparation.handle=null;preparation.deadline=null;toast(`발표 준비 시간 ${fmt(preparationSeconds)}이 끝났습니다`);}
+  refreshPreparation();castState();
+}
+function togglePreparation(){
+  const student=curStudent();
+  if(!student||student.done||student.absent)return;
+  if(preparation.deadline!==null){
+    preparation.remaining=Math.max(0,preparation.deadline-performance.now());
+    clearInterval(preparation.handle);preparation.handle=null;preparation.deadline=null;
+  }else{
+    if(timer.running||timer.countdown!==null){toast('발표 타이머를 멈춘 뒤 준비 시간을 시작하세요');return;}
+    if(preparation.remaining===0)preparation.remaining=preparationSeconds*1000;
+    preparation.deadline=performance.now()+preparation.remaining;
+    preparation.handle=setInterval(tickPreparation,100);
+  }
+  refreshPreparation();castState();
+}
 let timer={elapsed:0,running:false,handle:null,excludes:[],exRunning:false,exStart:null,countdown:null,_countVal:0};
 // 마이크 자동 감지 상태
 let mic={on:false,stream:null,ctx:null,analyser:null,data:null,raf:null,sens:15,quietSince:null,autoEx:false,level:0};
@@ -769,7 +866,7 @@ function save(manual){
   if(previewMode)return; // 미리보기 모드에서는 저장하지 않음
   classStudents[currentClass]=state.students; // 현재 반 학생 반영
   const payload=JSON.stringify({
-    shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
+    shared:{appTitle,requiredTerms,referenceExamples,preparationSeconds,presentationLimit:PRESENTATION_LIMIT,autoFinishPresentation,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},
     classes:classStudents, currentClass, savedAt:Date.now()
   });
   let okMain=false, okMirror=false;
@@ -791,6 +888,12 @@ function showSaveError(){
 function applyLoaded(d){
   if(!d)return false;
   if(d.savedAt)lastSavedAt=d.savedAt;
+  preparationSeconds=validTimerSeconds(d.shared?.preparationSeconds,30);
+  PRESENTATION_LIMIT=validTimerSeconds(d.shared?.presentationLimit,300);
+  autoFinishPresentation=d.shared?.autoFinishPresentation!==false;
+  resetPreparation();
+  requiredTerms=normalizeRequiredTerms(d.shared?.requiredTerms||[]);
+  referenceExamples=normalizeReferenceExamples(d.shared?.referenceExamples||[]);
   rubricOptionVisibility=d.shared?.rubricOptionVisibility||{};
   if(d.classes){
     const sh=d.shared||{};
@@ -823,6 +926,7 @@ function applyLoaded(d){
     classStudents={};classes.forEach(c=>classStudents[c]=[]);
     classStudents[classes[0]]=migrated;currentClass=classes[0];state.students=migrated;
   }
+  referenceExamples=migrateCommonExamples(referenceExamples,[...state.rubric,...choiceSets.flat(),choiceTemplate]);
   // 구버전 호환: 항목 단위 optMemo → 선택지 단위 memo로 변환
   (state.rubric||[]).forEach(c=>{if(c.optMemo){c.opts.forEach(o=>{o.memo=true;});delete c.optMemo;}});
   return true;
@@ -907,7 +1011,7 @@ function renderClassBar(){
 }
 function renderSpeakingClassChoices(){
   const host=document.getElementById('speakingClassChoices');if(!host)return;
-  host.innerHTML=classes.map(c=>`<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" data-class="${esc(c)}" ${excludedSpeakingClasses.has(c)?'':'checked'}> ${esc(clsLabel(c))}반</label>`).join('');
+  host.innerHTML=classes.map(c=>`<label class="setting-check"><input type="checkbox" data-class="${esc(c)}" ${excludedSpeakingClasses.has(c)?'':'checked'}> ${esc(clsLabel(c))}반</label>`).join('');
   host.querySelectorAll('input').forEach(input=>input.onchange=()=>{
     const cls=input.dataset.class;
     if(input.checked)excludedSpeakingClasses.delete(cls);
@@ -918,6 +1022,75 @@ function renderSpeakingClassChoices(){
   });
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600)}
+function conceptTermGroups(terms){
+  return normalizeRequiredTerms(terms).map(line=>normalizeRequiredTerms(line.split('/'))).filter(group=>group.length);
+}
+function hasConceptRules(option){return conceptTermGroups(option.requiredTerms).length>0;}
+function conceptReviewHTML(value,option){
+  const groups=conceptTermGroups(option.requiredTerms);
+  const text=String(value||'');
+  const met=groups.filter(group=>group.some(term=>text.includes(term))).length;
+  const terms=groups.length?`<p class="hint">필수 조건 ${met}/${groups.length} 충족</p><div class="term-chips">${groups.map(group=>`<span class="term-chip ${group.some(term=>text.includes(term))?'found':''}">${group.some(term=>text.includes(term))?'✓ 포함':'미포함'} · ${esc(group.join(' / '))}</span>`).join('')}</div>${termReviewHTML(text,groups.flat(),true)}`:'';
+  const examples=referenceExamples.length?exampleReviewHTML(text,referenceExamples):'';
+  return terms+examples;
+}
+function migrateCommonExamples(common,criteria){
+  const collected=[...common];
+  criteria.forEach(criterion=>(criterion.opts||[]).forEach(option=>{
+    collected.push(...normalizeReferenceExamples(option.referenceExamples));
+    delete option.referenceExamples;
+  }));
+  return normalizeReferenceExamples(collected);
+}
+function normalizeExampleText(value){return String(value||'').replace(/\s+/g,' ').trim();}
+function normalizeReferenceExamples(examples){
+  return Array.isArray(examples)?[...new Set(examples.filter(x=>typeof x==='string').map(normalizeExampleText).filter(Boolean))]:[];
+}
+function matchingExamples(value,examples){
+  const text=normalizeExampleText(value);
+  const isWord=char=>!!char&&/[\p{L}\p{N}_]/u.test(char);
+  return normalizeReferenceExamples(examples).filter(example=>{
+    let start=text.indexOf(example);
+    while(start!==-1){
+      const end=start+example.length;
+      const before=Array.from(text.slice(0,start)).pop();
+      const after=Array.from(text.slice(end))[0];
+      if(!(isWord(before)&&isWord(Array.from(example)[0]))&&!(isWord(after)&&isWord(Array.from(example).pop())))return true;
+      start=text.indexOf(example,start+1);
+    }
+    return false;
+  });
+}
+function exampleReviewHTML(value,examples){
+  const registered=normalizeReferenceExamples(examples);
+  if(!registered.length)return '<p class="hint">설정 → 공통 비교 예문에서 교과서·학습지 예문을 등록하세요.</p>';
+  if(!normalizeExampleText(value))return `<p class="hint">예문 ${registered.length}개 등록됨 · 학생 발언을 입력하면 비교합니다.</p>`;
+  const matches=matchingExamples(value,registered);
+  if(!matches.length)return '<p class="hint">등록 예문 전체와 일치하는 부분 없음 · 입력된 내용만 비교한 결과입니다.</p>';
+  return `<p class="hint">⚠ 등록 예문 ${matches.length}개와 일치 · 실제 발언을 확인해 주세요. 점수는 자동 변경되지 않습니다.</p>${matches.map(example=>`<div class="example-match"><strong>일치한 예문</strong><br>${esc(example)}</div>`).join('')}`;
+}
+function normalizeRequiredTerms(terms){
+  return Array.isArray(terms)?[...new Set(terms.filter(t=>typeof t==='string').map(t=>t.trim()).filter(Boolean))]:[];
+}
+function termReviewHTML(value,terms,previewOnly=false){
+  const text=String(value||'');
+  terms=normalizeRequiredTerms(terms);
+  if(!terms.length)return '<p class="hint">설정 → 필수 용어에서 확인할 용어를 등록하세요.</p>';
+  const ranges=[],found=[];
+  terms.forEach(term=>{
+    let start=text.indexOf(term);
+    if(start!==-1)found.push(term);
+    while(start!==-1){ranges.push([start,start+term.length]);start=text.indexOf(term,start+1);}
+  });
+  ranges.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
+  const merged=[];
+  ranges.forEach(range=>{const last=merged[merged.length-1];if(last&&range[0]<=last[1])last[1]=Math.max(last[1],range[1]);else merged.push([...range]);});
+  let end=0,highlighted='';
+  merged.forEach(([a,b])=>{highlighted+=esc(text.slice(end,a))+'<mark>'+esc(text.slice(a,b))+'</mark>';end=b;});
+  highlighted+=esc(text.slice(end));
+  if(previewOnly)return text?`<div class="term-preview" aria-label="필수 용어 강조된 발언">${highlighted}</div>`:'';
+  return `<p class="hint">용어 포함 ${found.length}/${terms.length} · 점수는 자동 변경되지 않습니다.</p><div class="term-chips">${terms.map(term=>`<span class="term-chip ${found.includes(term)?'found':''}">${found.includes(term)?'✓ 포함':'미포함'} · ${esc(term)}</span>`).join('')}</div>${text?`<div class="term-preview" aria-label="필수 용어 강조된 발언">${highlighted}</div>`:''}`;
+}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function safeFileName(s){return String(s||DEFAULT_APP_TITLE).replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,'_').slice(0,60)||'speaking_grader'}
 function updateAppTitle(){
@@ -1146,6 +1319,8 @@ function applyStudentLock(s){
 
 function renderStage(){
   const s=curStudent();const stage=document.getElementById('stage');
+  const prepOwner=s?JSON.stringify([currentClass,s.id,previewMode]):null;
+  if(preparation.owner!==prepOwner||s?.done||s?.absent){resetPreparation();preparation.owner=prepOwner;}
   if(!s){stage.innerHTML='<div class="stage-empty">왼쪽에서 학생을 고르면 채점이 시작됩니다.<br>명단이 없다면 <b>오른쪽 위 ‘명단 붙여넣기’</b>부터 해주세요.</div>';return}
   const max=rubricMax(s),tot=studentTotal(s),pct=max?Math.round(tot/max*100):0,miss=missingCount(s);
   const paperMissing=hasPaperMissing(s);
@@ -1171,8 +1346,13 @@ function renderStage(){
       <div class="crits">${rubricForStudent(s).map((c,i)=>critHTML(s,c,i)).join('')}</div>
       <div class="side">
         <div class="panel timer">
+          <div class="prep-section">
+            <div class="prep-heading"><h3>발표 준비 <span class="prep-duration">${fmt(preparationSeconds)}</span></h3><span class="prep-display" id="prepDisplay">${fmt(Math.ceil(preparation.remaining/1000))}</span></div>
+            <div class="prep-footer"><p id="prepStatus" role="status"></p><div class="tctrls prep-controls"><button id="prepToggle">시작</button><button id="prepReset" title="설정한 준비 시간으로 초기화" aria-label="설정한 준비 시간으로 초기화">↺</button></div></div>
+          </div>
           <h3>발표 타이머 <span class="recbadge" id="recBadge" style="display:none">🔴 녹음 중</span><label class="rectoggle" title="발표 타이머와 함께 자동 녹음하고, 끝나면 파일로 저장합니다"><input type="checkbox" id="recEnable" ${rec.enabled?'checked':''}>녹음</label></h3>
           <div class="tdisplay" id="tdisp">${fmt(timer.elapsed)}</div>
+          <div class="tjudge" id="overallTime"></div>
           <div class="tjudge" id="tjudge">${timeJudgeText()}</div>
           ${(s.recordedTime)?`<div class="trecorded">📝 기록된 발표 시간: <b>${fmt(s.recordedTime.eff)}</b>${s.recordedTime.excluded?` <span class="trexcl">(전체 ${fmt(s.recordedTime.total)} − 제외 ${fmt(s.recordedTime.excluded)})</span>`:''}</div>`:''}
           <div class="tctrls"><button id="tStart" title="시작 / 멈춤">▶</button><button id="tReset" title="리셋 (시간 0으로)">↺</button><button id="tFinish" title="발표 종료 — 녹음 저장 + 판정 확정">⏹</button><button id="openTV" title="교실 TV 화면 — 타이머 + 다음 발표 순서 (TV로 옮겨 F11)">📺</button><button id="openPresenter" title="발표자 화면 — 타이머 크게 (발표자 모니터로 옮겨 F11)">🎤</button></div>
@@ -1205,6 +1385,16 @@ function renderStage(){
             <button class="stancebtn oppose ${s.stance==='반대'?'on':''}" data-stance="반대">반대</button>
           </div>
         </div>`}
+        ${(s.spokenEvidence||requiredTerms.length)?`        <div class="panel">
+          <h3>이전 공통 발언 기록</h3>
+          <p class="hint">학생이 말한 내용을 직접 입력하세요. 용어 포함 여부를 확인한 뒤 개념 인정 여부는 교사가 판단합니다.</p>
+          <label for="spokenEvidence" class="mlabel">학생 발언</label>
+          <textarea class="memo" id="spokenEvidence" placeholder="학생이 말한 내용을 입력…">${esc(s.spokenEvidence||'')}</textarea>
+          <div id="termReview">${termReviewHTML(s.spokenEvidence||'',requiredTerms)}</div>
+          <h3 style="margin-top:16px">등록 예문과 비교</h3>
+          <div id="exampleReview">${exampleReviewHTML(s.spokenEvidence||'',referenceExamples)}</div>
+        </div>
+`:''}
         <div class="panel">
           <h3>메모 · 피드백</h3>
           <div class="fbtns">${state.phrases.map(p=>`<button class="fbtn" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
@@ -1267,7 +1457,8 @@ function renderStage(){
     save();renderRoster();renderStage();
   });
   stage.querySelectorAll('.cmemo').forEach(inp=>{autoGrowTextarea(inp);inp.oninput=()=>{autoGrowTextarea(inp);if(!s.cmemos)s.cmemos={};s.cmemos[+inp.dataset.ci]=inp.value;save();renderRoster()}});
-  stage.querySelectorAll('.optmemo').forEach(inp=>{autoGrowTextarea(inp);inp.oninput=()=>{autoGrowTextarea(inp);setOptMemo(s,+inp.dataset.ci,+inp.dataset.oi,+inp.dataset.mi,inp.value);save();renderRoster()}});
+  stage.querySelectorAll('.optmemo').forEach(inp=>{autoGrowTextarea(inp);inp.oninput=()=>{autoGrowTextarea(inp);setOptMemo(s,+inp.dataset.ci,+inp.dataset.oi,+inp.dataset.mi,inp.value);const review=inp.closest('.optwrap').querySelector('.concept-review');if(review){const option=rubricForStudent(s)[+inp.dataset.ci].opts[+inp.dataset.oi];const memos=s.optmemos[+inp.dataset.ci]||{};review.innerHTML=conceptReviewHTML(memoLabelsFor(option).map((_,mi)=>optMemoValue(memos,+inp.dataset.oi,mi)).join('\n'),option);}save();renderRoster()}});
+  const legacyEvidence=document.getElementById('spokenEvidence');if(legacyEvidence)legacyEvidence.oninput=e=>{s.spokenEvidence=e.target.value;document.getElementById('termReview').innerHTML=termReviewHTML(s.spokenEvidence,requiredTerms);document.getElementById('exampleReview').innerHTML=exampleReviewHTML(s.spokenEvidence,referenceExamples);save();};
   document.getElementById('memo').oninput=e=>{s.memo=e.target.value;save();renderRoster()};
   stage.querySelectorAll('.topicbtn').forEach(b=>b.onclick=()=>{const i=+b.dataset.topic;s.topic=(s.topic===i)?null:i;save();renderRoster();renderStage();});
   stage.querySelectorAll('.choice-set-btn').forEach(b=>b.onclick=()=>{
@@ -1320,6 +1511,9 @@ function renderStage(){
   document.getElementById('prevBtn').onclick=()=>{if(previewMode)return;move(-1)};
   document.getElementById('nextBtn').onclick=()=>{if(previewMode)return;move(1)};
   const pvx=document.getElementById('pvExitBtn');if(pvx)pvx.onclick=exitPreview;
+  document.getElementById('prepToggle').onclick=togglePreparation;
+  document.getElementById('prepReset').onclick=()=>{resetPreparation();castState();};
+  refreshPreparation();
   document.getElementById('tStart').onclick=toggleTimer;
   document.getElementById('tReset').onclick=()=>{if(!blockIfTimerLocked())resetTimer();};
   const finBtn=document.getElementById('tFinish');if(finBtn)finBtn.onclick=finishPresentation;
@@ -1353,9 +1547,10 @@ function critHTML(s,c,ci){
     <div class="opts">${c.opts.map((o,oi)=>{
       const labels=memoLabelsFor(o);
       const optMemoBox = o.memo ? labels.map((label,mi)=>`<div class="optmemo-row">${labels.length>1?`<div class="optmemo-label">${esc(label)}</div>`:'<div></div>'}<textarea class="optmemo" data-ci="${ci}" data-oi="${oi}" data-mi="${mi}" rows="1" placeholder="${esc(label)} 메모…">${esc(optMemoValue(om,oi,mi))}</textarea></div>`).join('') : '';
+      const conceptBox=o.memo&&(hasConceptRules(o)||referenceExamples.length)?`<div class="concept-review" data-ci="${ci}" data-oi="${oi}">${conceptReviewHTML(labels.map((_,mi)=>optMemoValue(om,oi,mi)).join('\n'),o)}</div>`:'';
       const pt=Number(o.pt)||0;
       const ptText=pt>0?`+${pt}`:`${pt}`;
-      return `<div class="optwrap">${detailItems(o).length?'<div class="has-details">':''}${o.timed?'<div class="timed-optline">':''}<button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)||detailItems(o).length?'disabled':''}><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${Array.isArray(o.requires)?' <span class="autohint2">조건 충족 시 자동 체크</span>':o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${o.timed?`<div class="timed-value"><span>유효 시간</span><div class="timed-parts">${['minutes','seconds'].map((part,index)=>`<label><input type="number" min="0" ${index?'max="59"':''} step="1" class="timed-input" data-ci="${ci}" data-oi="${oi}" data-part="${part}" value="${timedValue(s,ci,oi).split(':')[index]||''}" placeholder="0" aria-label="${esc(o.desc)} ${index?'초':'분'}" ${s.absent?'disabled':''}> ${index?'초':'분'}</label>`).join('')}</div></div></div>`:''}${detailBadgesHTML(s,o,ci,oi)}${detailItems(o).length?'</div>':''}${optMemoBox}</div>`;
+      return `<div class="optwrap">${conceptBox}${detailItems(o).length?'<div class="has-details">':''}${o.timed?'<div class="timed-optline">':''}<button class="opt ${chk.includes(oi)?'sel':''} ${o.timed?'timed':''} ${pt<0?'deduct':''}" data-ci="${ci}" data-oi="${oi}" ${Array.isArray(o.requires)||detailItems(o).length?'disabled':''}><span class="check"></span><span class="desc">${esc(o.desc)}${o.timed?' <span class="timedhint">⏱ 타이머 연동</span>':''}${Array.isArray(o.requires)?' <span class="autohint2">조건 충족 시 자동 체크</span>':o.auto?' <span class="autohint2">🔗 자동</span>':''}</span><span class="pt">${ptText}</span></button>${o.timed?`<div class="timed-value"><span>유효 시간</span><div class="timed-parts">${['minutes','seconds'].map((part,index)=>`<label><input type="number" min="0" ${index?'max="59"':''} step="1" class="timed-input" data-ci="${ci}" data-oi="${oi}" data-part="${part}" value="${timedValue(s,ci,oi).split(':')[index]||''}" placeholder="0" aria-label="${esc(o.desc)} ${index?'초':'분'}" ${s.absent?'disabled':''}> ${index?'초':'분'}</label>`).join('')}</div></div></div>`:''}${detailBadgesHTML(s,o,ci,oi)}${detailItems(o).length?'</div>':''}${optMemoBox}</div>`;
     }).join('')}</div>
     <textarea class="cmemo" data-ci="${ci}" rows="2" placeholder="이 항목 채점 근거 메모… (줄바꿈 가능)">${esc((s.cmemos&&s.cmemos[ci])||'')}</textarea>
   </div>`;
@@ -1373,6 +1568,7 @@ function fmt(sec){sec=Math.max(0,Math.round(sec));const m=Math.floor(sec/60),x=s
 function parseMS(str){const p=String(str).split(':').map(n=>parseInt(n)||0);return p.length===2?p[0]*60+p[1]:(parseInt(str)||0)}
 // 제외 임계: 10초를 초과하는 구간만 실제 제외 (10초 이하는 무시)
 const EXCLUDE_THRESHOLD=10;
+
 // 확정된 제외 구간 합계 (10초 초과 구간만)
 function excludeTotal(){return timer.excludes.reduce((a,e)=>{const dur=e[1]-e[0];return a+(dur>EXCLUDE_THRESHOLD?dur:0)},0)}
 // 현재 진행 중인 제외까지 포함한 합계
@@ -1453,8 +1649,8 @@ function resetTimer(){
   refreshJudge();renderExcludes();updateExBtn();renderRoster();castState();
 }
 // 발표 종료 — 타이머 멈추고 녹음 저장, 판정 확정 (경과 시간은 화면에 유지)
-function finishPresentation(){
-  if(blockIfTimerLocked())return;
+function finishPresentation(automatic=false){
+  if(automatic!==true&&blockIfTimerLocked())return;
   if(!timer.running && timer.countdown===null && timer.elapsed===0 && !(rec.recorder&&rec.recorder.state==='recording')){
     toast('아직 시작하지 않았어요');return;
   }
@@ -1477,7 +1673,7 @@ function finishPresentation(){
   }
   // 시간 준수 판정 확정
   applyTimeJudge();save();renderRoster();renderStage();castState();
-  toast('발표 종료 — 시간·녹음을 기록했어요');
+  toast(automatic===true?`전체 ${fmt(PRESENTATION_LIMIT)} 도달 — 채점 시간을 확정하고 녹음을 종료했어요`:'발표 종료 — 시간·녹음을 기록했어요');
 }
 function toggleExclude(){
   if(blockIfTimerLocked())return;
@@ -1511,6 +1707,8 @@ function renderExcludes(){
 }
 function refreshElapsedDisplay(){
   const d=document.getElementById('tdisp');if(!d)return;
+  const overall=document.getElementById('overallTime');
+  if(overall){overall.textContent=`전체 ${fmt(timer.elapsed)} / ${fmt(PRESENTATION_LIMIT)} · 유효 ${fmt(effectiveTime())}${timer.elapsed>=PRESENTATION_LIMIT?(autoFinishPresentation?' · 채점 종료':' · 전체 제한 시간 초과 · 수동 종료 필요'):timer.elapsed>=Math.max(0,PRESENTATION_LIMIT-30)?` · ${Math.floor(PRESENTATION_LIMIT/60)?Math.floor(PRESENTATION_LIMIT/60)+'분':''}${PRESENTATION_LIMIT%60?(Math.floor(PRESENTATION_LIMIT/60)?' ':'')+PRESENTATION_LIMIT%60+'초':''} 이후 발표 내용은 채점 미포함`:''}`;overall.style.color=timer.elapsed>=Math.max(0,PRESENTATION_LIMIT-30)?'var(--amber)':'var(--muted)';}
   const ex=document.getElementById('exSummary');
   const total=excludeTotalLive();
   if(ex)ex.textContent=total?`전체 ${fmt(timer.elapsed)} − 제외 ${fmt(total)} = 유효 ${fmt(effectiveTime())}`:'';
@@ -1543,8 +1741,9 @@ function castState(){
   }
   castCh.postMessage({
     type:'tick',
-    elapsed:timer.elapsed, eff,
+    elapsed:timer.elapsed, eff, totalLimit:PRESENTATION_LIMIT, autoFinishPresentation,
     running:timer.running,
+    preparing:preparation.deadline!==null, prepSeconds:Math.ceil(preparation.remaining/1000),
     countdown: timer.countdown!==null ? timer._countVal : 0,
     excluding: timer.exRunning || mic.autoEx,
     okMin:state.okMin, okMax:state.okMax,
@@ -1597,7 +1796,10 @@ body.ok .time{color:#7fe0b8}
 .sub.ok{color:#7fe0b8}
 .sub.under{color:#d9cdb6}
 .sub.over{color:#e8a766}
-.range{margin-top:1.5vh;font-size:2.4vw;color:#7d7466;font-weight:600}
+.range{margin-top:1.5vh;font-size:2.4vw;line-height:1.4;font-weight:600}
+#overall{color:#f6f2e9;font-weight:800;font-variant-numeric:tabular-nums}
+#rng{color:#a8cfff;font-weight:600}
+#overall.ending{color:#ffd080}
 .order{font-size:2.4vw;font-weight:800;color:#14110e;background:#e8a766;border-radius:999px;padding:.6vh 2.2vw;margin-bottom:2vh;letter-spacing:.5px}
 body.ok .order{background:#7fe0b8}
 .vmeter{margin-top:3vh;width:46vw;max-width:620px}
@@ -1636,6 +1838,7 @@ body.tv .stage{padding-right:22vw}
   <div class="choice-list hidden" id="choiceList"></div>
   <div class="time" id="t">0:00</div>
   <div class="sub" id="sub"></div>
+  <div class="range" id="overall" style="font-weight:700"></div>
   <div class="range" id="rng"></div>
   <div class="vmeter" id="vmeter"><div class="vbar"><div class="vfill" id="vfill"></div></div><div class="vlabel">🎤 목소리 크기</div></div>
 </div>
@@ -1669,12 +1872,16 @@ ch.onmessage=e=>{
     fitChoiceTitle();
   }
   const tEl=document.getElementById('t');
-  if(d.countdown>0){tEl.textContent=d.countdown;tEl.style.color='#9b8ec4';tEl.style.fontSize='120px';}
-  else{tEl.textContent=fmt(d.eff);tEl.style.color='';tEl.style.fontSize='';}
+  if(d.preparing){tEl.textContent=fmt(d.prepSeconds);tEl.style.color='#9b8ec4';tEl.style.fontSize='';}
+  else if(d.countdown>0){tEl.textContent=d.countdown;tEl.style.color='#9b8ec4';tEl.style.fontSize='120px';}
+  else{tEl.textContent=fmt(d.elapsed);tEl.style.color='';tEl.style.fontSize='';}
 
+  const overall=document.getElementById('overall');
+  overall.textContent='전체 '+fmt(d.elapsed)+' / '+fmt(d.totalLimit||300)+' · 유효 '+fmt(d.eff)+(d.elapsed>=(d.totalLimit||300)?(d.autoFinishPresentation!==false?' · 채점 종료':' · 전체 제한 시간 초과'):d.elapsed>=(d.totalLimit||300)-30?' · '+(Math.floor((d.totalLimit||300)/60)?Math.floor((d.totalLimit||300)/60)+'분':'')+((d.totalLimit||300)%60?(Math.floor((d.totalLimit||300)/60)?' ':'')+(d.totalLimit||300)%60+'초':'')+' 이후 발표 내용은 채점 미포함':'');
+  overall.classList.toggle('ending',d.elapsed>=(d.totalLimit||300)-30);
   const sub=document.getElementById('sub');
   sub.className='sub '+d.zone;
-  sub.textContent = d.zone==='ok'?'✓ 적정 시간':(d.zone==='under'?'':(d.zone==='over'?'시간 초과':''));
+  sub.textContent = d.preparing?'발표 준비 중':d.zone==='ok'?'✓ 적정 시간':(d.zone==='under'?'':(d.zone==='over'?'시간 초과':''));
   document.getElementById('rng').textContent='권장 '+d.okMinT+(d.okMax==null?' 이상':' ~ '+d.okMaxT)+'  ·  '+(d.remainText||'');
   updateMeter(d.micOn,d.micLevel,d.micThr);
   // 다음 발표 순서
@@ -2316,6 +2523,7 @@ function updateRecBadge(){
 }
 function toggleTimer(){
   if(blockIfTimerLocked())return;
+  resetPreparation();
   const b=document.getElementById('tStart');
   // 카운트다운 중 버튼 누르면 취소
   if(timer.countdown!==null){
@@ -2337,6 +2545,7 @@ function toggleTimer(){
     const s=curStudent();
     if(stashRecordedTimeInMemo(s)){save();toast('기존 발표 시간을 메모에 남겼어요');}
   }
+  if(autoFinishPresentation&&timer.elapsed>=PRESENTATION_LIMIT){toast(`전체 ${fmt(PRESENTATION_LIMIT)}이 종료됐어요. 새로 시작하려면 타이머를 초기화하세요`);return;}
   // 녹음은 버튼 누르는 즉시 시작
   startRecording();
   b.textContent='⏸';
@@ -2353,8 +2562,13 @@ function toggleTimer(){
       if(d2){d2.textContent=fmt(0);d2.classList.remove('countdown');}
       // 카운트다운 끝 → 실제 타이머 시작, elapsed=0 상태 즉시 송출
       timer.running=true;renderRoster();castState();
+      const startedAt=performance.now(),elapsedAtStart=timer.elapsed;
+      let lastElapsed=timer.elapsed;
       timer.handle=setInterval(()=>{
-        timer.elapsed++;
+        timer.elapsed=elapsedAtStart+Math.floor((performance.now()-startedAt)/1000);
+        if(autoFinishPresentation)timer.elapsed=Math.min(PRESENTATION_LIMIT,timer.elapsed);
+        if(autoFinishPresentation&&timer.elapsed>=PRESENTATION_LIMIT){finishPresentation(true);return;}
+        if(timer.elapsed===lastElapsed)return;lastElapsed=timer.elapsed;
         const d3=document.getElementById('tdisp');if(!d3){clearInterval(timer.handle);return;}
         const eff=effectiveTime();
         d3.textContent=fmt(timer.elapsed);
@@ -2364,7 +2578,7 @@ function toggleTimer(){
         if(timer.exRunning)renderExcludes();
         if(eff===state.okMin)toast('✓ 준수 구간 진입(유효)');
         if(state.okMax!=null&&eff===state.okMax+1)toast('⏱ 권장 시간 초과(유효)');
-      },1000);
+      },100);
     } else {
       if(d2)d2.textContent=timer._countVal;
       castState();
@@ -2390,6 +2604,12 @@ function showSettingTab(tab){
   document.querySelectorAll('.settingpanel').forEach(p=>p.classList.toggle('on',p.id===`setting-${tab}`));
 }
 function openSettings(tab='basic'){
+  document.getElementById('preparationDurationInput').value=fmt(preparationSeconds);
+  document.getElementById('presentationLimitInput').value=fmt(PRESENTATION_LIMIT);
+  document.getElementById('autoFinishPresentationInput').checked=autoFinishPresentation;
+  document.getElementById('legacyTermsTab').style.display=requiredTerms.length?'':'none';
+  document.getElementById('requiredTermsInput').value=requiredTerms.join('\n');
+  document.getElementById('referenceExamplesInput').value=referenceExamples.join('\n');
   const titleInput=document.getElementById('titleInput');if(titleInput)titleInput.value=appTitle;
   updateSelectionModeSettings();
   initRosterSettings();
@@ -2430,7 +2650,7 @@ function renderChoiceSetEditor(){
   tabs.querySelectorAll('button').forEach(button=>button.onclick=()=>{editChoiceSetIndex=+button.dataset.index;renderChoiceSetEditor();});
   host.innerHTML=(isTemplate?'':`<div class="folderbox" style="margin-bottom:12px"><label class="mlabel" for="choiceSetTitleInput">뽑기 ${editChoiceSetIndex+1} 제목</label><textarea id="choiceSetTitleInput" rows="3" style="width:100%;min-height:0;font-family:inherit" placeholder="발표자·TV·채점 화면에 표시할 제목 (Enter로 줄바꿈)">${esc(editChoiceSetTitles[editChoiceSetIndex]||'')}</textarea><p class="hint">선택문제 ${questions.length}개 · 아래에서 문제를 추가하거나 삭제할 수 있습니다.</p><button type="button" class="mbtn ghost" id="addChoiceQuestion">+ 선택문제 추가</button></div>`)+questions.map((question,qi)=>`<div class="recrit">
     <div class="rctop">${isTemplate?'<span class="rc-name choice-fixed-name">공통 루브릭</span>':`<input class="rc-name choice-name" data-qi="${qi}" value="${esc(question.name||'')}" placeholder="선택문제 ${qi+1}" aria-label="선택문제 ${qi+1} 제목">`}<label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label>${isTemplate?'':`<button type="button" class="choice-question-delete mbtn ghost" data-qi="${qi}" ${questions.length<=1?'disabled':''}>문제 삭제</button>`}</div>
-    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}${orderButtons('option',oi,question.opts.length,qi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
+    ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}${orderButtons('option',oi,question.opts.length,qi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conceptEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
 
   </div>`).join('')+(isTemplate?'<div class="mactions"><button class="mbtn ghost" id="applyCommonChoice" title="모든 선택문제의 기본점과 채점 항목을 공통 루브릭으로 바꿉니다.">모든 선택문제에 적용</button></div>':'');
@@ -2494,7 +2714,27 @@ function saveChoiceSetSettings(){
 }
 document.getElementById('choiceSetsApply').onclick=saveChoiceSetSettings;
 document.getElementById('btnSettings').onclick=()=>openSettings('basic');
+document.getElementById('referenceExamplesApply').onclick=()=>{
+  referenceExamples=normalizeReferenceExamples(document.getElementById('referenceExamplesInput').value.split('\n'));
+  document.getElementById('referenceExamplesInput').value=referenceExamples.join('\n');
+  save(true);renderStage();toast('비교할 예문 저장됨');
+};
+document.getElementById('requiredTermsApply').onclick=()=>{
+  requiredTerms=normalizeRequiredTerms(document.getElementById('requiredTermsInput').value.split('\n'));
+  document.getElementById('requiredTermsInput').value=requiredTerms.join('\n');
+  save(true);renderStage();toast('필수 용어 저장됨');
+};
 document.querySelectorAll('.settingtab').forEach(b=>b.onclick=()=>showSettingTab(b.dataset.tab));
+function validTimerSeconds(value,fallback){return Number.isSafeInteger(value)&&value>0?value:fallback;}
+document.getElementById('timerSettingsApply').onclick=()=>{
+  if(timer.running||timer.countdown!==null||preparation.deadline!==null||(rec.recorder&&rec.recorder.state!=='inactive')){toast('진행 중인 준비·발표를 종료한 뒤 시간을 변경해 주세요');return;}
+  const prep=parseTimedValue(document.getElementById('preparationDurationInput').value);
+  const limit=parseTimedValue(document.getElementById('presentationLimitInput').value);
+  if(!Number.isSafeInteger(prep)||prep<=0||!Number.isSafeInteger(limit)||limit<=0){toast('시간은 0보다 큰 분:초(예: 0:30, 5:00)로 입력해 주세요');return;}
+  preparationSeconds=prep;PRESENTATION_LIMIT=limit;
+  autoFinishPresentation=document.getElementById('autoFinishPresentationInput').checked;
+  resetPreparation();save(true);renderStage();castState();toast('준비·전체 발표 시간 설정 저장됨');
+};
 document.getElementById('titleApply').onclick=()=>{
   const next=document.getElementById('titleInput').value.trim();
   if(!next){toast('제목을 입력해 주세요');return;}
@@ -2592,6 +2832,14 @@ function renderCritEdit(){
   renderRubricOptionVisibility();
   editRubric=JSON.parse(JSON.stringify(state.rubric)).map(migrateAutoChecks);
   drawCritEdit();
+}
+function conceptEditorHTML(o,ci,oi){
+  if(!o.memo)return "";
+  return `<details class="concept-editor" data-rubric-feature="memo" ${hasConceptRules(o)?'open':''}><summary>개념 확인 · 필수 용어</summary>
+    <p class="hint">각 줄의 용어를 모두 확인합니다. 같은 뜻의 표현은 /로 구분하면 하나만 포함해도 충족합니다. 예: 선택적 투과성 막 / 반투과성 막. 이 항목의 발언 메모에서 확인합니다.</p>
+    <label>필수 용어 (한 줄에 한 조건)<textarea class="concept-setting" data-ci="${ci}" data-oi="${oi}" data-field="requiredTerms" rows="3" placeholder="물&#10;선택적 투과성 막 / 반투과성 막">${esc((o.requiredTerms||[]).join('\n'))}</textarea></label>
+    <p class="hint">용어는 부분 포함으로 확인합니다. 비교 예문은 설정 → 공통 비교 예문에서 등록하며 모든 문제에 적용됩니다. 최종 인정과 점수는 교사가 결정합니다.</p>
+  </details>`;
 }
 function memoEditorHTML(o,ci,oi){
   if(!o.memo)return '';
@@ -2706,6 +2954,10 @@ function invalidAutoChecks(c){
   return c.opts.some((_,i)=>visit(i));
 }
 function wireBonusEditor(host,criteria,redraw){
+  host.querySelectorAll('.concept-setting').forEach(input=>input.oninput=()=>{
+    const option=criteria[+input.dataset.ci].opts[+input.dataset.oi];
+    option[input.dataset.field]=input.value.split('\n');
+  });
   const option=el=>criteria[+el.dataset.ci].opts[+el.dataset.oi];
   const newDetail=()=>({id:crypto.randomUUID(),label:''});
   host.querySelectorAll('.detail-enable').forEach(el=>el.onchange=()=>{
@@ -2732,7 +2984,7 @@ function drawCritEdit(){
   el.innerHTML=editRubric.map((c,ci)=>`
     <div class="recrit">
       <div class="rctop"><input class="rc-name" data-ci="${ci}" value="${esc(c.name)}" placeholder="항목 이름"><label class="rc-base">기본점 <input class="rc-baseinp" type="number" min="0" data-ci="${ci}" value="${Number(c.base)||0}"></label>${orderButtons('criterion',ci,editRubric.length,ci)}<button class="rc-del" data-ci="${ci}" title="항목 삭제">×</button></div>
-      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label>${conditionToggleHTML(o,ci,oi)}${detailToggleHTML(o,ci,oi)}${orderButtons('option',oi,c.opts.length,ci)}<button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}${conditionEditorHTML(c,ci,oi)}${detailEditorHTML(o,ci,oi)}`).join('')}
+      ${c.opts.map((o,oi)=>`<div class="reopt"><input class="ro-desc" data-ci="${ci}" data-oi="${oi}" value="${esc(o.desc)}" placeholder="체크 항목 설명"><input class="ro-pt" type="number" data-ci="${ci}" data-oi="${oi}" value="${o.pt}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="ro-timedchk" data-ci="${ci}" data-oi="${oi}" ${o.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="ro-memochk" data-ci="${ci}" data-oi="${oi}" ${o.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 항목의 다른 선택지를 클릭하면 이 항목이 자동 체크됨 (예: 발표함)"><input type="checkbox" class="ro-autochk" data-ci="${ci}" data-oi="${oi}" ${o.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크될 항목"><input type="checkbox" class="ro-simplechk" data-ci="${ci}" data-oi="${oi}" ${o.simple?'checked':''}>간이</label>${conditionToggleHTML(o,ci,oi)}${detailToggleHTML(o,ci,oi)}${orderButtons('option',oi,c.opts.length,ci)}<button class="ro-del" data-ci="${ci}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(o,ci,oi)}${conceptEditorHTML(o,ci,oi)}${conditionEditorHTML(c,ci,oi)}${detailEditorHTML(o,ci,oi)}`).join('')}
       <button class="addopt" data-ci="${ci}">+ 체크 항목 추가</button>
 
     </div>`).join('');
@@ -2839,7 +3091,7 @@ document.getElementById('dlCsv').onclick=async()=>{const csv=fullTsv().split('\n
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
 function currentShareData(includeStudents){
   classStudents[currentClass]=state.students;
-  return JSON.parse(JSON.stringify({shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:includeStudents?classStudents:Object.fromEntries(classes.map(c=>[c,[]])),currentClass}));
+  return JSON.parse(JSON.stringify({shared:{appTitle,requiredTerms,referenceExamples,preparationSeconds,presentationLimit:PRESENTATION_LIMIT,autoFinishPresentation,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:includeStudents?classStudents:Object.fromEntries(classes.map(c=>[c,[]])),currentClass}));
 }
 function sharePayloadJson(data,id){return JSON.stringify({id,data}).replace(/</g,'\\u003c')}
 function buildSharedHtml(source,data,id,rosterSource){
@@ -2867,7 +3119,7 @@ async function downloadSharedHtml(){
 }
 async function downloadBackup(){
   classStudents[currentClass]=state.students;
-  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
+  const saved=await saveOutputFile(new Blob([JSON.stringify({shared:{appTitle,requiredTerms,referenceExamples,preparationSeconds,presentationLimit:PRESENTATION_LIMIT,autoFinishPresentation,rubricOptionVisibility,rubric:state.rubric,choiceSets,choiceSetTitles,choiceTemplate,selectionMode,phrases:state.phrases,okMin:state.okMin,okMax:state.okMax,rubricVersion:RUBRIC_VERSION,classList:classes,classNamesRaw:true,excludedSpeakingClasses:[...excludedSpeakingClasses]},classes:classStudents,currentClass},null,2)],{type:'application/json'}),backupFilename());
   try{localStorage.setItem(LAST_BACKUP_KEY,String(Date.now()));}catch(e){}
   return saved;
 }

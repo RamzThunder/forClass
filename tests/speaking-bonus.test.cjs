@@ -8,7 +8,7 @@ const html = fs.readFileSync(path.join(__dirname, '../logical-speaking-grader.ht
 const rubricSource = html.slice(html.indexOf('function choiceRubric('), html.indexOf('\nlet timer='));
 const scoreSource = html.slice(html.indexOf('function checksOf('), html.indexOf('\nfunction gradeOf('));
 const editorSource = html.slice(html.indexOf('function removeRubricOption('), html.indexOf('\nfunction wireBonusEditor('));
-const context = vm.createContext({selectionMode:'topic',choiceSets:[],state:{rubric:[]}});
+const context = vm.createContext({preparationSeconds:30,selectionMode:'topic',choiceSets:[],state:{rubric:[]}});
 vm.runInContext([rubricSource, scoreSource, editorSource].join('\n'), context);
 
 test('모두 체크 보너스는 지정된 항목이 전부 체크된 경우에만 5점을 더한다', () => {
