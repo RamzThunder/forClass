@@ -1777,65 +1777,96 @@ function openStudentScreen(mode){
   setTimeout(castState,300); // 새 창에 현재 상태 전송
   startMeter(); // 목소리 크기 막대용 음량 측정 시작(자동 감지와 무관)
 }
-const STUDENT_HTML=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>발표 타이머</title>
+const STUDENT_HTML=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>발표 타이머</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%}
-body{background:#14110e;color:#f6f2e9;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;overflow:hidden;transition:background .4s}
+html{height:100%}
+body{min-height:100%;min-height:100dvh;background:#14110e;color:#f6f2e9;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;transition:background .4s;--gap:clamp(8px,1.6vmin,24px);--small:clamp(13px,2.2vmin,32px)}
 body.ok{background:#16352a}
 body.over{background:#3a2415}
 body.excluding{background:#2b2620}
-.stage{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.who{font-size:5.5vw;font-weight:800;color:#f6f2e9;margin-bottom:2vh;letter-spacing:.5px}
-.who .wcls{font-size:2.6vw;color:#a89e8d;font-weight:700;margin-right:1.2vw;vertical-align:middle}
+.stage{min-width:0;min-height:100vh;min-height:100dvh;padding:clamp(16px,3vmin,48px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--gap);text-align:center}
+.who{max-width:100%;font-size:clamp(24px,5vmin,76px);font-weight:800;line-height:1.25;overflow-wrap:anywhere;letter-spacing:.5px}
+.who .wcls{font-size:.55em;color:#a89e8d;font-weight:700;margin-right:.6em;vertical-align:middle}
 .who.empty{color:#5d564b}
-.choice-list{width:min(70vw,960px);max-height:25vh;overflow:auto;margin-bottom:1.5vh;text-align:left}
-.choice-row{display:block;padding:.5vh 1vw;font-size:1.65vw;line-height:1.35;white-space:pre-wrap}
-.choice-row b{color:#e8a766;white-space:normal;overflow-wrap:anywhere}
-.choice-title{margin:0 0 12px;font-size:1.3em;overflow-wrap:anywhere;white-space:pre-line}
-/* 발표자 모드: 자기 문항을 가운데에 크게 */
-body.presenter .choice-list{width:90vw;max-height:30vh;overflow:hidden;margin:1vh 0 2vh;text-align:center}
-body.presenter .choice-title{margin:0;font-size:4.8vw;font-weight:800;line-height:1.25;color:#ffd9a8;word-break:keep-all}
-body.presenter.has-choices .time{font-size:18vw}
-.time{font-size:24vw;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.timer-content{min-width:0;width:100%;display:flex;flex-direction:column;align-items:center;gap:var(--gap)}
+.time{max-width:100%;font-size:clamp(56px,22vmin,320px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.5px;white-space:nowrap}
 body.ok .time{color:#7fe0b8}
-.sub{margin-top:2.5vh;font-size:4vw;font-weight:700;min-height:5vh}
+.sub{font-size:clamp(18px,3.6vmin,52px);font-weight:700;line-height:1.25}
+.sub:empty{display:none}
 .sub.ok{color:#7fe0b8}
 .sub.under{color:#d9cdb6}
 .sub.over{color:#e8a766}
-.range{margin-top:1.5vh;font-size:2.4vw;line-height:1.4;font-weight:600}
+.range{max-width:100%;font-size:var(--small);line-height:1.45;font-weight:600;overflow-wrap:anywhere}
 #overall{color:#f6f2e9;font-weight:800;font-variant-numeric:tabular-nums}
-#rng{color:#a8cfff;font-weight:600}
+#rng{color:#a8cfff}
 #overall.ending{color:#ffd080}
-.order{font-size:2.4vw;font-weight:800;color:#14110e;background:#e8a766;border-radius:999px;padding:.6vh 2.2vw;margin-bottom:2vh;letter-spacing:.5px}
+.order{max-width:100%;font-size:var(--small);font-weight:800;line-height:1.4;color:#14110e;background:#e8a766;border-radius:999px;padding:.25em 1em;overflow-wrap:anywhere}
 body.ok .order{background:#7fe0b8}
-.vmeter{margin-top:3vh;width:46vw;max-width:620px}
-body.presenter .vmeter{width:60vw}
-.vbar{height:2.4vh;min-height:16px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
-.vfill{height:100%;width:4%;min-width:18px;background:linear-gradient(90deg,#e8c766,#e8a766);border-radius:999px;transition:width .08s linear,background .12s linear}
+.vmeter{width:min(80%,620px)}
+.vbar{height:clamp(10px,2vmin,26px);background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+.vfill{height:100%;width:4%;min-width:8px;background:linear-gradient(90deg,#e8c766,#e8a766);border-radius:999px;transition:width .08s linear,background .12s linear}
 .vfill.loud{background:linear-gradient(90deg,#7fb89f,#7fe0b8)}
-.vlabel{margin-top:1vh;font-size:1.8vw;color:#7d7466;font-weight:700}
-.excl{position:fixed;top:0;left:0;right:0;padding:2.2vh 0;background:#c2702a;color:#fff;font-size:3.6vw;font-weight:800;text-align:center;letter-spacing:1px;display:none;z-index:5}
+.vlabel{margin-top:.5em;font-size:clamp(12px,1.8vmin,26px);color:#a89e8d;font-weight:700}
+.excl{padding:.6em 1em;background:#c2702a;color:#fff;font-size:clamp(16px,3vmin,44px);font-weight:800;text-align:center;display:none}
 body.excluding .excl{display:block}
 body.excluding .time{opacity:.45}
-/* 발표자 모드: 시간 더 크게, 이름 작게 */
-body.presenter .who{font-size:4vw;margin-bottom:1vh}
-body.presenter .time{font-size:30vw}
-/* 다음 순서 패널 (TV 모드에서만) */
-.upnext{position:fixed;top:0;right:0;height:100%;width:22vw;padding:4vh 2vw;display:none;flex-direction:column;justify-content:center;gap:1.4vh;background:linear-gradient(270deg,rgba(255,255,255,.06),rgba(255,255,255,0));backdrop-filter:blur(2px)}
-body.tv .upnext{display:flex}
-body.tv .stage{padding-right:22vw}
-.upnext h4{font-size:1.6vw;color:#a89e8d;font-weight:700;letter-spacing:.5px;margin-bottom:1vh;opacity:.7}
-.uprow{display:flex;align-items:center;gap:1vw;font-size:1.9vw;font-weight:700;color:#f6f2e9;opacity:.5;transition:opacity .3s}
-.uprow:nth-child(2){opacity:.85}
-.uprow:nth-child(3){opacity:.7}
-.uprow:nth-child(4){opacity:.55}
-.uprow:nth-child(5){opacity:.4}
-.uprow:nth-child(6){opacity:.28}
-.uprow .uno{font-size:1.4vw;color:#a89e8d;min-width:2.4vw}
+body.excluding .stage{min-height:calc(100dvh - 5em)}
+/* TV: 넓은 창은 옆에, 좁은 창은 아래에 다음 순서를 배치한다. */
+body.tv{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,24%)}
+body.tv .excl{grid-column:1/-1}
+body.tv .choice-list{display:none}
+.upnext{display:none;min-width:0;padding:clamp(16px,3vmin,48px);background:linear-gradient(270deg,rgba(255,255,255,.06),rgba(255,255,255,0))}
+body.tv .upnext{display:flex;flex-direction:column;justify-content:center;gap:var(--gap)}
+.upnext h4{font-size:calc(var(--small) * 1.5);color:#a89e8d;font-weight:700;line-height:1.4}
+#uplist{display:flex;flex-direction:column;gap:var(--gap)}
+.uprow{display:grid;grid-template-columns:1.5em minmax(0,1fr);align-items:baseline;column-gap:.4em;font-size:clamp(24px,4.2vmin,60px);line-height:1.4;font-weight:700;color:#f6f2e9;overflow-wrap:anywhere;opacity:.5}
+.uprow:first-child{opacity:.85}
+.uprow:nth-child(2){opacity:.7}
+.uprow:nth-child(3){opacity:.55}
+.uprow:nth-child(4){opacity:.4}
+.uprow:nth-child(5){opacity:.28}
+.uprow .uno{font-size:.75em;color:#a89e8d;text-align:right;font-variant-numeric:tabular-nums}
+.uprow .uname{min-width:0;text-align:left;word-break:keep-all;overflow-wrap:anywhere}
 .uprow.done{text-decoration:line-through;opacity:.25}
-.upempty{font-size:1.5vw;color:#5d564b}
-.hidden{display:none}
+.upempty{font-size:calc(var(--small) * 1.5);color:#a89e8d}
+/* 발표자: 선택문항 제목을 상단 전체 너비에, 타이머를 그 아래에 배치한다. */
+body.presenter .who{font-size:clamp(22px,4vmin,60px)}
+body.presenter .time{font-size:clamp(64px,27vmin,400px)}
+body.presenter.has-choices .stage{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) minmax(0,2fr);align-content:center}
+body.presenter.has-choices .order,body.presenter.has-choices .who{grid-column:1/-1;justify-self:center}
+body.presenter.has-choices .choice-list{grid-column:1;grid-row:3;width:100%;text-align:center}
+body.presenter.has-choices .timer-content{grid-column:1;grid-row:4}
+body.presenter.has-choices .time{font-size:clamp(48px,min(16vw,22vh),280px)}
+.choice-list{min-width:0;max-height:65vh;overflow:auto;text-align:left;padding:var(--gap)}
+.choice-title{font-size:clamp(20px,4vmin,64px);font-weight:800;line-height:1.45;color:#ffd9a8;word-break:keep-all;overflow-wrap:anywhere;white-space:pre-line}
+@media(max-width:700px){
+  body.tv{grid-template-columns:minmax(0,1fr)}
+  body.tv .stage{min-height:70vh;min-height:70dvh}
+  body.tv .upnext{padding-top:var(--gap)}
+  body.tv #uplist{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+}
+/* 각 영역의 실제 남은 공간에 맞춰 글자 크기를 계산한다. */
+.stage{height:var(--stage-height,100dvh);min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);gap:clamp(6px,1vmin,16px);padding:clamp(10px,2vmin,28px)}
+.stage>.order,.stage>.who{justify-self:center}
+.stage>.order{grid-row:1}
+.stage>.who{grid-row:2}
+.who,body.presenter .who{font-size:clamp(24px,6vmin,100px)}
+.timer-content{height:100%;min-height:0;justify-content:safe center;overflow:auto;font-size:var(--timer-unit,24px);gap:.35em}
+.time,body.presenter .time,body.presenter.has-choices .time{font-size:8em;flex-shrink:0}
+.sub{font-size:1.2em;flex-shrink:0}
+.range{font-size:.85em;flex-shrink:0}
+.vlabel{font-size:.65em}
+.vmeter{width:94%;flex-shrink:0}
+body.presenter.has-choices .choice-list{height:100%;max-height:none;min-height:0;display:flex;align-items:safe center}
+.choice-title{font-size:var(--choice-size,32px);line-height:1.35;max-width:100%;flex-shrink:0;width:100%}
+body.tv .upnext{height:var(--stage-height,100dvh);min-height:0;overflow:auto}
+body.excluding .stage{min-height:0}
+@media(max-width:700px){
+  body.tv .stage{min-height:0}
+  body.tv .upnext{height:var(--next-height,30dvh)}
+}
+.hidden{display:none!important}
 </style></head>
 <body class="__MODE__">
 <div class="excl">⏸ 잠시 멈춤 · 제외 중</div>
@@ -1843,14 +1874,18 @@ body.tv .stage{padding-right:22vw}
   <div class="order hidden" id="order"></div>
   <div class="who empty" id="who">발표 대기</div>
   <div class="choice-list hidden" id="choiceList"></div>
+  <div class="timer-content">
   <div class="time" id="t">0:00</div>
   <div class="sub" id="sub"></div>
   <div class="range" id="overall" style="font-weight:700"></div>
   <div class="range" id="rng"></div>
   <div class="vmeter" id="vmeter"><div class="vbar"><div class="vfill" id="vfill"></div></div><div class="vlabel">🎤 목소리 크기</div></div>
+  </div>
 </div>
 <div class="upnext" id="upnext"><h4>다음 발표 순서</h4><div id="uplist"></div></div>
 <script>
+const isPresenter=document.body.classList.contains('presenter');
+if(!isPresenter)document.getElementById('choiceList').remove();
 const ch=new BroadcastChannel(${JSON.stringify('debate_timer_cast'+SHARE_SUFFIX)});
 const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 ch.onmessage=e=>{
@@ -1869,19 +1904,18 @@ ch.onmessage=e=>{
   if(d.order){ord.textContent='발표 순서 '+d.order+'번';ord.classList.remove('hidden');}
   else {ord.classList.add('hidden');}
   const choiceList=document.getElementById('choiceList');
-  const choiceTitle=d.choiceSetTitle||'';
-  choiceList.classList.toggle('hidden',!choiceTitle);
+  const choiceTitle=isPresenter?(d.choiceSetTitle||''):'';
+  if(choiceList)choiceList.classList.toggle('hidden',!choiceTitle);
   document.body.classList.toggle('has-choices',!!choiceTitle);
-  if(choiceList.dataset.title!==choiceTitle){
+  if(choiceList&&choiceList.dataset.title!==choiceTitle){
     choiceList.dataset.title=choiceTitle;
     choiceList.replaceChildren();
     if(choiceTitle){const title=document.createElement('h2');title.className='choice-title';title.textContent=choiceTitle;choiceList.append(title);}
-    fitChoiceTitle();
   }
   const tEl=document.getElementById('t');
-  if(d.preparing){tEl.textContent=fmt(d.prepSeconds);tEl.style.color='#9b8ec4';tEl.style.fontSize='';}
-  else if(d.countdown>0){tEl.textContent=d.countdown;tEl.style.color='#9b8ec4';tEl.style.fontSize='120px';}
-  else{tEl.textContent=fmt(d.elapsed);tEl.style.color='';tEl.style.fontSize='';}
+  if(d.preparing){tEl.textContent=fmt(d.prepSeconds);tEl.style.color='#9b8ec4';}
+  else if(d.countdown>0){tEl.textContent=d.countdown;tEl.style.color='#9b8ec4';}
+  else{tEl.textContent=fmt(d.elapsed);tEl.style.color='';}
 
   const overall=document.getElementById('overall');
   overall.textContent='전체 '+fmt(d.elapsed)+' / '+fmt(d.totalLimit||300)+' · 유효 '+fmt(d.eff)+(d.elapsed>=(d.totalLimit||300)?(d.autoFinishPresentation!==false?' · 채점 종료':' · 전체 제한 시간 초과'):d.elapsed>=(d.totalLimit||300)-30?' · '+(Math.floor((d.totalLimit||300)/60)?Math.floor((d.totalLimit||300)/60)+'분':'')+((d.totalLimit||300)%60?(Math.floor((d.totalLimit||300)/60)?' ':'')+(d.totalLimit||300)%60+'초':'')+' 이후 발표 내용은 채점 미포함':'');
@@ -1895,19 +1929,63 @@ ch.onmessage=e=>{
   const ul=document.getElementById('uplist');
   if(ul){
     const list=d.upNext||[];
-    ul.innerHTML = list.length ? list.map(x=>'<div class="uprow'+(x.done?' done':'')+'"><span class="uno">'+x.no+'</span>'+x.name+'</div>').join('') : '<div class="upempty">마지막 순서예요</div>';
+    ul.replaceChildren();
+    if(list.length){
+      list.forEach(x=>{
+        const row=document.createElement('div');row.className='uprow'+(x.done?' done':'');
+        const number=document.createElement('span');number.className='uno';number.textContent=x.no;
+        const name=document.createElement('span');name.className='uname';name.textContent=x.name;
+        row.append(number,name);ul.append(row);
+      });
+    }else{
+      const empty=document.createElement('div');empty.className='upempty';empty.textContent='마지막 순서예요';ul.append(empty);
+    }
   }
+  scheduleScreenFit();
 };
-// 발표자 화면: 문항이 길어 칸을 넘치면 넘치지 않을 때까지 글자를 줄인다.
-function fitChoiceTitle(){
-  const box=document.getElementById('choiceList');
-  const t=box&&box.querySelector('.choice-title');
-  if(!t||!document.body.classList.contains('presenter'))return;
-  t.style.fontSize='';
-  let size=parseFloat(getComputedStyle(t).fontSize);
-  while(box.scrollHeight>box.clientHeight+1&&size>18){size*=.92;t.style.fontSize=size+'px';}
+let screenFitFrame=0;
+function scheduleScreenFit(){
+  if(screenFitFrame)return;
+  screenFitFrame=requestAnimationFrame(()=>{screenFitFrame=0;fitStudentScreen();});
 }
-window.addEventListener('resize',fitChoiceTitle);
+function fitFontToBox(box,property,min,max){
+  if(!box||!box.clientWidth||!box.clientHeight)return;
+  const fits=()=>{
+    const bounds=box.getBoundingClientRect(),style=getComputedStyle(box);
+    const top=bounds.top+parseFloat(style.paddingTop),bottom=bounds.bottom-parseFloat(style.paddingBottom);
+    return box.scrollHeight<=box.clientHeight&&box.scrollWidth<=box.clientWidth&&Array.from(box.children).every(child=>{
+      if(!child.getClientRects().length)return true;
+      const rect=child.getBoundingClientRect();return rect.top>=top-.5&&rect.bottom<=bottom+.5;
+    });
+  };
+  let low=min,high=max;
+  box.style.setProperty(property,low+'px');
+  // 아주 작은 창에서는 최소 가독성을 유지하고 필요한 영역만 스크롤한다.
+  if(!fits())return;
+  for(let i=0;i<11;i++){
+    const mid=(low+high)/2;box.style.setProperty(property,mid+'px');
+    if(fits())low=mid;else high=mid;
+  }
+  let finalSize=Math.max(min,Math.floor(low*.99*10)/10);
+  box.style.setProperty(property,finalSize+'px');
+  // 스크롤바 출현으로 폭과 줄바꿈이 바뀐 경우 마지막 배치도 확인한다.
+  while(!fits()&&finalSize>min){
+    finalSize=Math.max(min,finalSize*.95);
+    box.style.setProperty(property,finalSize+'px');
+  }
+}
+function fitStudentScreen(){
+  const banner=document.querySelector('.excl');
+  const available=Math.max(120,window.innerHeight-banner.offsetHeight);
+  const stacked=!isPresenter&&window.innerWidth<=700;
+  document.body.style.setProperty('--stage-height',(stacked?available*.72:available)+'px');
+  document.body.style.setProperty('--next-height',available*.28+'px');
+  if(isPresenter)fitFontToBox(document.getElementById('choiceList'),'--choice-size',16,240);
+  fitFontToBox(document.querySelector('.timer-content'),'--timer-unit',8,200);
+}
+window.addEventListener('resize',scheduleScreenFit);
+if(document.fonts)document.fonts.ready.then(scheduleScreenFit);
+scheduleScreenFit();
 function updateMeter(on,level,thr){
   const m=document.getElementById('vmeter');if(!m)return;
   // 볼륨이 0이거나 마이크 입력이 잠시 끊겨도 막대 영역은 고정해 둔다.
@@ -2713,7 +2791,7 @@ function renderChoiceSetEditor(){
   const questions=isTemplate?[editChoiceTemplate]:editChoiceSets[editChoiceSetIndex];
   tabs.innerHTML=`<button class="rostertab ${isTemplate?'on':''}" data-index="-1">공통 루브릭</button>`+editChoiceSets.map((_,i)=>`<button class="rostertab ${i===editChoiceSetIndex?'on':''}" data-index="${i}">뽑기 ${i+1}</button>`).join('');
   tabs.querySelectorAll('button').forEach(button=>button.onclick=()=>{editChoiceSetIndex=+button.dataset.index;renderChoiceSetEditor();});
-  host.innerHTML=(isTemplate?'':`<div class="folderbox" style="margin-bottom:12px"><label class="mlabel" for="choiceSetTitleInput">뽑기 ${editChoiceSetIndex+1} 제목</label><textarea id="choiceSetTitleInput" rows="3" style="width:100%;min-height:0;font-family:inherit" placeholder="발표자·TV·채점 화면에 표시할 제목 (Enter로 줄바꿈)">${esc(editChoiceSetTitles[editChoiceSetIndex]||'')}</textarea><p class="hint">선택문제 ${questions.length}개 · 아래에서 문제를 추가하거나 삭제할 수 있습니다.</p><button type="button" class="mbtn ghost" id="addChoiceQuestion">+ 선택문제 추가</button></div>`)+questions.map((question,qi)=>`<div class="recrit">
+  host.innerHTML=(isTemplate?'':`<div class="folderbox" style="margin-bottom:12px"><label class="mlabel" for="choiceSetTitleInput">뽑기 ${editChoiceSetIndex+1} 제목</label><textarea id="choiceSetTitleInput" rows="3" style="width:100%;min-height:0;font-family:inherit" placeholder="발표자·채점 화면에 표시할 제목 (Enter로 줄바꿈)">${esc(editChoiceSetTitles[editChoiceSetIndex]||'')}</textarea><p class="hint">선택문제 ${questions.length}개 · 아래에서 문제를 추가하거나 삭제할 수 있습니다.</p><button type="button" class="mbtn ghost" id="addChoiceQuestion">+ 선택문제 추가</button></div>`)+questions.map((question,qi)=>`<div class="recrit">
     <div class="rctop">${isTemplate?'<span class="rc-name choice-fixed-name">공통 루브릭</span>':`<input class="rc-name choice-name" data-qi="${qi}" value="${esc(question.name||'')}" placeholder="선택문제 ${qi+1}" aria-label="선택문제 ${qi+1} 제목">`}<label class="rc-base">기본점 <input class="choice-base" type="number" min="0" data-qi="${qi}" value="${Number(question.base)||0}"></label>${isTemplate?'':`<button type="button" class="choice-question-delete mbtn ghost" data-qi="${qi}" ${questions.length<=1?'disabled':''}>문제 삭제</button>`}</div>
     ${(question.opts||[]).map((option,oi)=>`<div class="reopt"><input class="ro-desc choice-desc" data-qi="${qi}" data-oi="${oi}" value="${esc(option.desc)}" placeholder="체크 항목 설명"><input class="ro-pt choice-pt" type="number" data-qi="${qi}" data-oi="${oi}" value="${Number(option.pt)||0}"><label class="ro-timed" data-rubric-feature="timed" title="발표 타이머가 준수 구간이면 자동 체크"><input type="checkbox" class="choice-timed" data-qi="${qi}" data-oi="${oi}" ${option.timed?'checked':''}>⏱</label><label class="ro-memo" data-rubric-feature="memo" title="이 항목 아래에 근거 메모칸 표시"><input type="checkbox" class="choice-memo" data-qi="${qi}" data-oi="${oi}" ${option.memo?'checked':''}>📝</label><label class="ro-auto" data-rubric-feature="auto" title="같은 문제의 다른 선택지를 클릭하면 자동 체크"><input type="checkbox" class="choice-auto" data-qi="${qi}" data-oi="${oi}" ${option.auto?'checked':''}>🔗</label><label class="ro-simple" data-rubric-feature="simple" title="간이발표 버튼을 누를 때 자동 체크"><input type="checkbox" class="choice-simple" data-qi="${qi}" data-oi="${oi}" ${option.simple?'checked':''}>간이</label>${conditionToggleHTML(option,qi,oi)}${detailToggleHTML(option,qi,oi)}${orderButtons('option',oi,question.opts.length,qi)}<button class="choice-del ro-del" data-qi="${qi}" data-oi="${oi}" title="항목 삭제">×</button></div>${memoEditorHTML(option,qi,oi)}${conceptEditorHTML(option,qi,oi)}${conditionEditorHTML(question,qi,oi)}${detailEditorHTML(option,qi,oi)}`).join('')}
     <button class="addopt choice-add" data-qi="${qi}">+ 채점 항목 추가</button>
