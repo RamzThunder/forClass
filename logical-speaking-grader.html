@@ -495,6 +495,10 @@
       <div class="mactions"><button class="mbtn primary" id="requiredTermsApply">필수 용어 저장</button></div>
     </section>
     <section class="settingpanel on" id="setting-basic">
+      <label class="mlabel" for="microphoneSelect">입력 마이크</label>
+      <div class="settingrow"><select id="microphoneSelect" aria-label="입력 마이크"></select><button class="mbtn" id="microphoneRefresh">목록 새로고침</button><button class="mbtn primary" id="microphoneApply">선택한 마이크 연결</button></div>
+      <p class="hint" id="microphoneStatus" role="status"></p>
+      <p class="hint">발표·녹음을 종료한 뒤 변경하세요. 연결 후 외부 마이크에 말하며 음량 막대를 확인하세요.</p>
       <div class="mlabel">수행평가 제목</div>
       <div class="settingrow">
         <input id="titleInput" placeholder="수행평가 제목">
@@ -1351,7 +1355,7 @@ function renderStage(){
             <div class="prep-footer"><p id="prepStatus" role="status"></p><div class="tctrls prep-controls"><button id="prepToggle">시작</button><button id="prepReset" title="설정한 준비 시간으로 초기화" aria-label="설정한 준비 시간으로 초기화">↺</button></div></div>
           </div>
           <h3>발표 타이머 <span class="recbadge" id="recBadge" style="display:none">🔴 녹음 중</span><label class="rectoggle" title="발표 타이머와 함께 자동 녹음하고, 끝나면 파일로 저장합니다"><input type="checkbox" id="recEnable" ${rec.enabled?'checked':''}>녹음</label></h3>
-          <div class="tdisplay" id="tdisp">${fmt(timer.elapsed)}</div>
+          <p class="hint" id="activeMicrophone" role="status"></p><div class="tdisplay" id="tdisp">${fmt(timer.elapsed)}</div>
           <div class="tjudge" id="overallTime"></div>
           <div class="tjudge" id="tjudge">${timeJudgeText()}</div>
           ${(s.recordedTime)?`<div class="trecorded">📝 기록된 발표 시간: <b>${fmt(s.recordedTime.eff)}</b>${s.recordedTime.excluded?` <span class="trexcl">(전체 ${fmt(s.recordedTime.total)} − 제외 ${fmt(s.recordedTime.excluded)})</span>`:''}</div>`:''}
@@ -1522,6 +1526,7 @@ function renderStage(){
   const presBtn=document.getElementById('openPresenter');if(presBtn)presBtn.onclick=()=>openStudentScreen('presenter');
   const recChk=document.getElementById('recEnable');if(recChk)recChk.onchange=()=>{rec.enabled=recChk.checked;toast(rec.enabled?'녹음 켜짐':'녹음 꺼짐')};
   updateRecBadge();
+  refreshMicrophoneStatus();
   const autoBtn=document.getElementById('autoMic');if(autoBtn)autoBtn.onclick=toggleMic;
   const sens=document.getElementById('micSens');if(sens){sens.value=mic.sens;sens.oninput=()=>{mic.sens=+sens.value;const v=document.getElementById('sensVal');if(v)v.textContent=sens.value;};}
   refreshTeacherMeter();
@@ -1921,6 +1926,64 @@ if(castCh){castCh.onmessage=e=>{if(e.data&&e.data.type==='hello')castState();};}
    users: 'meter'(음량 막대), 'auto'(자동 감지), 'rec'(녹음) 중 누가 쓰는지 집합으로 관리.
    둘 다 빠지면 실제 마이크를 해제. 한 번 허용된 권한을 재사용하므로 팝업 재요청 없음. */
 let audioHub={stream:null,ctx:null,analyser:null,data:null,raf:null,users:new Set(),level:0,lastCast:0,lastError:null};
+let selectedMicrophone='';
+try{selectedMicrophone=localStorage.getItem('speakingMicrophone')||'';}catch(e){}
+let microphoneBusy=false;
+let microphoneRequests=0;
+function refreshMicrophoneStatus(message){
+  const track=audioHub.stream&&audioHub.stream.getAudioTracks()[0];
+  const text=message||(track&&track.readyState==='live'?`현재 입력: ${track.label||'이름을 확인할 수 없는 마이크'}`:'현재 입력: 연결되지 않음');
+  for(const id of ['microphoneStatus','activeMicrophone']){const el=document.getElementById(id);if(el)el.textContent=text;}
+}
+async function requestMicrophone(deviceId){
+  const device=deviceId?{deviceId:{exact:deviceId}}:{};
+  try{return await navigator.mediaDevices.getUserMedia({audio:{...device,echoCancellation:false,noiseSuppression:false,autoGainControl:false}});}
+  catch(e){
+    if(e.name!=='OverconstrainedError'&&e.name!=='ConstraintNotSatisfiedError')throw e;
+    // 세부 옵션만 완화하고, 지정한 마이크는 절대 기본 마이크로 대체하지 않는다.
+    return navigator.mediaDevices.getUserMedia({audio:deviceId?device:true});
+  }
+}
+async function refreshMicrophoneList(){
+  const select=document.getElementById('microphoneSelect');if(!select)return;
+  try{
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    select.replaceChildren(new Option('브라우저 기본 마이크',''));
+    devices.filter(d=>d.kind==='audioinput').forEach((d,i)=>select.add(new Option(d.label||`마이크 ${i+1}`,d.deviceId)));
+    if(selectedMicrophone&&!devices.some(d=>d.kind==='audioinput'&&d.deviceId===selectedMicrophone))select.add(new Option('이전에 선택한 마이크 (연결 확인 필요)',selectedMicrophone));
+    select.value=selectedMicrophone;
+    refreshMicrophoneStatus();
+  }catch(e){refreshMicrophoneStatus('마이크 목록을 읽지 못했어요. 브라우저의 마이크 권한을 확인하세요.');}
+}
+async function applyMicrophone(){
+  if(microphoneBusy||microphoneRequests){toast('마이크 연결이 끝난 뒤 다시 시도하세요');return;}
+  if(timer.running||timer.countdown!==null||(rec.recorder&&rec.recorder.state!=='inactive')){toast('발표·녹음을 종료하고 저장 완료 후 마이크를 변경하세요');return;}
+  const deviceId=document.getElementById('microphoneSelect').value;
+  microphoneBusy=true;
+  let stream,ctx;
+  try{
+    stream=await requestMicrophone(deviceId);
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const analyser=ctx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.6;
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    await ctx.resume();
+    if(audioHub.stream)audioHub.stream.getTracks().forEach(t=>t.stop());
+    if(audioHub.ctx)audioHub.ctx.close().catch(()=>{});
+    Object.assign(audioHub,{stream,ctx,analyser,data:new Uint8Array(analyser.frequencyBinCount),lastError:null});
+    audioHub.users.add('meter');
+    selectedMicrophone=deviceId;
+    try{localStorage.setItem('speakingMicrophone',deviceId);}catch(e){}
+    mic.quietSince=null;
+    if(!audioHub.raf)audioLoop();
+    refreshMicrophoneStatus();
+    await refreshMicrophoneList();
+    toast('선택한 마이크를 연결했어요');
+  }catch(e){
+    if(stream&&stream!==audioHub.stream)stream.getTracks().forEach(t=>t.stop());
+    if(ctx&&ctx!==audioHub.ctx)ctx.close().catch(()=>{});
+    refreshMicrophoneStatus('선택한 마이크 연결 실패. 기존 입력은 유지됩니다. 장치 연결과 권한을 확인하세요.');
+  }finally{microphoneBusy=false;}
+}
 function micErrorMessage(err){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return '이 브라우저에서는 마이크 권한 요청을 지원하지 않아요. Chrome 또는 Edge로 열어 주세요.';
   if(window.isSecureContext===false)return '마이크 권한은 보안 환경에서만 떠요. Chrome/Edge에서 파일을 직접 열거나 localhost로 실행해 주세요.';
@@ -1928,11 +1991,16 @@ function micErrorMessage(err){
   if(name==='NotAllowedError'||name==='PermissionDeniedError')return '마이크 권한이 차단됐어요. 주소창 왼쪽 권한 아이콘 또는 Windows 설정 > 개인정보 및 보안 > 마이크에서 브라우저 권한을 켜 주세요.';
   if(name==='NotFoundError'||name==='DevicesNotFoundError')return '연결된 마이크를 찾지 못했어요. Windows 입력 장치와 브라우저 기본 마이크를 확인해 주세요.';
   if(name==='NotReadableError'||name==='TrackStartError')return '마이크가 다른 앱에서 사용 중이거나 Windows가 접근을 막고 있어요. 화상회의/녹음 앱을 닫고 다시 시도해 주세요.';
-  if(name==='OverconstrainedError'||name==='ConstraintNotSatisfiedError')return '현재 마이크가 세부 오디오 옵션을 거부했어요. 기본 설정으로 다시 요청해 볼게요.';
+  if(name==='OverconstrainedError'||name==='ConstraintNotSatisfiedError')return '선택한 마이크를 열 수 없어요. 설정에서 마이크 연결을 확인하고 다시 선택하세요.';
   if(name==='SecurityError')return '브라우저 보안 설정 때문에 마이크를 열 수 없어요. Chrome/Edge 권한 설정을 확인해 주세요.';
   return '마이크를 사용할 수 없어요. Windows 마이크 권한과 브라우저 권한을 확인해 주세요.';
 }
 async function acquireAudio(user){
+  microphoneRequests++;
+  try{return await acquireAudioInput(user);}finally{microphoneRequests--;}
+}
+async function acquireAudioInput(user){
+  if(microphoneBusy){audioHub.lastError=new Error('마이크 연결 변경 중입니다. 잠시 후 다시 시도하세요.');return false;}
   audioHub.users.add(user);
   if(audioHub.stream){
     if(audioHub.stream.getAudioTracks().some(t=>t.readyState==='live'))return true; // 이미 마이크 보유 → 재사용(권한 재요청 없음)
@@ -1946,17 +2014,9 @@ async function acquireAudio(user){
   }
   audioHub.lastError=null;
   try{
-    audioHub.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    audioHub.stream=await requestMicrophone(selectedMicrophone);
   }catch(e){
-    audioHub.lastError=e;
-    try{
-      audioHub.stream=await navigator.mediaDevices.getUserMedia({audio:true});
-      audioHub.lastError=null;
-    }catch(e2){
-      audioHub.lastError=e2;
-      audioHub.users.delete(user);
-      return false;
-    }
+    audioHub.lastError=e;audioHub.users.delete(user);return false;
   }
   try{
     audioHub.ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -1972,6 +2032,7 @@ async function acquireAudio(user){
     audioHub.users.delete(user);
     return false;
   }
+  refreshMicrophoneStatus();
   return true;
 }
 function releaseAudio(user){
@@ -2522,6 +2583,7 @@ function updateRecBadge(){
   refreshTeacherMeter();
 }
 function toggleTimer(){
+  if(microphoneBusy){toast('마이크 연결이 끝난 뒤 시작하세요');return;}
   if(blockIfTimerLocked())return;
   resetPreparation();
   const b=document.getElementById('tStart');
@@ -2604,6 +2666,7 @@ function showSettingTab(tab){
   document.querySelectorAll('.settingpanel').forEach(p=>p.classList.toggle('on',p.id===`setting-${tab}`));
 }
 function openSettings(tab='basic'){
+  refreshMicrophoneList();
   document.getElementById('preparationDurationInput').value=fmt(preparationSeconds);
   document.getElementById('presentationLimitInput').value=fmt(PRESENTATION_LIMIT);
   document.getElementById('autoFinishPresentationInput').checked=autoFinishPresentation;
@@ -2713,6 +2776,8 @@ function saveChoiceSetSettings(){
   return true;
 }
 document.getElementById('choiceSetsApply').onclick=saveChoiceSetSettings;
+document.getElementById('microphoneRefresh').onclick=refreshMicrophoneList;
+document.getElementById('microphoneApply').onclick=applyMicrophone;
 document.getElementById('btnSettings').onclick=()=>openSettings('basic');
 document.getElementById('referenceExamplesApply').onclick=()=>{
   referenceExamples=normalizeReferenceExamples(document.getElementById('referenceExamplesInput').value.split('\n'));
