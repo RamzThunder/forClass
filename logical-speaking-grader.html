@@ -24,7 +24,7 @@
     background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;
   }
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-  input,textarea{font-family:inherit}
+  input,textarea,select{font-family:inherit}
 
   .wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
   header.top{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding-bottom:14px;border-bottom:2px solid var(--ink);margin-bottom:18px}
@@ -189,6 +189,7 @@
   .panel h3{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:7px}
   .recbadge{font-size:11px;font-weight:800;color:#fff;background:#c0392b;border-radius:10px;padding:2px 8px;animation:expulse 1.2s infinite}
   .rectoggle{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:3px;cursor:pointer;letter-spacing:0}
+  .microphone-status{margin:0 0 10px;font-size:11px;font-weight:400;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
   .rectoggle input{cursor:pointer}
 
   .timer{text-align:center}
@@ -430,11 +431,12 @@
   .settingpanel{display:none}
   .settingpanel.on{display:block}
   .settingrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
-  .settingrow input{flex:1;min-width:260px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+  .settingrow input,.settingrow select{flex:1;min-width:260px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+  .settingrow select{max-width:100%;color:var(--ink);background:var(--card)}
   .settingrow > label{font-family:inherit;font-size:13px;font-weight:700;line-height:1.5;min-width:90px;color:var(--ink)}
   .setting-check{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:500;line-height:1.5;color:var(--ink);cursor:pointer}
   .setting-check input[type="checkbox"]{margin:0;width:14px;height:14px;flex:none;accent-color:var(--accent)}
-  .settingrow input:focus{outline:none;border-color:var(--accent);background:#fff}
+  .settingrow input:focus,.settingrow select:focus{outline:none;border-color:var(--accent);background:#fff}
   .folderbox{border:1px solid var(--line);border-radius:10px;background:#fffdf9;padding:14px;line-height:1.6}
 </style>
 </head>
@@ -1355,7 +1357,7 @@ function renderStage(){
             <div class="prep-footer"><p id="prepStatus" role="status"></p><div class="tctrls prep-controls"><button id="prepToggle">시작</button><button id="prepReset" title="설정한 준비 시간으로 초기화" aria-label="설정한 준비 시간으로 초기화">↺</button></div></div>
           </div>
           <h3>발표 타이머 <span class="recbadge" id="recBadge" style="display:none">🔴 녹음 중</span><label class="rectoggle" title="발표 타이머와 함께 자동 녹음하고, 끝나면 파일로 저장합니다"><input type="checkbox" id="recEnable" ${rec.enabled?'checked':''}>녹음</label></h3>
-          <p class="hint" id="activeMicrophone" role="status"></p><div class="tdisplay" id="tdisp">${fmt(timer.elapsed)}</div>
+          <p class="microphone-status" id="activeMicrophone" role="status"></p><div class="tdisplay" id="tdisp">${fmt(timer.elapsed)}</div>
           <div class="tjudge" id="overallTime"></div>
           <div class="tjudge" id="tjudge">${timeJudgeText()}</div>
           ${(s.recordedTime)?`<div class="trecorded">📝 기록된 발표 시간: <b>${fmt(s.recordedTime.eff)}</b>${s.recordedTime.excluded?` <span class="trexcl">(전체 ${fmt(s.recordedTime.total)} − 제외 ${fmt(s.recordedTime.excluded)})</span>`:''}</div>`:''}
