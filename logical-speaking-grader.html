@@ -1325,6 +1325,7 @@ function applyStudentLock(s){
 
 function renderStage(){
   const s=curStudent();const stage=document.getElementById('stage');
+  syncTranscriptPopup(s);
   const prepOwner=s?JSON.stringify([currentClass,s.id,previewMode]):null;
   if(preparation.owner!==prepOwner||s?.done||s?.absent){resetPreparation();preparation.owner=prepOwner;}
   if(!s){stage.innerHTML='<div class="stage-empty">왼쪽에서 학생을 고르면 채점이 시작됩니다.<br>명단이 없다면 <b>오른쪽 위 ‘명단 붙여넣기’</b>부터 해주세요.</div>';return}
@@ -2284,6 +2285,20 @@ async function startAutoTranscript(s){
 }
 
 /* ===== 전사본 팝업 ===== */
+let transcriptPopup=null,transcriptPopupOwner=null,transcriptPopupVersion=0;
+function syncTranscriptPopup(s){
+  if(!transcriptPopup||transcriptPopup.closed)return;
+  if(!s){
+    transcriptPopupVersion++;
+    transcriptPopupOwner=null;
+    transcriptPopup.document.open();
+    transcriptPopup.document.write('<!doctype html><html lang="ko"><title>전사본</title><body style="font-family:serif;background:#fffdf8;color:#857c6e;padding:24px">채점창에서 학생을 선택하세요.</body></html>');
+    transcriptPopup.document.close();
+    return;
+  }
+  const owner=JSON.stringify([currentClass,s.id,!!s.done,previewMode]);
+  if(owner!==transcriptPopupOwner)openTranscriptPopup(s,transcriptPopup);
+}
 function updateTranscriptFromPopup(studentId,text){
   const s=state.students.find(x=>x.id===studentId);
   if(!s)return;
@@ -2295,47 +2310,17 @@ function updateTranscriptFromPopup(studentId,text){
     if(el)el.textContent=text;
   }
 }
-async function openTranscriptPopup(s){
+async function openTranscriptPopup(s,existingWindow=null){
   // window.open은 반드시 await 이전(동기 컨텍스트)에 호출 — 이후면 팝업 차단됨
-  const w=window.open('','transcript_popup','width=660,height=920,resizable=yes,scrollbars=yes');
+  const w=existingWindow||window.open('','transcript_popup','width=660,height=920,resizable=yes,scrollbars=yes');
   if(!w){toast('팝업이 차단됐어요 — 팝업 허용 후 다시 시도하세요');return;}
 
-  // 음원 자동 탐색 — baseDirHandle이 있으면 권한 확인/재요청 후 파일 검색
-  let audioUrl=null,audioName='';
-  if(baseDirHandle){
-    try{
-      let perm=await baseDirHandle.queryPermission({mode:'read'});
-      if(perm==='prompt') perm=await baseDirHandle.requestPermission({mode:'read'});
-      if(perm==='granted'){
-        const prefix=clsLabel(currentClass)+'_'+s.no+'_'+s.name;
-        const EXTS=['webm','mp3','wav','m4a','ogg'];
-        async function searchAudioIn(dir){
-          try{
-            for await(const [fname,handle] of dir.entries()){
-              if(handle.kind!=='file')continue;
-              if(EXTS.includes(fname.split('.').pop().toLowerCase())&&normName(fname).includes(normName(prefix)))
-                return{url:URL.createObjectURL(await handle.getFile()),name:fname};
-            }
-          }catch(e){}
-          return null;
-        }
-        let found=null;
-        // 1순위: 반별 하위폴더
-        const clsDir=await findChildDirectory(baseDirHandle,[currentClass,clsLabel(currentClass)]);
-        if(clsDir)found=await searchAudioIn(clsDir);
-        // 2순위: 기본폴더 바로 아래 (사용자가 반 폴더를 직접 선택한 경우)
-        if(!found) found=await searchAudioIn(baseDirHandle);
-        if(found){audioUrl=found.url;audioName=found.name;}
-        else toast('📁 '+baseDirHandle.name+'에서 '+s.name+' 음원을 찾지 못했어요 — 직접 불러오기를 사용하세요');
-      } else {
-        toast('📁 폴더 권한이 없어요 — 녹음 폴더 설정을 다시 눌러주세요');
-      }
-    }catch(e){}
-  }
-
-  // window 객체에 미리 주입 — document.write 전에 설정해야 팝업 JS에서 읽힘
-  w._audioSrc=audioUrl;
-  w._audioName=audioName;
+  transcriptPopup=w;
+  transcriptPopupOwner=JSON.stringify([currentClass,s.id,!!s.done,previewMode]);
+  const version=++transcriptPopupVersion;
+  const popupClass=currentClass;
+  w._audioSrc=null;
+  w._audioName='';
 
   const popupTextJSON=JSON.stringify(s.transcript||'');
   const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${s.no}번 ${s.name} 전사본</title>
@@ -2379,7 +2364,7 @@ input.seek{position:absolute;left:0;top:-9px;width:100%;height:calc(100% + 18px)
 <header><h1>${s.no}번 ${s.name}</h1><span class="sub">전사본</span></header>
 <div id="playerArea"></div>
 <div class="toolbar"><label>글자 크기</label><input type="range" id="fsRange" min="12" max="24" value="15"><span id="fsVal">15</span>px<span class="save-state" id="saveState">${s.done?'잠김':'수정 가능'}</span></div>
-<div class="main"><textarea class="transcript" id="tr" spellcheck="false"></textarea></div>
+<div class="main"><textarea class="transcript" id="tr" spellcheck="false" placeholder="연결된 전사본이 없습니다. txt 파일을 불러오거나 내용을 입력하세요."></textarea></div>
 <script>
 var studentId=${JSON.stringify(s.id)};
 var initialText=${popupTextJSON};
@@ -2518,7 +2503,46 @@ tr.oninput=function(){
 </body></html>`;
 
   w.document.open();w.document.write(html);w.document.close();
-  if(audioUrl)toast('🎵 음원 자동 연결됨 — '+audioName);
+  // 음원 자동 탐색 — baseDirHandle이 있으면 권한 확인/재요청 후 파일 검색
+  let audioUrl=null,audioName='';
+  if(baseDirHandle){
+    try{
+      let perm=await baseDirHandle.queryPermission({mode:'read'});
+      if(perm==='prompt') perm=await baseDirHandle.requestPermission({mode:'read'});
+      if(perm==='granted'){
+        const prefix=clsLabel(popupClass)+'_'+s.no+'_'+s.name;
+        const EXTS=['webm','mp3','wav','m4a','ogg'];
+        async function searchAudioIn(dir){
+          try{
+            for await(const [fname,handle] of dir.entries()){
+              if(handle.kind!=='file')continue;
+              if(EXTS.includes(fname.split('.').pop().toLowerCase())&&normName(fname).includes(normName(prefix)))
+                return{url:URL.createObjectURL(await handle.getFile()),name:fname};
+            }
+          }catch(e){}
+          return null;
+        }
+        let found=null;
+        // 1순위: 반별 하위폴더
+        const clsDir=await findChildDirectory(baseDirHandle,[popupClass,clsLabel(popupClass)]);
+        if(clsDir)found=await searchAudioIn(clsDir);
+        // 2순위: 기본폴더 바로 아래 (사용자가 반 폴더를 직접 선택한 경우)
+        if(!found) found=await searchAudioIn(baseDirHandle);
+        if(found){audioUrl=found.url;audioName=found.name;}
+        else toast('📁 '+baseDirHandle.name+'에서 '+s.name+' 음원을 찾지 못했어요 — 직접 불러오기를 사용하세요');
+      } else {
+        toast('📁 폴더 권한이 없어요 — 녹음 폴더 설정을 다시 눌러주세요');
+      }
+    }catch(e){}
+  }
+
+  // 이전 학생의 느린 파일 검색 결과가 현재 팝업을 덮어쓰지 않도록 한다.
+  if(w.closed||version!==transcriptPopupVersion){
+    if(audioUrl)URL.revokeObjectURL(audioUrl);
+    return;
+  }
+  if(audioUrl){w.buildPlayer(audioUrl,audioName);toast('🎵 음원 자동 연결됨 — '+audioName);}
+
 }
 
 /* ===== 전사본 연결 ===== */
