@@ -41,6 +41,22 @@ test('인쇄용 HTML은 채점대상 반의 학생과 총점만 담고 원래 �
   assert.ok(!printed.includes('<script>'));
   assert.match(printed,/<th scope="col">학생<\/th><th scope="col">총점<\/th>/);
   assert.match(printed,/<td>5<\/td>/);
-  assert.match(printed,/section\+section\{break-before:page\}/);
+  assert.match(printed,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(printed,/6개 반 \(3열 × 2행\)/);
+  assert.match(printed,/@page\{size:A4 portrait;margin:8mm\}/);
   assert.equal(JSON.stringify(c.state),before);
+});
+test('7개 반은 3반 배치에서 3장, 6반 배치에서 2장으로 나누고 행 높이를 줄인다',()=>{
+  const c=setup();
+  c.currentClass='none';c.appTitle='점수표';c.esc=String;
+  c.speakingClasses=()=>Array.from({length:7},(_,i)=>String(i+1));
+  c.classStudents=Object.fromEntries(c.speakingClasses().map(cls=>[cls,Array.from({length:40},(_,i)=>({no:i+1,name:'학생'}))]));
+  const printed=c.buildScorePrintHtml();
+  const three=printed.split('<div class="layout layout-3">')[1].split('<div class="layout layout-6">')[0];
+  const six=printed.split('<div class="layout layout-6">')[1];
+  assert.equal((three.match(/<article /g)||[]).length,3);
+  assert.equal((six.match(/<article /g)||[]).length,2);
+  for(const mode of [three,six])assert.equal((mode.match(/40번 학생/g)||[]).length,7);
+  const height=Number(six.match(/--row-height:([\d.]+)mm/)[1]);
+  assert.ok(height*41<=119.001);
 });
