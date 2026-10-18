@@ -23,3 +23,24 @@ test('CSV는 쉼표·따옴표·줄바꿈을 한 셀 안에 보존한다',()=>{
   assert.equal(c.resultCsv([['반','근거'],['2','쉼표, "인용"\n다음 줄']]),'"반","근거"\r\n"2","쉼표, ""인용""\n다음 줄"');
   assert.match(c.resultCsv(c.allClassResultRows()),/쉼표, ""인용""/);
 });
+test('인쇄용 HTML은 채점대상 반의 학생과 총점만 담고 원래 순서를 보존한다',()=>{
+  const c=setup();
+  c.speakingClasses=()=>['10','2','3'];
+  c.appTitle='수행 <평가>';
+  c.esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  c.state.students[0].name='<script>학생</script>';
+  c.state.students[0].memo='비공개 총평';
+  const before=JSON.stringify(c.state);
+  const printed=c.buildScorePrintHtml();
+  assert.ok(printed.indexOf('<h2>2반')<printed.indexOf('<h2>10반'));
+  assert.ok(printed.indexOf('2번 이번')<printed.indexOf('10번 &lt;script&gt;학생'));
+  assert.ok(!printed.includes('<h2>1반'));
+  assert.ok(!printed.includes('<h2>3반'));
+  assert.ok(!printed.includes('비공개 총평'));
+  assert.ok(!printed.includes('옛명단'));
+  assert.ok(!printed.includes('<script>'));
+  assert.match(printed,/<th scope="col">학생<\/th><th scope="col">총점<\/th>/);
+  assert.match(printed,/<td>5<\/td>/);
+  assert.match(printed,/section\+section\{break-before:page\}/);
+  assert.equal(JSON.stringify(c.state),before);
+});

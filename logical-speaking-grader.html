@@ -444,7 +444,7 @@
 <div class="wrap">
   <header class="top">
     <h1 id="appTitle">말하기 채점표 템플릿</h1>
-    <span class="sub" id="appVersion">v1.8.0</span>
+    <span class="sub" id="appVersion">v1.9.0</span>
     <span class="sub">충족한 항목을 체크하면 점수가 합산 — 한 명씩 집중 채점</span>
     <span class="spacer"></span>
     <span class="savestatus" id="saveStatus" title="브라우저에 자동 저장됩니다">저장 대기 중</span>
@@ -596,6 +596,7 @@
       <button class="mbtn ghost" id="copyTsv">전체 복사(엑셀)</button>
       <button class="mbtn ghost" id="dlCsv">현재 반 CSV</button>
       <button class="mbtn ghost" id="dlAllCsv">전체 반 CSV (반·번호 순)</button>
+      <button class="mbtn ghost" id="dlScoreHtml">학생용 점수표 HTML (채점대상 반)</button>
       <button class="mbtn ghost" id="expPaper">종이 데이터 저장</button>
       <button class="mbtn ghost" id="impPaper">종이 데이터 불러오기</button>
       <span style="flex:1"></span>
@@ -3271,6 +3272,24 @@ function resultCsv(rows){
   return rows.map(row=>row.map(cell=>'"'+String(cell??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
 }
 
+
+function buildScorePrintHtml(){
+  const sections=[...speakingClasses()].sort((a,b)=>String(a).localeCompare(String(b),'ko',{numeric:true})).map(cls=>{
+    const roster=(cls===currentClass?state.students:classStudents[cls])||[];
+    if(!roster.length)return '';
+    const rows=[...roster].sort((a,b)=>String(a.no).localeCompare(String(b.no),'ko',{numeric:true})).map(s=>
+      `<tr><td>${esc(String(s.no))}번 ${esc(s.name||'')}</td><td>${esc(String(studentTotal(s)))}</td></tr>`).join('');
+    return `<section><h2>${esc(clsLabel(cls))}반</h2><table><thead><tr><th scope="col">학생</th><th scope="col">총점</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+  }).filter(Boolean).join('');
+  return `<!doctype html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(appTitle)} · 학생용 점수표</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f2e9;color:#1a1714;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:13px;line-height:1.5}
+main{max-width:720px;margin:24px auto;padding:28px;background:#fffdf8}h1{font-size:22px;line-height:1.3;margin:0 0 20px;font-weight:800}h2{font-size:17px;margin:20px 0 10px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #b9b3a8;padding:6px 12px;text-align:left;overflow-wrap:anywhere}th{background:#f6f2e9;font-weight:700}th:last-child,td:last-child{width:28%;text-align:center}thead{display:table-header-group}tr{break-inside:avoid}button{font:inherit;padding:7px 13px;border:1px solid #2f6b54;border-radius:8px;background:#fffdf8;color:#2f6b54;cursor:pointer}.actions{max-width:720px;margin:20px auto;padding:0 12px;color:#857c6e}.actions p{margin:8px 0}
+@page{size:A4;margin:15mm}@media print{body,main{background:white}main{max-width:none;margin:0;padding:0}.actions{display:none}section+section{break-before:page}h2{break-after:avoid}h1{font-size:20px}}
+</style></head><body><div class="actions"><button onclick="window.print()">인쇄 / PDF 저장</button><p>채점대상 반만 반·번호 순으로 표시합니다. 반마다 새 페이지에서 시작합니다.</p></div><main><h1>${esc(appTitle)}</h1>${sections||'<p>채점대상 반에 등록된 학생이 없습니다.</p>'}</main></body></html>`;
+}
+
 function copy(t,m){navigator.clipboard.writeText(t).then(()=>toast(m)).catch(()=>toast('복사 실패 — 직접 선택해주세요'))}
 document.getElementById('copyNeis').onclick=()=>copy(neisText(),'NEIS용 표 복사됨');
 document.getElementById('copyTsv').onclick=()=>copy(fullTsv(),'전체 표 복사됨');
@@ -3282,6 +3301,10 @@ async function downloadResultCsv(allClasses=false){
 }
 document.getElementById('dlCsv').onclick=()=>downloadResultCsv();
 document.getElementById('dlAllCsv').onclick=()=>downloadResultCsv(true);
+document.getElementById('dlScoreHtml').onclick=async()=>{
+  const saved=await saveOutputFile(new Blob([buildScorePrintHtml()],{type:'text/html;charset=utf-8'}),`${safeFileName(appTitle)}_학생용점수표.html`);
+  toast(saved?'학생용 점수표 HTML이 저장 폴더에 저장됨':'학생용 점수표 HTML 내려받음');
+};
 
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
 function currentShareData(includeStudents){
