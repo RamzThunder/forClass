@@ -444,6 +444,7 @@
 <div class="wrap">
   <header class="top">
     <h1 id="appTitle">말하기 채점표 템플릿</h1>
+    <span class="sub" id="appVersion">v1.8.0</span>
     <span class="sub">충족한 항목을 체크하면 점수가 합산 — 한 명씩 집중 채점</span>
     <span class="spacer"></span>
     <span class="savestatus" id="saveStatus" title="브라우저에 자동 저장됩니다">저장 대기 중</span>
@@ -584,7 +585,7 @@
 <div class="overlay" id="ovResult">
   <div class="modal" style="max-width:920px">
     <h2 id="resultTitle">결과 · NEIS 입력용 정리</h2>
-    <p class="hint">현재 반의 채점 현황입니다. 아래에서 NEIS용 표를 복사하거나 CSV로 내려받으세요.</p>
+    <p class="hint">현재 반의 채점 현황입니다. 전체 반 CSV는 화면 정렬과 관계없이 반·번호 순으로 저장되며, 엑셀에서 열 수 있습니다.</p>
     <div class="sortbar">
       <span class="sortlabel">정렬</span>
       <button class="sortbtn on" id="sortOrder" data-sort="order">발표 순서</button>
@@ -593,7 +594,8 @@
     <div class="copybar">
       <button class="mbtn primary" id="copyNeis">NEIS용 표 복사</button>
       <button class="mbtn ghost" id="copyTsv">전체 복사(엑셀)</button>
-      <button class="mbtn ghost" id="dlCsv">CSV 내려받기</button>
+      <button class="mbtn ghost" id="dlCsv">현재 반 CSV</button>
+      <button class="mbtn ghost" id="dlAllCsv">전체 반 CSV (반·번호 순)</button>
       <button class="mbtn ghost" id="expPaper">종이 데이터 저장</button>
       <button class="mbtn ghost" id="impPaper">종이 데이터 불러오기</button>
       <span style="flex:1"></span>
@@ -3231,14 +3233,17 @@ function renderResult(){
 document.querySelectorAll('.sortbtn').forEach(b=>b.onclick=()=>{resultSort=b.dataset.sort;renderResult()});
 function neisText(){return sortedStudents().map(s=>{const max=rubricMax(s),tot=studentTotal(s),pct=max?Math.round(tot/max*100):0;const rt=s.recordedTime?fmt(s.recordedTime.eff):'';return [state.students.indexOf(s)+1,s.no,s.name,topicStanceText(s),paperStatusText(s),tot,s.absent?'발표안함':gradeOf(pct),rt,(s.memo||'').replace(/\s+/g,' ')].join('\t')}).join('\n')}
 function fullTsv(){
+  return fullResultRows().map(row=>row.map(cell=>String(cell??'').replace(/[\t\r\n]+/g,' ')).join('\t')).join('\n');
+}
+function fullResultRows(students=sortedStudents(),roster=state.students){
   const head=['발표순서','번호','이름',...(selectionMode==='draw'?['뽑기']:['주제','입장'])];
   state.rubric.forEach(c=>{head.push(c.name);head.push(c.name+' 근거')});
   if(selectionMode==='draw')choiceQuestionNumbers().forEach(i=>{head.push(`선택문제 ${i} 점수`,`선택문제 ${i} 근거`)});
   head.push('종이','총점','등급','발표시간','총평');
-  const rows=sortedStudents().map(s=>{
+  const rows=students.map(s=>{
     const max=rubricMax(s);
     const tot=studentTotal(s),pct=max?Math.round(tot/max*100):0;
-    const cells=[state.students.indexOf(s)+1,s.no,s.name,...(selectionMode==='draw'?[s.choiceSet!=null?s.choiceSet+1:'']:[topicFull(s),s.stance||''])];
+    const cells=[roster.indexOf(s)+1,s.no,s.name,...(selectionMode==='draw'?[s.choiceSet!=null?s.choiceSet+1:'']:[topicFull(s),s.stance||''])];
     rubricForStudent(s).forEach((c,i)=>{
       const has=checksOf(s,i).length>0;
       cells.push(s.absent?critScore(s,i):(has?critScore(s,i):''));
@@ -3249,14 +3254,35 @@ function fullTsv(){
     });
     if(selectionMode==='draw')for(let i=choiceRubric(s).length;i<choiceQuestionNumbers().length;i++)cells.push('','');
     cells.push(paperStatusText(s),tot,s.absent?'발표안함':gradeOf(pct),s.recordedTime?fmt(s.recordedTime.eff):'',(s.memo||'').replace(/\s+/g,' '));
-    return cells.join('\t');
+    return cells;
   });
-  return [head.join('\t'),...rows].join('\n');
+  return [head,...rows];
 }
+function allClassResultRows(){
+  const rows=[['반',...fullResultRows([],[])[0]]];
+  [...classes].sort((a,b)=>String(a).localeCompare(String(b),'ko',{numeric:true})).forEach(cls=>{
+    const roster=(cls===currentClass?state.students:classStudents[cls])||[];
+    const students=[...roster].sort((a,b)=>String(a.no).localeCompare(String(b.no),'ko',{numeric:true}));
+    fullResultRows(students,roster).slice(1).forEach(row=>rows.push([clsLabel(cls),...row]));
+  });
+  return rows;
+}
+function resultCsv(rows){
+  return rows.map(row=>row.map(cell=>'"'+String(cell??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+}
+
 function copy(t,m){navigator.clipboard.writeText(t).then(()=>toast(m)).catch(()=>toast('복사 실패 — 직접 선택해주세요'))}
 document.getElementById('copyNeis').onclick=()=>copy(neisText(),'NEIS용 표 복사됨');
 document.getElementById('copyTsv').onclick=()=>copy(fullTsv(),'전체 표 복사됨');
-document.getElementById('dlCsv').onclick=async()=>{const csv=fullTsv().split('\n').map(r=>r.split('\t').map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const saved=await saveOutputFile(new Blob(["\uFEFF"+csv],{type:'text/csv'}),`${safeFileName(appTitle)}_${clsLabel(currentClass)}.csv`);toast(saved?'CSV가 녹음 폴더에 저장됨':'CSV 내려받음')};
+async function downloadResultCsv(allClasses=false){
+  const rows=allClasses?allClassResultRows():fullResultRows();
+  const label=allClasses?'전체반_반번호순':clsLabel(currentClass);
+  const saved=await saveOutputFile(new Blob(["\uFEFF"+resultCsv(rows)],{type:'text/csv;charset=utf-8'}),`${safeFileName(appTitle)}_${safeFileName(label)}.csv`);
+  toast(saved?'CSV가 녹음 폴더에 저장됨':'CSV 내려받음');
+}
+document.getElementById('dlCsv').onclick=()=>downloadResultCsv();
+document.getElementById('dlAllCsv').onclick=()=>downloadResultCsv(true);
+
 function backupFilename(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${safeFileName(appTitle)}_백업_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;}
 function currentShareData(includeStudents){
   classStudents[currentClass]=state.students;
