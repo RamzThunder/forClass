@@ -3,3 +3,6 @@
 .claude/settings.local.json
 # Local student roster samples and exports
 /*.csv
+
+# Grading backups contain student data
+/*_백업_*.json
