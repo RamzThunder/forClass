@@ -179,8 +179,71 @@ footer .wrap{
   font-size:12px;
 }
 main{min-width:0}
-.rosterPanel{min-width:0;margin:32px auto 48px;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:20px;max-width:940px}
-.rosterPanel h2{margin:0 0 10px;font-size:22px}
+
+/* Google login (hero) */
+.login{margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.googleBtn{
+  display:inline-flex;align-items:center;gap:10px;
+  height:44px;padding:0 20px 0 16px;
+  border:1px solid #747775;border-radius:999px;
+  background:#fff;color:#1f1f1f;
+  font:inherit;font-size:14.5px;font-weight:600;
+  cursor:pointer;
+  transition:background .2s ease, box-shadow .2s ease;
+}
+.googleBtn:hover{background:#f8fafd;box-shadow:0 1px 3px rgba(23,32,51,.18)}
+.googleBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.googleLogo{width:20px;height:20px;flex:0 0 auto}
+.accountChip{
+  display:inline-flex;align-items:center;gap:10px;
+  max-width:100%;
+  padding:6px 6px 6px 8px;
+  border:1px solid var(--line);border-radius:999px;
+  background:var(--panel);
+}
+.accountChip[hidden],.googleBtn[hidden]{display:none}
+.avatar{
+  width:30px;height:30px;border-radius:50%;flex:0 0 auto;
+  display:grid;place-items:center;
+  background:var(--accent2);color:var(--accent);
+  font-size:14px;font-weight:700;
+}
+.accountText{display:flex;flex-direction:column;align-items:flex-start;min-width:0;text-align:left;line-height:1.3}
+.accountName{font-size:14px;font-weight:700;color:var(--ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.accountMail{font-size:12px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.accountMail.expired{color:var(--red)}
+.chipBtn{
+  flex:0 0 auto;
+  height:30px;padding:0 12px;
+  border:1px solid var(--line);border-radius:999px;
+  background:var(--bg);color:var(--muted);
+  font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+}
+.chipBtn:hover{color:var(--ink);border-color:#b8c0ce}
+.chipBtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.chipBtn.primary:hover{color:#fff;opacity:.9}
+.chipBtn[hidden]{display:none}
+.loginError{margin:0;color:var(--red);font-size:12.5px}
+
+/* Shared roster (collapsed) */
+.rosterPanel{min-width:0;margin:40px auto 48px;padding:0 24px;background:var(--panel);border:1px solid var(--line);border-radius:20px;max-width:940px}
+.rosterPanel > summary{
+  list-style:none;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  padding:16px 0;
+}
+.rosterPanel > summary::-webkit-details-marker{display:none}
+.rosterSummaryTitle{font-size:16px;font-weight:700}
+.rosterBadge{
+  border:1px solid var(--line);border-radius:999px;
+  padding:3px 9px;font-size:11px;font-weight:600;color:var(--muted);background:var(--bg);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+.rosterBadge.ready{color:var(--green);border-color:#bfe3cc;background:#f3fbf6}
+.chevron{width:18px;height:18px;margin-left:auto;flex:0 0 auto;color:var(--muted);transition:transform .2s ease}
+.rosterPanel[open] .chevron{transform:rotate(180deg)}
+.rosterPanel[open]{padding-bottom:20px}
+.rosterPanel[open] > summary{border-bottom:1px solid var(--line);margin-bottom:6px}
 .rosterPanel p{color:var(--muted);line-height:1.7}
 .rosterActions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}
 .rosterActions button,.rosterActions select,.rosterActions input{font:inherit;max-width:100%}
@@ -197,6 +260,7 @@ main{min-width:0}
 @media (max-width:620px){
   .hero{padding-top:64px}
   .toolBtn{width:100%;max-width:380px}
+  .rosterPanel{margin:32px auto 40px;padding:0 16px}
 }
 </style>
 </head>
@@ -206,6 +270,22 @@ main{min-width:0}
     <section class="hero">
       <h1 class="heroTitle">평가 도구 모음</h1>
       <p class="heroSub">입력 자료는 각 기기의 브라우저 저장소에 보관되고, 구글 로그인을 하면 내 구글 드라이브에도 자동 저장됩니다.</p>
+      <div class="login" id="google-drive" aria-label="구글 드라이브 연결">
+        <button class="googleBtn" id="driveSignIn" type="button">
+          <svg class="googleLogo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          <span>Google로 로그인</span>
+        </button>
+        <div class="accountChip" id="driveChip" hidden>
+          <span class="avatar" id="driveAvatar" aria-hidden="true"></span>
+          <span class="accountText">
+            <span class="accountName" id="driveName"></span>
+            <span class="accountMail" id="driveAccount" role="status" aria-live="polite"></span>
+          </span>
+          <button class="chipBtn primary" id="driveReconnect" type="button" hidden>다시 연결</button>
+          <button class="chipBtn" id="driveSignOut" data-drive-no-auto type="button">로그아웃</button>
+        </div>
+        <p class="loginError" id="driveError" role="alert" hidden></p>
+      </div>
     </section>
 
     <section class="toolButtons" aria-label="평가 도구 목록">
@@ -260,18 +340,12 @@ main{min-width:0}
       </a>
     </section>
     <div class="wrap">
-      <section class="rosterPanel" id="google-drive" aria-labelledby="driveTitle">
-        <h2 id="driveTitle">구글 드라이브 연결</h2>
-        <p>로그인하면 채점 기록이 내 구글 드라이브의 「평가 도구 모음」 폴더에 자동 저장됩니다. 다른 컴퓨터에서 같은 계정으로 로그인하면 이어서 채점할 수 있습니다.<br>지금은 OMR 서술형 채점 도구에서 쓸 수 있습니다.</p>
-        <p id="driveAccount" role="status" aria-live="polite">확인 중…</p>
-        <div class="rosterActions">
-          <button id="driveSignIn" type="button">Google로 로그인</button>
-          <button id="driveSignOut" data-drive-no-auto class="secondary" type="button" hidden>로그아웃</button>
-        </div>
-        <p>학교 공용 컴퓨터에서는 쓰고 난 뒤 꼭 로그아웃해 주세요. 구글 로그인은 1시간쯤 지나면 만료되며, 채점 화면의 드라이브 버튼에서 다시 연결할 수 있습니다.</p>
-      </section>
-      <section class="rosterPanel" id="shared-roster" aria-labelledby="rosterTitle">
-        <h2 id="rosterTitle">공통 학생 명렬</h2>
+      <details class="rosterPanel" id="shared-roster">
+        <summary>
+          <span class="rosterSummaryTitle" id="rosterTitle">공통 학생 명렬</span>
+          <span class="rosterBadge" id="rosterBadge">미등록</span>
+          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
         <p>학생 명렬을 한 번 등록하면 지필·글쓰기·말하기 채점기에 함께 적용됩니다.<br>CSV의 학년, 반, 번호, 성명(이름)을 읽습니다. 전학 등으로 빠진 번호는 채우지 않고 원래 번호를 유지합니다.</p>
         <p id="savedRosterSummary">등록된 명렬이 없습니다.</p>
         <div class="rosterActions">
@@ -285,7 +359,7 @@ main{min-width:0}
           <div class="rosterTable"><table><thead><tr><th scope="col">학년</th><th scope="col">반</th><th scope="col">번호</th><th scope="col">성명</th></tr></thead><tbody id="rosterRows"></tbody></table></div>
         </div>
         <p>같은 브라우저와 같은 사이트에서 공유됩니다. 이미 열어 둔 채점기는 작업을 저장한 뒤 새로고침해 주세요.</p>
-      </section>
+      </details>
     </div>
   </main>
 
@@ -299,22 +373,32 @@ main{min-width:0}
 <script>
 (function(){
   const $ = id => document.getElementById(id);
+  function showError(message){
+    $('driveError').textContent = message || '';
+    $('driveError').hidden = !message;
+  }
   function render(){
     const state = GoogleDriveSync.authState();
     const account = GoogleDriveSync.account();
-    $('driveAccount').textContent = state === 'signed-out'
-      ? '로그인되어 있지 않습니다. 채점 기록은 이 기기에만 저장됩니다.'
-      : `${account.name ? account.name + ' · ' : ''}${account.email} ${state === 'expired' ? '(로그인 만료 · 다시 연결해 주세요)' : '연결됨'}`;
-    $('driveAccount').style.color = state === 'expired' ? 'var(--red)' : '';
-    $('driveSignIn').hidden = state === 'signed-in';
-    $('driveSignIn').textContent = state === 'expired' ? '다시 연결' : 'Google로 로그인';
-    $('driveSignOut').hidden = state === 'signed-out';
+    const signedOut = state === 'signed-out';
+    $('driveChip').hidden = signedOut;
+    $('driveSignIn').hidden = !signedOut;
+    $('driveReconnect').hidden = state !== 'expired';
+    if(signedOut) return;
+    const label = account.name || account.email;
+    $('driveAvatar').textContent = (label || '?').trim().charAt(0).toUpperCase();
+    $('driveName').textContent = label;
+    $('driveAccount').textContent = state === 'expired' ? '로그인 만료' : `${account.name ? account.email + ' · ' : ''}드라이브 연결됨`;
+    $('driveAccount').classList.toggle('expired', state === 'expired');
   }
-  GoogleDriveSync.prepare().catch(err => { $('driveAccount').textContent = err.message; });
-  GoogleDriveSync.onAuthChange(render);
-  $('driveSignIn').addEventListener('click', () => {
-    GoogleDriveSync.signIn().then(render).catch(err => { $('driveAccount').textContent = err.message; $('driveAccount').style.color = 'var(--red)'; });
-  });
+  GoogleDriveSync.prepare().catch(err => showError(err.message));
+  GoogleDriveSync.onAuthChange(() => { showError(''); render(); });
+  const signIn = () => {
+    showError('');
+    GoogleDriveSync.signIn().then(render).catch(err => showError(err.message));
+  };
+  $('driveSignIn').addEventListener('click', signIn);
+  $('driveReconnect').addEventListener('click', signIn);
   $('driveSignOut').addEventListener('click', async () => {
     if(!confirm('구글 로그아웃할까요? 채점 기록은 이 기기와 드라이브에 그대로 남습니다.')) return;
     await GoogleDriveSync.signOut();

@@ -18,7 +18,7 @@
     $('rosterClassFilter').replaceChildren(new Option(`전체 ${Object.keys(groups).length}개 반`,''),...Object.entries(groups).map(([cls,items])=>new Option(`${cls}반 · ${items.length}명`,cls)));
     $('rosterPreview').hidden=false;renderRows();
   }
-  function summary(data){$('savedRosterSummary').textContent=`등록됨: ${Object.keys(SharedRoster.groups(data)).length}개 반 · ${data.students.length}명 · ${new Date(data.savedAt).toLocaleString('ko-KR')}`;}
+  function summary(data){const classes=Object.keys(SharedRoster.groups(data)).length;$('savedRosterSummary').textContent=`등록됨: ${classes}개 반 · ${data.students.length}명 · ${new Date(data.savedAt).toLocaleString('ko-KR')}`;const badge=$('rosterBadge');if(badge){badge.textContent=`${classes}개 반 · ${data.students.length}명`;badge.classList.add('ready');}}
   $('rosterClassFilter').addEventListener('change',renderRows);
   $('sharedRosterFile').addEventListener('change',async event=>{
     const token=++request, file=event.target.files[0];
