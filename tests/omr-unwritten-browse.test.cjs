@@ -67,3 +67,34 @@ test('미작성 후보 넘겨보기: 끄면 필터가 해제된다', async () =>
   c.stopOcrUnwrittenBrowse();
   assert.equal(c.state.keywordFilter, null);
 });
+
+function renderSetup(candidates, page, browsing=true){
+  const el = () => ({textContent:'', innerHTML:'', disabled:false, checked:false, classList:{toggle(){}}});
+  const els = {unwrittenOcrPanel:el(), runUnwrittenOcrBtn:el(), unwrittenOcrShortInput:el(), unwrittenOcrStatus:el(), browseUnwrittenOcrBtn:el(), unwrittenOcrList:el()};
+  const state = {pdf:{}, page, settings:{unwrittenOcrEnabled:true}, keywordFilter:browsing ? {kind:'ocrUnwritten', pages:[1,5,9]} : null, unwrittenOcr:{running:false, status:'', candidates}};
+  const c = vm.createContext({state, els, escapeHtml:String, activeQuestion:() => ({label:'1번'}), formatInkPercent:() => '0.10%',
+    studentIndexForPage:p => Math.ceil(p / 2), firstPageForStudentIndex:i => i * 2 - 1});
+  for(const name of ['isOcrUnwrittenFilter','ocrCandidateBasePage','renderUnwrittenOcrCandidates']) vm.runInContext(source(name), c);
+  return c;
+}
+
+test('미작성 후보 넘겨보기: 화면에 띄운 후보는 확인함으로 바뀌고 미리보기가 접힌다', () => {
+  const candidates = [1, 5, 9].map(page => ({page, studentText:`${page}쪽`, reason:'미작성 추정', thumb:'data:x'}));
+  const c = renderSetup(candidates, 5);
+  c.renderUnwrittenOcrCandidates();
+  assert.equal(candidates[1].viewed, true);
+  assert.equal(candidates[0].viewed, undefined);
+  assert.equal((c.els.unwrittenOcrList.innerHTML.match(/unwrittenOcrThumb/g) || []).length, 2);
+  assert.match(c.els.unwrittenOcrStatus.textContent, /확인 1명/);
+  c.state.page = 1; c.renderUnwrittenOcrCandidates();
+  c.state.page = 9; c.renderUnwrittenOcrCandidates();
+  assert.equal((c.els.unwrittenOcrList.innerHTML.match(/unwrittenOcrThumb/g) || []).length, 0);
+  assert.match(c.els.unwrittenOcrStatus.textContent, /모두 확인/);
+});
+
+test('미작성 후보: 넘겨보기 전에는 미리보기를 그대로 보여 준다', () => {
+  const candidates = [1, 5].map(page => ({page, studentText:`${page}쪽`, reason:'미작성 추정', thumb:'data:x'}));
+  const c = renderSetup(candidates, 1, false);
+  c.renderUnwrittenOcrCandidates();
+  assert.equal((c.els.unwrittenOcrList.innerHTML.match(/unwrittenOcrThumb/g) || []).length, 2);
+});
