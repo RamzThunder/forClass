@@ -469,7 +469,10 @@
         const payload = options.build();
         const fp = localFingerprint(payload);
         if(!link.fileId){ await attach(payload, reason === 'open'); return; }
-        if(reason === 'auto' && fp === link.syncedHash && status.state === 'saved') return;
+        if(reason === 'auto' && fp === link.syncedHash && ['saved', 'pending'].includes(status.state)){
+          if(status.state === 'pending') setStatus('saved', savedMessage());
+          return;
+        }
         setStatus('checking', '드라이브 확인 중…');
         const meta = await getMeta(link.fileId);
         const known = link.remote || {version:link.version};
@@ -504,8 +507,13 @@
       timer = setTimeout(() => syncNow('auto'), delay);
     }
     // 채점기가 저장할 때마다 부른다. 드라이브에서 받아 적용하는 중에는 무시한다.
+    // 바뀐 즉시 '저장 대기'로 표시해, 아직 올라가지 않은 변경이 있다는 걸 보여 준다.
+    // 충돌·파일 선택처럼 사용자가 봐야 하는 상태는 덮지 않는다.
     function changed(){
       if(applying || authState() === 'signed-out') return;
+      if(authState() === 'signed-in' && !busy && !['conflict', 'choose'].includes(status.state)){
+        setStatus('pending', '저장 대기 중 · 잠시 후 드라이브에 저장됩니다');
+      }
       schedule();
     }
     function flush(){ if(timer) syncNow('auto'); }

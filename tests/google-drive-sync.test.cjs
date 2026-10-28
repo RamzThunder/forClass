@@ -372,3 +372,39 @@ test('만료됐거나 10분 안에 만료될 때만 클릭 시 자동 재연결�
   assert.equal(G._test.needsAutoReconnect(now), false, '실패 직후에는 다시 띄우지 않음');
   G._test.blockAuto(0);
 });
+
+test('바뀌면 바로 저장 대기로 표시하고, 저장되면 저장됨으로 바뀐다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  assert.equal(last(g).state, 'saved');
+  g.data.records.b = 2;
+  g.doc.changed();
+  assert.equal(last(g).state, 'pending');
+  await g.doc.sync();
+  assert.equal(last(g).state, 'saved');
+  assert.deepEqual(JSON.parse(drive.files.get(g.doc.link.fileId).content).records, {a:1, b:2});
+});
+
+test('내용이 그대로면 저장 대기에서 드라이브 요청 없이 저장됨으로 돌아간다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  drive.calls.length = 0;
+  g.doc.changed();
+  await g.doc.sync();
+  assert.equal(last(g).state, 'saved');
+  assert.equal(drive.calls.length, 0);
+});
+
+test('충돌 확인 중에는 저장 대기로 덮지 않는다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  drive.files.get(g.doc.link.fileId).content = JSON.stringify({records:{z:9}});
+  g.data.records.b = 2;
+  await g.doc.sync();
+  assert.equal(last(g).state, 'conflict');
+  g.doc.changed();
+  assert.equal(last(g).state, 'conflict');
+});
