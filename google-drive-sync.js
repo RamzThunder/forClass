@@ -150,17 +150,45 @@
   }
   // 버튼 클릭 안에서 바로 불러야 팝업이 막히지 않는다. 그래서 스크립트는 prepare()로 미리 불러 둔다.
   function signIn(){
-    return new Promise((resolve, reject) => {
-      if(!tokenClient){
-        prepare();
-        reject(new Error('구글 로그인을 준비하고 있습니다. 잠시 후 다시 눌러 주세요.'));
-        return;
-      }
-      pendingSignIn?.reject(new Error('새 로그인 요청으로 취소되었습니다.'));
-      pendingSignIn = {resolve, reject};
-      const known = account();
-      tokenClient.requestAccessToken(known ? {prompt:'', login_hint:known.email} : {prompt:'consent'});
-    });
+    // 자동 재연결이 이미 창을 띄웠으면 같은 요청을 함께 기다린다(창이 두 번 뜨지 않게).
+    if(pendingSignIn && Date.now() - pendingSignIn.at < 120000) return pendingSignIn.promise;
+    let settle;
+    const promise = new Promise((resolve, reject) => { settle = {resolve, reject}; });
+    if(!tokenClient){
+      prepare();
+      settle.reject(new Error('구글 로그인을 준비하고 있습니다. 잠시 후 다시 눌러 주세요.'));
+      return promise;
+    }
+    pendingSignIn?.reject(new Error('새 로그인 요청으로 취소되었습니다.'));
+    pendingSignIn = {...settle, promise, at:Date.now()};
+    const known = account();
+    tokenClient.requestAccessToken(known ? {prompt:'', login_hint:known.email} : {prompt:'consent'});
+    return promise;
+  }
+
+  // ---------- 자동 재연결 ----------
+  // 토큰은 1시간이면 만료되고 늘릴 수 없다. 팝업은 사용자 클릭 안에서만 열 수 있으므로,
+  // 만료됐거나 곧 만료될 때 화면을 처음 클릭하는 순간 조용히 다시 연결한다.
+  // 로그아웃 버튼처럼 data-drive-no-auto가 붙은 곳을 누를 때는 하지 않는다.
+  const AUTO_REFRESH_BEFORE = 10 * 60000;
+  const AUTO_RETRY_AFTER = 10 * 60000;
+  let autoBlockedUntil = 0;
+  function needsAutoReconnect(now = Date.now()){
+    const a = readAuth();
+    if(!a || !a.email || pendingSignIn || now < autoBlockedUntil) return false;
+    return !a.token || Number(a.expiresAt) - now < AUTO_REFRESH_BEFORE;
+  }
+  function autoReconnect(event){
+    if(event && event.isTrusted === false) return;
+    if(event?.target?.closest?.('[data-drive-no-auto]')) return;
+    if(!needsAutoReconnect()) return;
+    if(!tokenClient){ prepare(); return; }
+    autoBlockedUntil = Date.now() + 15000;
+    signIn().then(() => { autoBlockedUntil = 0; }, () => { autoBlockedUntil = Date.now() + AUTO_RETRY_AFTER; });
+  }
+  if(root.document?.addEventListener){
+    root.document.addEventListener('click', autoReconnect, true);
+    if(account()) prepare();
   }
   async function signOut(){
     const t = readAuth()?.token;
@@ -526,7 +554,7 @@
 
   const exported = {CLIENT_ID, SCOPE, AUTH_KEY, DOC_PREFIX, prepare, signIn, signOut, account, authState, onAuthChange, createDoc, timeLabel,
     files:{findByKey, uploadLarge, downloadBlob, getMeta},
-    _test:{hash, fingerprint, syncAction, sameRemote, listFiles, getMeta, download, createFile, updateFile, resetFolder:() => { folderCache = null; }}};
+    _test:{hash, fingerprint, needsAutoReconnect, blockAuto:until => { autoBlockedUntil = until; }, syncAction, sameRemote, listFiles, getMeta, download, createFile, updateFile, resetFolder:() => { folderCache = null; }}};
   root.GoogleDriveSync = exported;
   if(typeof module !== 'undefined') module.exports = exported;
 })(typeof window !== 'undefined' ? window : globalThis);

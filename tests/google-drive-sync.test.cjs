@@ -356,3 +356,19 @@ test('PDF를 올리다 인터넷이 끊겨도 받은 곳부터 이어서 올린�
   const meta = await G.files.uploadLarge({app:'omr-pdf', key:'k', name:'a.pdf', blob:new Blob([bytes])});
   assert.equal(Buffer.compare(drive.files.get(meta.id).bytes, bytes), 0);
 });
+
+test('만료됐거나 10분 안에 만료될 때만 클릭 시 자동 재연결한다', () => {
+  const now = Date.now();
+  const setAuth = value => localStorage.setItem(G.AUTH_KEY, JSON.stringify(value));
+  G._test.blockAuto(0);
+  assert.equal(G._test.needsAutoReconnect(now), false, '로그인한 적 없으면 하지 않음');
+  setAuth({token:'t', expiresAt:now + 50 * 60000, email:'a@b.c'});
+  assert.equal(G._test.needsAutoReconnect(now), false, '아직 넉넉하면 하지 않음');
+  setAuth({token:'t', expiresAt:now + 5 * 60000, email:'a@b.c'});
+  assert.equal(G._test.needsAutoReconnect(now), true, '곧 만료되면 미리 재연결');
+  setAuth({token:'', expiresAt:0, email:'a@b.c'});
+  assert.equal(G._test.needsAutoReconnect(now), true, '만료되면 재연결');
+  G._test.blockAuto(now + 60000);
+  assert.equal(G._test.needsAutoReconnect(now), false, '실패 직후에는 다시 띄우지 않음');
+  G._test.blockAuto(0);
+});
