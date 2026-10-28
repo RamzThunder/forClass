@@ -826,7 +826,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.15.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.16.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1412,6 +1412,14 @@ textarea{min-height:72px;resize:vertical}
           </span>
           <input id="unwrittenOcrEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
+        <div class="field">
+          <span class="label">OCR 읽어오기 엔진</span>
+          <select id="ocrEngineSelect">
+            <option value="tesseract">Tesseract (기본)</option>
+            <option value="paddle">PaddleOCR 한국어 (실험)</option>
+          </select>
+          <span class="statusLine">PaddleOCR는 처음 한 번 모델 약 30MB를 내려받습니다. 손글씨 인식이 나은지 비교해 보세요.</span>
+        </div>
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
             <span class="label">루브릭 검토 보조</span>
@@ -1657,6 +1665,8 @@ const LAST_PDF_HANDLE_KEY = "lastPdfHandle";
 const LAST_PDF_BLOB_KEY = "lastPdfBlob";
 const EXAM_CAPTURE_PREFIX = `${EXAM_CAPTURE_KEY}.`;
 const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
+const PADDLE_OCR_URL = "https://cdn.jsdelivr.net/npm/@paddleocr/paddleocr-js@0.4.2/+esm";
+const PADDLE_KOREAN_REC_URL = "https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/korean_PP-OCRv5_mobile_rec_onnx_infer.tar";
 const defaultRubric = [
   {name:"내용 충실성 충족", pt:4},
   {name:"근거와 설명 충족", pt:3},
@@ -1695,7 +1705,7 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, comboFullCreditEnabled:false, keywordLinkEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, unwrittenOcrEnabled:false, unwrittenOcrIncludeShort:false, deductTemplate:structuredClone(defaultDeductTemplate)}
+  settings:{autoAssistEnabled:false, comboFullCreditEnabled:false, keywordLinkEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, unwrittenOcrEnabled:false, unwrittenOcrIncludeShort:false, ocrEngine:"tesseract", deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
@@ -1751,7 +1761,7 @@ const els = {
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"),
   oneHandPrevKeyBtn:$("oneHandPrevKeyBtn"), oneHandNextKeyBtn:$("oneHandNextKeyBtn"), oneHandUnwrittenKeyBtn:$("oneHandUnwrittenKeyBtn"), openRubricWindowBtn:$("openRubricWindowBtn"),
-  unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), browseUnwrittenOcrBtn:$("browseUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
+  unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), ocrEngineSelect:$("ocrEngineSelect"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), browseUnwrittenOcrBtn:$("browseUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
   reviewAssistPanel:$("reviewAssistPanel"), reviewAssistEnabledInput:$("reviewAssistEnabledInput"), comboFullCreditEnabledInput:$("comboFullCreditEnabledInput"), keywordLinkEnabledInput:$("keywordLinkEnabledInput"), openReviewAssistBtn:$("openReviewAssistBtn"), openReviewAssistFromSettingsBtn:$("openReviewAssistFromSettingsBtn"),
   reviewAssistQuickStatus:$("reviewAssistQuickStatus"), reviewAssistModal:$("reviewAssistModal"), closeReviewAssistBtn:$("closeReviewAssistBtn"), refreshReviewAssistBtn:$("refreshReviewAssistBtn"), openReviewAssistPopupBtn:$("openReviewAssistPopupBtn"),
   reviewAssistSummary:$("reviewAssistSummary"), reviewAssistList:$("reviewAssistList"),
@@ -2124,6 +2134,7 @@ function applySettings(){
   if(els.comboFullCreditEnabledInput) els.comboFullCreditEnabledInput.checked = comboFullCreditEnabled;
   if(els.keywordLinkEnabledInput) els.keywordLinkEnabledInput.checked = Boolean(state.settings?.keywordLinkEnabled);
   if(els.unwrittenOcrEnabledInput) els.unwrittenOcrEnabledInput.checked = unwrittenOcrEnabled;
+  if(els.ocrEngineSelect) els.ocrEngineSelect.value = state.settings?.ocrEngine === "paddle" ? "paddle" : "tesseract";
   if(els.reviewAssistEnabledInput) els.reviewAssistEnabledInput.checked = reviewAssistEnabled;
   if(els.unwrittenOcrShortInput) els.unwrittenOcrShortInput.checked = Boolean(state.settings?.unwrittenOcrIncludeShort);
   if(els.multiWindowEnabledInput) els.multiWindowEnabledInput.checked = multiWindowEnabled;
@@ -2310,6 +2321,7 @@ function normalizeSettings(){
     },
     unwrittenOcrEnabled:Boolean(settings.unwrittenOcrEnabled),
     unwrittenOcrIncludeShort:Boolean(settings.unwrittenOcrIncludeShort),
+    ocrEngine:settings.ocrEngine === "paddle" ? "paddle" : "tesseract",
     reviewAssistEnabled:Boolean(settings.reviewAssistEnabled),
     pagesPerStudent:Math.max(1, Math.floor(nonNegativeNumber(settings.pagesPerStudent) || 1)),
     externalSelectedMaxScore:nonNegativeNumber(settings.externalSelectedMaxScore),
@@ -5527,6 +5539,62 @@ function loadTesseract(){
   return tesseractLoadPromise;
 }
 
+// ---------- PaddleOCR 한국어 (실험) ----------
+// 공식 브라우저 SDK를 CDN에서 불러오고, 한국어 전용 인식 모델(korean_PP-OCRv5_mobile_rec)을 쓴다.
+let paddleOcrPromise = null;
+function loadPaddleOcr(){
+  if(!paddleOcrPromise){
+    paddleOcrPromise = (async () => {
+      const {PaddleOCR} = await import(PADDLE_OCR_URL);
+      return PaddleOCR.create({
+        textDetectionModelName:"PP-OCRv5_mobile_det",
+        textRecognitionModelName:"korean_PP-OCRv5_mobile_rec",
+        textRecognitionModelAsset:{url:PADDLE_KOREAN_REC_URL},
+        ortOptions:{backend:"auto"}
+      });
+    })();
+    paddleOcrPromise.catch(() => { paddleOcrPromise = null; });
+  }
+  return paddleOcrPromise;
+}
+
+// 인식된 줄 상자를 위→아래, 같은 줄은 왼→오 순서로 이어 붙인다.
+function paddleItemsToText(items){
+  const boxes = (items || []).filter(item => String(item?.text || "").trim()).map(item => {
+    const ys = (item.poly || []).map(point => Number(point?.[1]) || 0);
+    const xs = (item.poly || []).map(point => Number(point?.[0]) || 0);
+    const top = ys.length ? Math.min(...ys) : 0, bottom = ys.length ? Math.max(...ys) : 0;
+    return {text:String(item.text).trim(), top, bottom, left:xs.length ? Math.min(...xs) : 0, mid:(top + bottom) / 2};
+  }).sort((a, b) => a.mid - b.mid);
+  const lines = [];
+  boxes.forEach(box => {
+    const line = lines.at(-1);
+    const height = Math.max(1, box.bottom - box.top);
+    if(line && Math.abs(line.mid - box.mid) < height * .5) line.boxes.push(box);
+    else lines.push({mid:box.mid, boxes:[box]});
+  });
+  return lines.map(line => line.boxes.sort((a, b) => a.left - b.left).map(box => box.text).join(" ")).join("\n");
+}
+
+async function recognizeAnswerText(canvas, onStatus){
+  if(state.settings?.ocrEngine === "paddle"){
+    onStatus("PaddleOCR 준비 중… 처음에는 모델을 내려받느라 시간이 걸립니다.");
+    const ocr = await loadPaddleOcr();
+    onStatus("PaddleOCR로 답안을 읽는 중…");
+    const [result] = await ocr.predict(canvas);
+    return paddleItemsToText(result?.items);
+  }
+  const Tesseract = await loadTesseract();
+  const result = await Tesseract.recognize(canvas, "kor+eng", {
+    logger: message => {
+      if(message?.status === "recognizing text" && Number.isFinite(message.progress)){
+        onStatus(`답안 OCR 인식 중… ${Math.round(message.progress * 100)}%`);
+      }
+    }
+  });
+  return String(result?.data?.text || "");
+}
+
 // ---------- 미작성 후보: 펜 자국 세기 ----------
 // 답안 칸을 고정 크기 격자로 줄이고, 종이 바탕보다 확실히 어둡거나(검정·연필) 색이 진한(파랑·빨강 펜) 칸을 잉크로 본다.
 const INK_GRID_W = 160;
@@ -5668,15 +5736,7 @@ async function readCurrentAnswerWithOcr(answerEl=els.answerText, statusEl=els.au
   setAutoAssistStatus("현재 답안 영역을 준비하는 중입니다.", false, statusEl);
   try{
     const canvas = await cropCanvasForPage(state.page);
-    const Tesseract = await loadTesseract();
-    const result = await Tesseract.recognize(canvas, "kor+eng", {
-      logger: message => {
-        if(message?.status === "recognizing text" && Number.isFinite(message.progress)){
-          setAutoAssistStatus(`답안 OCR 인식 중… ${Math.round(message.progress * 100)}%`, false, statusEl);
-        }
-      }
-    });
-    const text = String(result?.data?.text || "").trim();
+    const text = (await recognizeAnswerText(canvas, message => setAutoAssistStatus(message, false, statusEl))).trim();
     if(answerEl) answerEl.value = text;
     els.answerText.value = text;
     if(rubricPopupWindow && !rubricPopupWindow.closed){
@@ -11052,6 +11112,11 @@ els.applyTitleBtn.addEventListener("click", () => {
 });
 els.autoAssistEnabledInput.addEventListener("change", () => {
   state.settings.autoAssistEnabled = Boolean(els.autoAssistEnabledInput.checked);
+  applySettings();
+  persist();
+});
+els.ocrEngineSelect.addEventListener("change", () => {
+  state.settings.ocrEngine = els.ocrEngineSelect.value === "paddle" ? "paddle" : "tesseract";
   applySettings();
   persist();
 });
