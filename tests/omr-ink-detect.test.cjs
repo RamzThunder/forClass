@@ -10,7 +10,7 @@ function source(name){
 }
 const c = vm.createContext({});
 vm.runInContext('const INK_BLANK_RATIO = 0.004; const INK_SHORT_SHARE = .3;', c);
-for(const name of ['inkGridFromPixels','dilateInkCells','printedInkMask','inkRatiosForGrids','inkShortLimit','inkCandidateReason','formatInkPercent']) vm.runInContext(source(name), c);
+for(const name of ['inkGridFromPixels','dilateInkCells','printedInkMask','inkRatiosForGrids','inkShortLimit','inkCandidateReason']) vm.runInContext(source(name), c);
 
 const W = 240, H = 90, GW = 80, GH = 30;
 // 흰 종이에 인쇄된 밑줄 두 개가 있는 답안 칸
@@ -88,7 +88,3 @@ test('학생이 적으면 인쇄물을 빼지 않는다(학생 답을 인쇄물�
   assert.ok(ratios[0] > 0.01);
 });
 
-test('잉크 비율 표시', () => {
-  assert.equal(c.formatInkPercent(0.0012), '0.12%');
-  assert.equal(c.formatInkPercent(0.054), '5.4%');
-});

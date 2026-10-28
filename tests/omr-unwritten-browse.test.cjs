@@ -72,7 +72,7 @@ function renderSetup(candidates, page, browsing=true){
   const el = () => ({textContent:'', innerHTML:'', disabled:false, checked:false, classList:{toggle(){}}});
   const els = {unwrittenOcrPanel:el(), runUnwrittenOcrBtn:el(), unwrittenOcrShortInput:el(), unwrittenOcrStatus:el(), browseUnwrittenOcrBtn:el(), unwrittenOcrList:el()};
   const state = {pdf:{}, page, settings:{unwrittenOcrEnabled:true}, keywordFilter:browsing ? {kind:'ocrUnwritten', pages:[1,5,9]} : null, unwrittenOcr:{running:false, status:'', candidates}};
-  const c = vm.createContext({state, els, escapeHtml:String, activeQuestion:() => ({label:'1번'}), formatInkPercent:() => '0.10%',
+  const c = vm.createContext({state, els, escapeHtml:String, activeQuestion:() => ({label:'1번'}),
     studentIndexForPage:p => Math.ceil(p / 2), firstPageForStudentIndex:i => i * 2 - 1});
   for(const name of ['isOcrUnwrittenFilter','ocrCandidateBasePage','renderUnwrittenOcrCandidates']) vm.runInContext(source(name), c);
   return c;
