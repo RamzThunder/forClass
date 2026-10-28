@@ -828,7 +828,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.19.3</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.19.4</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -9194,6 +9194,7 @@ function applyRubricText(){
     alert("루브릭 항목을 하나 이상 입력해주세요.");
     return;
   }
+  if(!confirmRubricChange(items)) return;
   replaceActiveRubric(items);
   els.rubricEditorPanel.classList.add("hidden");
 }
@@ -9266,6 +9267,8 @@ function applyInlineRubricItem(editor){
   const itemToSave = shouldApplyDeductTemplate(previousItem, nextItem)
     ? deductTemplateItem(nextItem.id, nextItem.sub)
     : nextItem;
+  const nextRubric = question.rubric.map((item, i) => i === index ? itemToSave : item);
+  if(!confirmRubricChange(nextRubric, host, "이 항목을 이렇게 바꾸면")) return;
   question.rubric[index] = itemToSave;
   Object.values(state.records).forEach(rec => {
     const qrec = rec.answers?.[state.activeQuestion];
@@ -9334,6 +9337,24 @@ function confirmAddScoreArea(type){
   const count = completedCountForQuestion();
   if(!count) return true;
   return confirm(`이 문항에 채점 완료된 학생이 ${count}명 있습니다.\n\n새 루브릭 영역을 추가하면 이 학생들은 새 영역에 체크가 없어 채점 완료가 모두 해제됩니다.\n\n그래도 추가할까요?`);
+}
+
+// 바뀐 루브릭을 적용하면 채점 완료가 풀릴 학생 수. 새 가점 영역에 체크가 없으면 풀린다(id가 바뀐 항목의 체크는 사라진다).
+function completionsLostByRubric(nextRubric, question=activeQuestion()){
+  const nextQuestion = {...question, rubric:nextRubric};
+  const ids = new Set(nextRubric.map(item => item.id));
+  return Object.values(state.records || {}).filter(rec => {
+    const qrec = rec?.answers?.[question.id];
+    if(!qrec?.completed) return false;
+    const keywordHits = Object.fromEntries(Object.entries(qrec.keywordHits || {}).filter(([id]) => ids.has(id)));
+    return !hasScoreRubricSelection({...qrec, keywordHits}, nextQuestion);
+  }).length;
+}
+
+function confirmRubricChange(nextRubric, host=window, action="루브릭을 이렇게 바꾸면"){
+  const lost = completionsLostByRubric(nextRubric);
+  if(!lost) return true;
+  return host.confirm(`${action} 채점 완료된 학생 ${lost}명이 체크 없는 가점 영역이 생겨 채점 완료가 해제됩니다.\n\n그래도 진행할까요?`);
 }
 
 function addInlineRubricItem(type="score", sub=subOptions()[0]){
@@ -9935,12 +9956,15 @@ async function importHwpxRubric(file){
   const text = await rubricTextFromFile(file);
   const parsed = parseHwpxRubric(text);
   const number = activeQuestionNumber();
-  applyExampleAnswers(parsed.answers);
   const items = parsed.rubrics[number] || parsed.rubrics[Object.keys(parsed.rubrics)[0]];
   if(!items?.length){
+    applyExampleAnswers(parsed.answers);
     throw new Error("현재 문항에 맞는 채점 기준을 찾지 못했습니다.");
   }
+  if(!confirmRubricChange(items, window, "HWPX 기준으로 루브릭을 바꾸면")) return false;
+  applyExampleAnswers(parsed.answers);
   replaceActiveRubric(items);
+  return true;
 }
 
 function applyExampleAnswers(answerRows){
@@ -11644,8 +11668,7 @@ els.hwpxRubricInput.addEventListener("change", async evt => {
   const file = evt.target.files?.[0];
   if(!file) return;
   try{
-    await importHwpxRubric(file);
-    alert(`${activeQuestion().label} 기준을 불러왔습니다. 키워드 후보를 확인한 뒤 적용하세요.`);
+    if(await importHwpxRubric(file)) alert(`${activeQuestion().label} 기준을 불러왔습니다. 키워드 후보를 확인한 뒤 적용하세요.`);
   }catch(err){
     alert(`HWPX 기준을 불러올 수 없습니다: ${err.message}`);
   }finally{
