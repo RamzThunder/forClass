@@ -323,6 +323,8 @@ textarea{min-height:72px;resize:vertical}
 .unwrittenOcrControls{display:grid;gap:8px}
 .unwrittenOcrList{display:grid;gap:7px;margin-top:10px}
 .unwrittenOcrItem{border:1px solid var(--line);border-radius:8px;background:#fbfcfe;padding:9px;display:grid;gap:7px}
+.unwrittenOcrItem.current{border-color:var(--accent);background:var(--soft)}
+.unwrittenOcrBrowse{width:100%}
 .unwrittenOcrTop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .unwrittenOcrName{font-size:13px;font-weight:900;line-height:1.35}
 .unwrittenOcrMeta{font-size:11px;color:var(--muted);font-weight:800;line-height:1.4}
@@ -822,7 +824,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.12.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.13.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1026,6 +1028,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="unwrittenOcrControls">
         <label class="checkField" style="margin:0"><input id="unwrittenOcrShortInput" type="checkbox"> 10자 이하 답안도 후보에 포함</label>
         <div class="statusLine" id="unwrittenOcrStatus">현재 문항 답안 영역을 텍스트 인식으로 훑어 미작성 후보만 보여줍니다.</div>
+        <button class="btn mini primary unwrittenOcrBrowse hidden" id="browseUnwrittenOcrBtn" type="button">후보만 넘겨보기</button>
       </div>
       <div class="unwrittenOcrList" id="unwrittenOcrList"></div>
     </section>
@@ -1745,7 +1748,7 @@ const els = {
   importJsonBtn:$("importJsonBtn"), jsonInput:$("jsonInput"), resultHead:$("resultHead"), resultBody:$("resultBody"),
   autoAssistPanel:$("autoAssistPanel"), autoAssistEnabledInput:$("autoAssistEnabledInput"), multiWindowEnabledInput:$("multiWindowEnabledInput"), oneHandGradingInput:$("oneHandGradingInput"),
   oneHandPrevKeyBtn:$("oneHandPrevKeyBtn"), oneHandNextKeyBtn:$("oneHandNextKeyBtn"), oneHandUnwrittenKeyBtn:$("oneHandUnwrittenKeyBtn"), openRubricWindowBtn:$("openRubricWindowBtn"),
-  unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
+  unwrittenOcrPanel:$("unwrittenOcrPanel"), unwrittenOcrEnabledInput:$("unwrittenOcrEnabledInput"), unwrittenOcrShortInput:$("unwrittenOcrShortInput"), runUnwrittenOcrBtn:$("runUnwrittenOcrBtn"), browseUnwrittenOcrBtn:$("browseUnwrittenOcrBtn"), unwrittenOcrStatus:$("unwrittenOcrStatus"), unwrittenOcrList:$("unwrittenOcrList"),
   reviewAssistPanel:$("reviewAssistPanel"), reviewAssistEnabledInput:$("reviewAssistEnabledInput"), comboFullCreditEnabledInput:$("comboFullCreditEnabledInput"), keywordLinkEnabledInput:$("keywordLinkEnabledInput"), openReviewAssistBtn:$("openReviewAssistBtn"), openReviewAssistFromSettingsBtn:$("openReviewAssistFromSettingsBtn"),
   reviewAssistQuickStatus:$("reviewAssistQuickStatus"), reviewAssistModal:$("reviewAssistModal"), closeReviewAssistBtn:$("closeReviewAssistBtn"), refreshReviewAssistBtn:$("refreshReviewAssistBtn"), openReviewAssistPopupBtn:$("openReviewAssistPopupBtn"),
   reviewAssistSummary:$("reviewAssistSummary"), reviewAssistList:$("reviewAssistList"),
@@ -4171,7 +4174,9 @@ function updateKeywordFilterNotice(){
   els.keywordFilterNotice.classList.toggle("hidden", !active);
   if(!active) return;
   const kind = state.keywordFilter.kind || "keyword";
-  const stillExists = kind === "memo"
+  const stillExists = kind === "ocrUnwritten"
+    ? (state.keywordFilter.pages || []).length > 0
+    : kind === "memo"
     ? memoRecords().length > 0
     : kind === "discussion"
       ? discussionRecords().length > 0
@@ -4190,8 +4195,14 @@ function updateKeywordFilterNotice(){
     updateKeywordReviewToolbar();
     return;
   }
-  const count = keywordFilterPages().length;
+  const filterPages = keywordFilterPages();
+  const count = filterPages.length;
   const reasons = kind === "reviewAll" ? reviewReasonsForPage(state.page) : [];
+  if(kind === "ocrUnwritten"){
+    const position = filterPages.indexOf(firstPageForStudentIndex(studentIndexForPage(state.page))) + 1;
+    els.keywordFilterText.textContent = `미작성 후보 넘겨보기: ${position ? `${position}/` : ""}${count}명 · ←/→ 이동 · 전체 미작성 시 다음 후보`;
+    return;
+  }
   els.keywordFilterText.textContent = `모아보기 필터 적용 중: ${keywordFilterLabel()} · ${count}명${reasons.length ? ` · 현재: ${reasons.join(" / ")}` : ""}`;
 }
 
@@ -5099,6 +5110,7 @@ function markAllSubsUnwritten(){
   if(!state.pdf) return;
   if(!guardRubricUnlocked()) return;
   snapshotCurrentQuestion("전체 소문항 미작성");
+  const markedPage = state.page;
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   qrec.unwrittenSubs = qrec.unwrittenSubs || {};
@@ -5114,6 +5126,11 @@ function markAllSubsUnwritten(){
   renderRubric();
   updateResults();
   updateClassControls();
+  if(isOcrUnwrittenFilter()){
+    removeOcrCandidate(markedPage);
+    renderUnwrittenOcrCandidates();
+    advanceOcrCandidateAfterMark(markedPage);
+  }
 }
 
 function splitKeywords(text){
@@ -5369,8 +5386,15 @@ function renderUnwrittenOcrCandidates(){
   const candidates = state.unwrittenOcr.candidates || [];
   const fallback = state.pdf ? "후보 찾기를 누르면 현재 범위의 답안 영역을 훑습니다." : "PDF를 먼저 불러오세요.";
   els.unwrittenOcrStatus.textContent = state.unwrittenOcr.status || fallback;
+  const browsing = isOcrUnwrittenFilter();
+  if(els.browseUnwrittenOcrBtn){
+    els.browseUnwrittenOcrBtn.classList.toggle("hidden", !candidates.length || state.unwrittenOcr.running);
+    els.browseUnwrittenOcrBtn.textContent = browsing ? "넘겨보기 끄기" : `후보만 넘겨보기 (${candidates.length}명)`;
+    els.browseUnwrittenOcrBtn.classList.toggle("primary", !browsing);
+  }
+  const currentBase = state.pdf ? firstPageForStudentIndex(studentIndexForPage(state.page)) : 0;
   els.unwrittenOcrList.innerHTML = candidates.length ? candidates.map(candidate => `
-    <div class="unwrittenOcrItem">
+    <div class="unwrittenOcrItem${browsing && ocrCandidateBasePage(candidate.page) === currentBase ? " current" : ""}">
       <div class="unwrittenOcrTop">
         <div>
           <div class="unwrittenOcrName">${escapeHtml(candidate.studentText)}</div>
@@ -5394,6 +5418,56 @@ function resetUnwrittenOcrCandidates(status=""){
 function setUnwrittenOcrStatus(message){
   state.unwrittenOcr.status = message;
   renderUnwrittenOcrCandidates();
+}
+
+// 미작성 후보 넘겨보기: 후보 학생만 모아보기 필터로 묶어 ←/→로 넘기고,
+// 전체 미작성으로 표시하면 다음 후보로 바로 넘어간다.
+function isOcrUnwrittenFilter(filter=state.keywordFilter){
+  return filter?.kind === "ocrUnwritten";
+}
+
+function ocrCandidateBasePage(page){
+  return firstPageForStudentIndex(studentIndexForPage(Number(page)));
+}
+
+async function startOcrUnwrittenBrowse(startPage=null){
+  const pages = [...new Set((state.unwrittenOcr.candidates || []).map(candidate => ocrCandidateBasePage(candidate.page)))]
+    .filter(page => page > 0)
+    .sort((a,b) => a - b);
+  if(!pages.length){
+    showToast("넘겨볼 미작성 후보가 없습니다.");
+    return;
+  }
+  saveCurrent();
+  state.keywordFilter = {kind:"ocrUnwritten", pages};
+  state.activeClass = "";
+  const base = startPage ? ocrCandidateBasePage(startPage) : pages[0];
+  await goPage(pageWithCurrentSide(pages.includes(base) ? base : pages[0]));
+  showToast("미작성 후보만 넘겨봅니다. ←/→로 이동, 전체 미작성 표시 시 다음 후보로 넘어갑니다.");
+}
+
+function stopOcrUnwrittenBrowse(){
+  if(!isOcrUnwrittenFilter()) return;
+  state.keywordFilter = null;
+  updateChrome();
+  showToast("미작성 후보 넘겨보기를 껐습니다.");
+}
+
+function removeOcrCandidate(pageNumber){
+  const base = ocrCandidateBasePage(pageNumber);
+  const before = (state.unwrittenOcr.candidates || []).length;
+  state.unwrittenOcr.candidates = (state.unwrittenOcr.candidates || []).filter(candidate => ocrCandidateBasePage(candidate.page) !== base);
+  if(state.unwrittenOcr.candidates.length !== before) state.unwrittenOcr.status = `후보 ${state.unwrittenOcr.candidates.length}명 남음`;
+}
+
+async function advanceOcrCandidateAfterMark(pageNumber){
+  if(!isOcrUnwrittenFilter() || !state.pdf) return;
+  const pages = state.keywordFilter.pages || [];
+  const base = ocrCandidateBasePage(pageNumber);
+  if(ocrCandidateBasePage(state.page) !== base) return;
+  const next = pages.find(page => page > base);
+  if(next) await goPage(pageWithCurrentSide(next));
+  else showToast("마지막 후보까지 확인했습니다.");
 }
 
 function meaningfulOcrText(text){
@@ -5514,6 +5588,10 @@ async function runUnwrittenOcrScan(){
     return;
   }
   if(state.unwrittenOcr.running) return;
+  if(isOcrUnwrittenFilter()){
+    state.keywordFilter = null;
+    updateChrome();
+  }
   state.unwrittenOcr = {running:true, candidates:[], status:"텍스트 인식 엔진을 준비하는 중입니다."};
   renderUnwrittenOcrCandidates();
   const includeShort = Boolean(state.settings?.unwrittenOcrIncludeShort);
@@ -5576,10 +5654,10 @@ function markPageAllSubsUnwritten(pageNumber){
   updateResults();
   updateClassControls();
   updateProgress();
-  state.unwrittenOcr.candidates = (state.unwrittenOcr.candidates || []).filter(candidate => Number(candidate.page) !== Number(pageNumber));
-  state.unwrittenOcr.status = `후보 ${state.unwrittenOcr.candidates.length}명 남음`;
+  removeOcrCandidate(pageNumber);
   renderUnwrittenOcrCandidates();
   showToast(`${studentTextForPage(pageNumber)} 전체 미작성으로 표시했습니다.`);
+  advanceOcrCandidateAfterMark(pageNumber);
 }
 
 function studentTextForPage(pageNumber){
@@ -7086,6 +7164,7 @@ function recordShellForPage(page){
 function keywordFilterPages(filter=state.keywordFilter){
   if(!filter) return [];
   const kind = filter.kind || "keyword";
+  if(kind === "ocrUnwritten") return [...(filter.pages || [])];
   const session = reviewSession(filter);
   if(session) return session.targets.map(t=>reviewRecord(t)?.page || t.page).map(p=>firstPageForStudentIndex(studentIndexForPage(p))).filter((p,i,all)=>all.indexOf(p)===i).sort((a,b)=>a-b);
   const records = kind === "memo"
@@ -7108,6 +7187,7 @@ function keywordFilterPages(filter=state.keywordFilter){
 function keywordFilterLabel(filter=state.keywordFilter){
   if(!filter) return "";
   const kind = filter.kind || "keyword";
+  if(kind === "ocrUnwritten") return "미작성 후보";
   if(kind === "memo") return "메모 있는 학생";
   if(kind === "discussion") return "논의 필요 학생";
   if(kind === "reviewAll") return filter.title || "검토가 필요한 학생";
@@ -10920,10 +11000,11 @@ els.unwrittenOcrShortInput.addEventListener("change", () => {
   persist();
 });
 els.runUnwrittenOcrBtn.addEventListener("click", runUnwrittenOcrScan);
+els.browseUnwrittenOcrBtn.addEventListener("click", () => isOcrUnwrittenFilter() ? stopOcrUnwrittenBrowse() : startOcrUnwrittenBrowse());
 els.unwrittenOcrList.addEventListener("click", async evt => {
   const goBtn = evt.target.closest("[data-unwritten-ocr-go]");
   if(goBtn){
-    await goPage(Number(goBtn.dataset.unwrittenOcrGo));
+    await startOcrUnwrittenBrowse(Number(goBtn.dataset.unwrittenOcrGo));
     return;
   }
   const markBtn = evt.target.closest("[data-unwritten-ocr-mark]");
