@@ -89,3 +89,17 @@ test('공통 명렬 저장·재조회 및 변경 전 백업을 같은 버전에�
   assert.equal(R.load().revision,data.revision);
   delete global.localStorage;
 });
+
+test('드라이브 명렬 복원: 저장 시각·revision을 그대로 쓰고, 잘못된 데이터는 거부',()=>{
+  const store = new Map();
+  globalThis.localStorage = {getItem:k=>store.has(k)?store.get(k):null, setItem:(k,v)=>store.set(k,String(v)), removeItem:k=>store.delete(k)};
+  const students = R.parse(fixture);
+  const restored = R.restore({version:1, revision:'r1', source:'명렬.csv', savedAt:123, students});
+  assert.equal(restored.revision, 'r1');
+  assert.equal(R.load().savedAt, 123);
+  assert.equal(R.load().students.length, 3);
+  for(const bad of [null, {version:1, students:[]}, {version:2, students}, {version:1, students:[{className:'3-4', number:0, name:'x'}]}])
+    assert.throws(()=>R.restore(bad));
+  assert.equal(R.load().revision, 'r1');
+  delete globalThis.localStorage;
+});

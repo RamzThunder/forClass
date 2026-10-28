@@ -79,6 +79,10 @@ OMR 채점기를 먼저 연결하고, 나머지 채점기는 그다음에 연결
   - 만료됐거나 10분 안에 만료될 때 화면을 처음 클릭하면 조용히 다시 연결한다(팝업이 잠깐 떴다 닫힘). 실패하면 10분 동안 다시 시도하지 않는다.
   - 로그아웃 버튼에는 `data-drive-no-auto`를 붙여 자동 재연결을 막는다.
 
+- [x] 공통 학생 명렬 드라이브 저장 (index)
+  - `roster-manager.js`에서 `createDoc({app:'roster'})`로 `[명렬] 공통 학생 명렬.json`을 자동 저장한다. 명렬은 합치지 않고, 양쪽이 다르면 어느 쪽을 쓸지 묻는다.
+  - 드라이브에서 받은 명렬은 `SharedRoster.restore()`로 저장 시각·revision을 그대로 쓴다. 다른 기기는 index를 열어야 명렬을 받아 온다.
+
 ## 남은 일
 - [ ] 실제 구글 계정으로 GitHub Pages에서 로그인·저장·다른 기기 불러오기 확인
 - [ ] 글쓰기 채점기 연결 (`persistState()`에 `driveDoc.changed()`, 백업/복원 함수로 build·apply·merge 연결)

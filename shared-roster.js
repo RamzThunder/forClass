@@ -70,6 +70,15 @@
     root.localStorage.setItem(KEY, JSON.stringify(data));
     return data;
   }
+  // 드라이브에서 받은 명렬을 그대로(저장 시각·revision 포함) 이 기기에 쓴다.
+  function restore(data){
+    if(!data || data.version !== 1 || !Array.isArray(data.students) || !data.students.length) throw new Error('드라이브의 공통 명렬을 읽을 수 없습니다.');
+    const students = data.students.filter(s => s && s.className && Number(s.number) > 0 && s.name);
+    if(students.length !== data.students.length) throw new Error('드라이브의 공통 명렬에 잘못된 학생 정보가 있습니다.');
+    const next = {version:1, revision:String(data.revision || Date.now()), source:data.source || '', savedAt:Number(data.savedAt) || Date.now(), students};
+    root.localStorage.setItem(KEY, JSON.stringify(next));
+    return next;
+  }
   function groups(data){
     const result = {};
     data.students.forEach(s=>(result[s.className] ||= []).push(s));
@@ -135,6 +144,6 @@
     });
   }
   root.SharedRosterStandaloneSource = '('+installSharedRoster.toString()+')(window);';
-  root.SharedRoster = {KEY, rows, parse, readFile, load, save, groups, oldClass, backup, project, connect};
+  root.SharedRoster = {KEY, rows, parse, readFile, load, save, restore, groups, oldClass, backup, project, connect};
   if(typeof module !== 'undefined') module.exports = root.SharedRoster;
 })(typeof window !== 'undefined' ? window : globalThis);

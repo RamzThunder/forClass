@@ -39,8 +39,46 @@
       const data=SharedRoster.save(pending.students,pending.source);
       summary(data);pending=null;$('saveSharedRoster').disabled=true;
       message('공통 명렬을 저장했습니다. 세 채점기를 열면 같은 명렬이 적용됩니다.');
+      driveDoc?.changed();
     }catch{message('저장하지 못했습니다. 브라우저 저장 공간과 저장 허용 여부를 확인해 주세요.',true);}
   });
+
+  // ---------- 구글 드라이브 저장 ----------
+  // 공통 명렬도 채점 기록처럼 드라이브 「평가 도구 모음」 폴더에 파일 하나로 자동 저장하고, 다른 기기에서 열면 받아 온다.
+  // 명렬은 합치지 않는다. 양쪽이 다르면 어느 쪽을 쓸지 묻는다.
+  let driveDoc=null;
+  function driveStatus(status){
+    const el=$('rosterDriveStatus');
+    if(!el)return;
+    el.textContent=status.message||'';
+    el.style.color=['error','conflict','expired'].includes(status.state)?'var(--red)':'var(--muted)';
+  }
+  function emptyRoster(){return {version:1,students:[]};}
+  function setupDrive(){
+    if(!window.GoogleDriveSync)return;
+    driveDoc=GoogleDriveSync.createDoc({
+      app:'roster',
+      title:()=> '[명렬] 공통 학생 명렬.json',
+      build:()=>{try{return SharedRoster.load()||emptyRoster();}catch{return emptyRoster();}},
+      apply:data=>{
+        const saved=SharedRoster.restore(data);
+        summary(saved);if(!pending)preview(saved.students);
+        message('드라이브에서 공통 명렬을 불러왔습니다.');
+      },
+      merge:()=>{},
+      isEmpty:()=>{try{return !SharedRoster.load();}catch{return true;}},
+      resolveConflict:info=>confirm(`다른 기기에서 바꾼 공통 명렬(${info.timeLabel})과 이 기기의 명렬이 다릅니다.\n\n확인: 드라이브 명렬 사용\n취소: 이 기기 명렬로 드라이브 덮어쓰기`)?'remote':'local',
+      // 처음 연결할 때 이 기기와 드라이브 모두 명렬이 있으면 고르게 한다. 저장 작업이 끝난 뒤 물어야 해서 한 박자 늦춘다.
+      onNeedChoice:files=>setTimeout(()=>{
+        const file=files[0];
+        if(confirm(`드라이브에 저장된 공통 명렬이 있습니다(${GoogleDriveSync.timeLabel(file.modifiedTime)}).\n\n확인: 드라이브 명렬 불러오기\n취소: 이 기기 명렬을 드라이브에 저장`))driveDoc.openFile(file.id);
+        else driveDoc.mergeFile(file.id);
+      },0),
+      onStatus:driveStatus
+    });
+    driveDoc.open();
+  }
+  setupDrive();
   try{const data=SharedRoster.load();if(data){summary(data);preview(data.students);message('저장된 공통 명렬입니다. 새 파일을 적용하면 이 명렬을 교체합니다.');}}
   catch(error){message(error.message,true);}
   window.addEventListener('storage',event=>{
