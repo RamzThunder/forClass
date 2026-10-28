@@ -53,6 +53,17 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .topActionBtn .singleLine{display:block}
 .iconActionBtn{width:40px;min-width:40px;padding:0}
 .iconActionBtn svg{width:20px;height:20px;display:block;stroke:currentColor}
+.driveBtn{position:relative}
+.driveDot{position:absolute;right:5px;top:5px;width:9px;height:9px;border-radius:50%;background:#aab2c0;border:2px solid var(--panel)}
+.driveBtn[data-state="saved"] .driveDot,.driveBtn[data-state="idle"] .driveDot{background:#1f7a45}
+.driveBtn[data-state="saving"] .driveDot,.driveBtn[data-state="checking"] .driveDot,.driveBtn[data-state="loading"] .driveDot,.driveBtn[data-state="offline"] .driveDot{background:#c98a1b}
+.driveBtn[data-state="error"] .driveDot,.driveBtn[data-state="conflict"] .driveDot,.driveBtn[data-state="expired"] .driveDot,.driveBtn[data-state="choose"] .driveDot{background:var(--danger)}
+.driveModalBody{display:grid;grid-template-columns:1fr;gap:12px}
+.driveFileList{display:grid;gap:8px}
+.driveFileRow{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.driveFileRow.current{border-color:var(--accent);background:var(--soft)}
+.driveFileName{font-size:13px;font-weight:750;overflow-wrap:anywhere}
+.driveFileRow .compactBtns{flex:0 0 auto}
 .actionDivider{width:1px;align-self:stretch;min-height:32px;background:var(--line);margin:4px 2px}
 .canvasActionBtn{position:absolute;right:12px;top:12px;z-index:9;min-height:34px;padding:6px 9px;font-size:12px;font-weight:900;box-shadow:0 8px 22px rgba(23,32,51,.16)}
 #saveCropBtn{top:58px}
@@ -805,7 +816,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.8.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.9.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -826,6 +837,12 @@ textarea{min-height:72px;resize:vertical}
         <button class="btn topActionBtn" id="fullPageBtn" disabled><span class="twoLine"><span>전체</span><span>답안</span></span></button>
         <button class="btn topActionBtn primary" id="gradeModeBtn" disabled><span class="singleLine">채점</span></button>
         <span class="actionDivider" aria-hidden="true"></span>
+        <button class="btn topActionBtn iconActionBtn driveBtn" id="driveBtn" type="button" title="구글 드라이브" aria-label="구글 드라이브" data-state="signed-out">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 18.5h10.2a4.3 4.3 0 0 0 .5-8.57A6 6 0 0 0 6.1 11.1 3.7 3.7 0 0 0 7 18.5Z"></path>
+          </svg>
+          <span class="driveDot" aria-hidden="true"></span>
+        </button>
         <button class="btn topActionBtn iconActionBtn" id="tutorialBtn" type="button" title="튜토리얼" aria-label="튜토리얼">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="9"></circle>
@@ -1092,6 +1109,7 @@ textarea{min-height:72px;resize:vertical}
       <button class="btn primary" type="button" data-mobile-top-action="grade">채점</button>
       <button class="btn" type="button" data-mobile-top-action="pdf">PDF 선택</button>
       <button class="btn" type="button" data-mobile-top-action="tutorial">튜토리얼</button>
+      <button class="btn" type="button" data-mobile-top-action="drive">드라이브</button>
       <button class="btn" type="button" data-mobile-top-action="export">내보내기</button>
       <button class="btn" type="button" data-mobile-top-action="settings">설정</button>
     </div>
@@ -1130,6 +1148,66 @@ textarea{min-height:72px;resize:vertical}
       <div class="statusLine" id="reviewChangesSummary"></div>
       <div class="reviewHistoryList" id="reviewChangesList"></div>
       <textarea class="hidden" id="reviewChangesCopy" aria-label="복사할 수정 내역" readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="modalBackdrop hidden" id="driveModal" role="dialog" aria-modal="true" aria-labelledby="driveModalTitle">
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="driveModalTitle">구글 드라이브</h2>
+      <button class="btn mini" id="closeDriveModalBtn" type="button">닫기</button>
+    </div>
+    <div class="modalBody driveModalBody">
+      <section class="panel">
+        <div class="field">
+          <span class="label">계정</span>
+          <div class="statusLine" id="driveAccountText">구글 로그인 전입니다.</div>
+          <div class="compactBtns">
+            <button class="btn mini primary" id="driveSignInBtn" type="button">Google로 로그인</button>
+            <button class="btn mini" id="driveSignOutBtn" type="button">로그아웃</button>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span class="label">자동 저장 파일</span>
+          <div class="statusLine" id="driveLinkText">연결된 파일이 없습니다.</div>
+          <div class="statusLine" id="driveStatusText"></div>
+          <div class="compactBtns">
+            <button class="btn mini" id="driveSyncBtn" type="button">지금 저장</button>
+            <button class="btn mini" id="driveCreateBtn" type="button">현재 작업을 새 파일로 올리기</button>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="field">
+          <span class="label">드라이브의 OMR 채점 파일</span>
+          <div class="statusLine">불러오기는 지금 작업을 드라이브 파일로 바꿉니다. 합치기는 두 기록을 합친 뒤 그 파일에 이어서 저장합니다.</div>
+        </div>
+        <div class="driveFileList" id="driveFileList"></div>
+        <div class="compactBtns" style="margin-top:8px">
+          <button class="btn mini" id="driveRefreshBtn" type="button">목록 새로고침</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="modalBackdrop hidden" id="driveConflictModal" role="dialog" aria-modal="true" aria-labelledby="driveConflictTitle">
+  <div class="modal" style="width:min(520px,100%)">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="driveConflictTitle">다른 기기에서 바뀐 기록이 있습니다</h2>
+    </div>
+    <div class="modalBody" style="display:block">
+      <section class="panel">
+        <div class="statusLine" id="driveConflictText" style="margin-bottom:10px"></div>
+        <div class="statusLine" style="margin-bottom:10px">합치기는 양쪽 기록을 모두 살립니다. 같은 학생의 같은 문항이 양쪽에 모두 채점되어 있으면 이 기기의 점수를 남깁니다.</div>
+        <div class="compactBtns">
+          <button class="btn primary" type="button" data-drive-choice="merge">합치기</button>
+          <button class="btn" type="button" data-drive-choice="remote">드라이브 기록으로 바꾸기</button>
+          <button class="btn danger" type="button" data-drive-choice="local">이 기기 기록으로 덮어쓰기</button>
+          <button class="btn" type="button" data-drive-choice="">나중에</button>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -1535,6 +1613,7 @@ textarea{min-height:72px;resize:vertical}
 
 <script src="shared-roster.js"></script>
 <script src="keyword-review.js"></script>
+<script src="google-drive-sync.js"></script>
 <script type="module">
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
@@ -1686,6 +1765,7 @@ let activeCompositeSide = "";
 let cropDraft = null;
 let pendingShortcutAction = "";
 let saveDirectoryHandle = null;
+let driveDoc = null;
 
 function loadSavedState(){
   try{
@@ -1990,6 +2070,7 @@ function persist(){
     keywordReview:state.keywordReview,
     settings:state.settings
   }));
+  driveDoc?.changed();
 }
 
 function applyAppTitle(){
@@ -8351,6 +8432,7 @@ async function resetAllDataForNewExam(){
     return;
   }
   resetAppStateForNewExam();
+  driveDoc?.detach();
   await storePdfHandle(null);
   persist();
   applyAppTitle();
@@ -10399,6 +10481,7 @@ els.mobileTopMenu?.addEventListener("click", evt => {
     pdf:els.changePdfBtn,
     tutorial:els.tutorialBtn,
     export:els.exportTopBtn,
+    drive:$("driveBtn"),
     settings:els.settingsBtn
   };
   els.mobileTopMenu.classList.add("hidden");
@@ -11110,8 +11193,141 @@ window.openStudentScoreLink = openStudentScoreLink;
 $("externalScoreForm").addEventListener("submit", saveStudentExternalScores);
 $("offlineScoreEditForm").addEventListener("submit", saveOfflineStudentScore);
 window.addEventListener("hashchange", () => openStudentScoreLink());
+// ---------- 구글 드라이브 자동 저장 ----------
+function omrHasGradingData(){
+  return Object.values(state.records || {}).some(rec => Object.values(rec?.answers || {}).some(mergeQrecHasData));
+}
+function askDriveConflict(info){
+  return new Promise(resolve => {
+    const modal = $("driveConflictModal");
+    $("driveConflictText").textContent = `드라이브 파일 「${info.name}」이(가) ${info.timeLabel}에 다른 기기에서 바뀌었고, 이 기기에도 아직 올리지 않은 채점이 있습니다.`;
+    modal.classList.remove("hidden");
+    modal.onclick = evt => {
+      const btn = evt.target.closest("[data-drive-choice]");
+      if(!btn) return;
+      modal.classList.add("hidden");
+      modal.onclick = null;
+      resolve(btn.dataset.driveChoice || null);
+    };
+  });
+}
+function renderDriveStatus(status){
+  const btn = $("driveBtn");
+  btn.dataset.state = status.state;
+  btn.title = `구글 드라이브 · ${status.message}`;
+  $("driveStatusText").textContent = status.message;
+  $("driveStatusText").style.color = ["error", "conflict", "expired", "choose"].includes(status.state) ? "var(--danger)" : "";
+  renderDriveModal();
+}
+function renderDriveModal(){
+  if(!window.GoogleDriveSync) return;
+  const auth = GoogleDriveSync.authState();
+  const account = GoogleDriveSync.account();
+  $("driveAccountText").textContent = auth === "signed-out"
+    ? "구글 로그인 전입니다. 로그인하면 채점 기록이 내 드라이브에 자동 저장됩니다."
+    : `${account.name ? `${account.name} · ` : ""}${account.email}${auth === "expired" ? " (로그인 만료)" : ""}`;
+  $("driveSignInBtn").textContent = auth === "expired" ? "다시 연결" : "Google로 로그인";
+  $("driveSignInBtn").classList.toggle("hidden", auth === "signed-in");
+  $("driveSignOutBtn").classList.toggle("hidden", auth === "signed-out");
+  const link = driveDoc?.link || {};
+  $("driveLinkText").textContent = link.fileId
+    ? `${link.name} · 마지막 저장 ${GoogleDriveSync.timeLabel(link.modifiedTime)}`
+    : "연결된 파일이 없습니다.";
+  ["driveSyncBtn", "driveCreateBtn", "driveRefreshBtn"].forEach(id => { $(id).disabled = auth !== "signed-in"; });
+}
+async function refreshDriveFiles(){
+  const list = $("driveFileList");
+  if(!driveDoc || GoogleDriveSync.authState() !== "signed-in"){
+    list.innerHTML = `<div class="statusLine">로그인하면 드라이브의 채점 파일이 보입니다.</div>`;
+    return;
+  }
+  list.innerHTML = `<div class="statusLine">불러오는 중…</div>`;
+  try{
+    const files = await driveDoc.list();
+    if(!files.length){
+      list.innerHTML = `<div class="statusLine">아직 드라이브에 저장된 파일이 없습니다.</div>`;
+      return;
+    }
+    const current = driveDoc.link.fileId;
+    list.innerHTML = files.map(file => `
+      <div class="driveFileRow${file.id === current ? " current" : ""}">
+        <div>
+          <div class="driveFileName">${escapeHtml(file.name)}</div>
+          <div class="statusLine">${file.id === current ? "자동 저장 중 · " : ""}${escapeHtml(GoogleDriveSync.timeLabel(file.modifiedTime))}</div>
+        </div>
+        <div class="compactBtns">
+          <button class="btn mini" type="button" data-drive-open="${escapeHtml(file.id)}">불러오기</button>
+          <button class="btn mini" type="button" data-drive-merge="${escapeHtml(file.id)}">합치기</button>
+        </div>
+      </div>`).join("");
+  }catch(err){
+    list.innerHTML = `<div class="statusLine" style="color:var(--danger)">${escapeHtml(err.message)}</div>`;
+  }
+}
+function openDriveModal(){
+  renderDriveModal();
+  $("driveModal").classList.remove("hidden");
+  refreshDriveFiles();
+}
+async function runDriveAction(task){
+  await task();
+  renderDriveModal();
+  refreshDriveFiles();
+}
+function setupDrive(){
+  if(!window.GoogleDriveSync) return;
+  GoogleDriveSync.prepare();
+  driveDoc = GoogleDriveSync.createDoc({
+    app:"omr",
+    title:() => `[OMR] ${safeFileName(state.appTitle)}.json`,
+    build:buildJsonBackup,
+    // 화면 위치와 보고 있던 문항·반은 이 기기 것을 그대로 둔다.
+    apply:data => importJsonBackup({...data, sidebarWidth:undefined, activeQuestion:state.activeQuestion, activeClass:state.activeClass}),
+    merge:data => mergeJsonBackup(data, "keep"),
+    isEmpty:() => !omrHasGradingData(),
+    volatileKeys:["exportedAt", "sidebarWidth", "activeQuestion", "activeClass"],
+    resolveConflict:askDriveConflict,
+    onNeedChoice:() => {
+      openDriveModal();
+      showToast("드라이브와 이 기기에 모두 채점 기록이 있습니다. 사용할 방법을 골라 주세요.");
+    },
+    onStatus:renderDriveStatus,
+    onPulled:() => showToast("드라이브에서 최신 채점 기록을 불러왔습니다.")
+  });
+  $("driveBtn").addEventListener("click", openDriveModal);
+  $("closeDriveModalBtn").addEventListener("click", () => $("driveModal").classList.add("hidden"));
+  $("driveModal").addEventListener("click", evt => {
+    if(evt.target === $("driveModal")){ $("driveModal").classList.add("hidden"); return; }
+    const openId = evt.target.closest("[data-drive-open]")?.dataset.driveOpen;
+    const mergeId = evt.target.closest("[data-drive-merge]")?.dataset.driveMerge;
+    if(openId){
+      if(!confirm("지금 이 기기의 채점 기록을 이 드라이브 파일 내용으로 바꿀까요?\n\n바꾸기 전에 JSON 백업 파일을 저장해 두면 안전합니다.")) return;
+      runDriveAction(() => driveDoc.openFile(openId));
+    }else if(mergeId){
+      runDriveAction(() => driveDoc.mergeFile(mergeId));
+    }
+  });
+  $("driveSignInBtn").addEventListener("click", () => {
+    GoogleDriveSync.signIn().then(renderDriveModal).catch(err => alert(err.message));
+  });
+  $("driveSignOutBtn").addEventListener("click", async () => {
+    if(!confirm("구글 로그아웃할까요? 채점 기록은 이 기기와 드라이브에 그대로 남습니다.")) return;
+    await GoogleDriveSync.signOut();
+    renderDriveModal();
+    refreshDriveFiles();
+  });
+  $("driveSyncBtn").addEventListener("click", () => runDriveAction(() => driveDoc.sync()));
+  $("driveCreateBtn").addEventListener("click", () => {
+    if(!confirm("현재 작업을 드라이브에 새 파일로 올리고, 앞으로 이 파일에 자동 저장할까요?")) return;
+    runDriveAction(() => driveDoc.createFile());
+  });
+  GoogleDriveSync.onAuthChange(() => { renderDriveModal(); if(!$("driveModal").classList.contains("hidden")) refreshDriveFiles(); });
+  driveDoc.open();
+}
+
 loadSidebarWidth();
 loadSavedState();
+setupDrive();
 bindCropDrag();
 bindHighlightDrawing();
 bindSidebarResize();
