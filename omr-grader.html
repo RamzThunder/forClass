@@ -828,7 +828,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.18.1</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.19.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1323,6 +1323,11 @@ textarea{min-height:72px;resize:vertical}
           </label>
           <div class="statusLine">새 감점 항목을 만들거나 빈 항목을 감점용으로 바꿀 때 기본값으로 사용됩니다.</div>
         </div>
+        <label class="field" style="margin-top:14px">
+          <span class="label">항상 넣을 미인정 문구</span>
+          <textarea id="defaultRejectKeywordsInput" placeholder="한 줄에 하나씩 입력"></textarea>
+          <span class="statusLine">모든 가점 항목의 미인정 문구에 항상 들어갑니다. 지워도 다시 채워지며, 비워 두면 넣지 않습니다.</span>
+        </label>
       </section>
       <section class="panel settingsPane hidden" id="settingsQuestionsPane">
         <div class="panelHead">
@@ -1679,6 +1684,7 @@ const defaultQuestions = [
   {id:"q2", label:"2번 문제", maxScore:0, subScores:{}, exampleAnswer:"", sourceText:"", subSourceTexts:{}, subs:[], crop:{x:.10,y:.74,w:.80,h:.20}, rubric:structuredClone(defaultRubric)}
 ];
 const defaultDeductTemplate = {name:"감점 요소", keywords:"", score:1};
+const DEFAULT_REJECT_KEYWORDS = "미작성\n미해당";
 const defaultOneHandKeys = {prev:"KeyA", next:"KeyD", unwritten:"KeyX"};
 
 const state = {
@@ -1707,14 +1713,14 @@ const state = {
   questions:structuredClone(defaultQuestions),
   roster:[],
   records:{},
-  settings:{autoAssistEnabled:false, comboFullCreditEnabled:false, keywordLinkEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, unwrittenOcrEnabled:false, unwrittenIncludeFewInk:true, ocrEngine:"tesseract", deductTemplate:structuredClone(defaultDeductTemplate)}
+  settings:{autoAssistEnabled:false, comboFullCreditEnabled:false, keywordLinkEnabled:false, incompleteOnly:false, multiWindowEnabled:false, oneHandGradingEnabled:false, oneHandKeys:structuredClone(defaultOneHandKeys), pagesPerStudent:1, reviewAssistEnabled:false, unwrittenOcrEnabled:false, unwrittenIncludeFewInk:true, ocrEngine:"tesseract", defaultRejectKeywords:DEFAULT_REJECT_KEYWORDS, deductTemplate:structuredClone(defaultDeductTemplate)}
 };
 
 const $ = id => document.getElementById(id);
 const els = {
   app:document.querySelector(".app"), sideResizer:$("sideResizer"),
   appTitleText:$("appTitleText"), appTitleInput:$("appTitleInput"), applyTitleBtn:$("applyTitleBtn"),
-  deductTemplateNameInput:$("deductTemplateNameInput"), deductTemplateKeywordsInput:$("deductTemplateKeywordsInput"), deductTemplateScoreInput:$("deductTemplateScoreInput"),
+  deductTemplateNameInput:$("deductTemplateNameInput"), deductTemplateKeywordsInput:$("deductTemplateKeywordsInput"), deductTemplateScoreInput:$("deductTemplateScoreInput"), defaultRejectKeywordsInput:$("defaultRejectKeywordsInput"),
   pdfInput:$("pdfInput"), choosePdfBtn:$("choosePdfBtn"), changePdfBtn:$("changePdfBtn"), fileMeta:$("fileMeta"), empty:$("empty"),
   pageWrap:$("pageWrap"), cropView:$("cropView"), canvasShell:$("canvasShell"), pdfCanvas:$("pdfCanvas"), cropCanvas:$("cropCanvas"),
   fullPageCompanion:$("fullPageCompanion"), fullPageCompanionCanvas:$("fullPageCompanionCanvas"), fullPageCompanionLabel:$("fullPageCompanionLabel"), pageSideLabel:$("pageSideLabel"),
@@ -2157,6 +2163,7 @@ function applySettings(){
   if(els.deductTemplateNameInput) els.deductTemplateNameInput.value = template.name;
   if(els.deductTemplateKeywordsInput) els.deductTemplateKeywordsInput.value = template.keywords;
   if(els.deductTemplateScoreInput) els.deductTemplateScoreInput.value = template.score;
+  if(els.defaultRejectKeywordsInput && document.activeElement !== els.defaultRejectKeywordsInput) els.defaultRejectKeywordsInput.value = state.settings?.defaultRejectKeywords ?? DEFAULT_REJECT_KEYWORDS;
   renderUnwrittenOcrCandidates();
   updateReviewAssistStatus();
 }
@@ -2325,6 +2332,7 @@ function normalizeSettings(){
     // 글씨 적은 답안 포함: 기본 켜짐. 예전 키(unwrittenOcrIncludeShort)는 기본 꺼짐이라 새 키로 옮겼다.
     unwrittenIncludeFewInk:settings.unwrittenIncludeFewInk !== false,
     ocrEngine:settings.ocrEngine === "paddle" ? "paddle" : "tesseract",
+    defaultRejectKeywords:typeof settings.defaultRejectKeywords === "string" ? normalizeKeywordText(settings.defaultRejectKeywords) : DEFAULT_REJECT_KEYWORDS,
     reviewAssistEnabled:Boolean(settings.reviewAssistEnabled),
     pagesPerStudent:Math.max(1, Math.floor(nonNegativeNumber(settings.pagesPerStudent) || 1)),
     externalSelectedMaxScore:nonNegativeNumber(settings.externalSelectedMaxScore),
@@ -2424,12 +2432,25 @@ function normalizeQuestions(){
   if(!state.questions.some(q => q.id === state.activeQuestion)) state.activeQuestion = state.questions[0].id;
 }
 
+// 설정의 '항상 넣을 미인정 문구'를 가점 항목의 미인정 문구 끝에 채워 넣는다(감점 항목은 제외).
+function defaultRejectKeywordList(){
+  return splitKeywords(state.settings?.defaultRejectKeywords ?? DEFAULT_REJECT_KEYWORDS);
+}
+
+function withDefaultRejects(item){
+  if(!item || item.type === "deduct") return item;
+  const list = splitKeywords(item.reject);
+  const missing = defaultRejectKeywordList().filter(keyword => !list.includes(keyword));
+  if(missing.length) item.reject = [...list, ...missing].join("\n");
+  return item;
+}
+
 function normalizeRubric(rubric){
   return (rubric || []).map((item, index) => {
     const pt = Number(item.pt ?? item.max ?? 0) || 0;
     const legacyPartialDeduct = Number(item.partialDeduct ?? item.deduct ?? NaN);
     const partialPt = Number(item.partialPt ?? item.partialScore ?? NaN);
-    return {
+    return withDefaultRejects({
       id:item.id || `r${index}_${hashText(item.name || item.desc || "item")}`,
       type:item.type === "deduct" || item.deductOnly ? "deduct" : "score",
       sub:item.sub || item.part || item.group || "",
@@ -2447,7 +2468,7 @@ function normalizeRubric(rubric){
       reject:item.reject || item.rejectText || item.exclude || "",
       rejectScores:item.rejectScores || {},
       rejectDeduct:Number(item.rejectDeduct ?? item.rejectPt ?? item.rejectScore ?? 0) || 0
-    };
+    });
   }).filter(item => item.name);
 }
 
@@ -9294,6 +9315,7 @@ function addInlineRubricItem(type="score", sub=subOptions()[0]){
     rejectScores:{},
     rejectDeduct:0
   };
+  withDefaultRejects(item);
   activeQuestion().rubric.push(item);
   state.editingRubricId = item.id;
   persist();
@@ -9369,6 +9391,7 @@ function readInlineRubricEditor(editor){
   item.acceptLinks = keywordLinksFromEditor(editor, previousItem, "accept");
   item.rejectLinks = keywordLinksFromEditor(editor, previousItem, "reject");
   item.pt = splitKeywords(item.accept).reduce((sum, keyword) => sum + keywordScore(item, "accept", keyword), 0);
+  withDefaultRejects(item);
   item.rejectDeduct = Math.max(0, ...splitKeywords(item.reject).map(keyword => keywordScore(item, "reject", keyword)));
   return item.name ? item : null;
 }
@@ -11114,6 +11137,15 @@ els.applyTitleBtn.addEventListener("click", () => {
   state.appTitle = els.appTitleInput.value.trim() || "OMR 서술형 채점 도구 템플릿";
   applyAppTitle();
   persist();
+});
+// 입력 중 반쯤 친 글자가 모든 항목에 들어가지 않도록 입력을 마쳤을 때(change)만 반영한다.
+els.defaultRejectKeywordsInput.addEventListener("change", () => {
+  state.settings.defaultRejectKeywords = normalizeKeywordText(els.defaultRejectKeywordsInput.value);
+  normalizeSettings();
+  normalizeQuestions();
+  persist();
+  renderRubric();
+  showToast("모든 가점 항목에 미인정 문구를 반영했습니다.");
 });
 [els.deductTemplateNameInput, els.deductTemplateKeywordsInput, els.deductTemplateScoreInput].forEach(input => {
   input.addEventListener("input", updateDeductTemplateFromInputs);
