@@ -58,14 +58,6 @@ a{color:inherit;text-decoration:none}
   font-weight:700;
   letter-spacing:0;
 }
-.heroVersion{
-  margin:-6px 0 0;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-  font-variant-numeric:tabular-nums;
-}
-.heroVersion[hidden]{display:none}
 .heroSub{
   margin:0;
   max-width:560px;
@@ -109,7 +101,24 @@ a{color:inherit;text-decoration:none}
   align-items:center;
   gap:10px;
 }
+.toolBtnTitleWrap{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+}
+.toolBtnVersion{
+  font-size:11px;
+  font-weight:400;
+  line-height:1.3;
+  color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
+.toolBtnVersion:empty{display:none}
 .toolBtnTitle{
+  max-width:100%;
   flex:1 1 auto;
   font-size:14.5px;
   font-weight:700;
@@ -286,13 +295,12 @@ main{min-width:0}
     <section class="hero">
       <h1 class="heroTitle">평가 도구 모음</h1>
       <p class="heroSub">지필·수행평가 채점을 한곳에서 합니다.<br>구글로 로그인하면 채점 기록이 내 드라이브에 자동 저장됩니다.</p>
-      <p class="heroVersion" id="toolVersions" hidden></p>
     </section>
 
     <section class="toolButtons" aria-label="평가 도구 목록">
       <a class="toolBtn available" href="omr-grader.html">
         <div class="toolBtnHead">
-          <span class="toolBtnTitle">[지필] OMR 서술형 채점 도구</span>
+          <span class="toolBtnTitleWrap"><span class="toolBtnTitle">[지필] OMR 서술형 채점 도구</span><span class="toolBtnVersion" data-version-src="omr-grader.html" data-version-id="appVersionText"></span></span>
           <span class="toolBtnState ready">사용 가능</span>
         </div>
         <div class="toolBtnPanel">
@@ -309,7 +317,7 @@ main{min-width:0}
 
       <a class="toolBtn available" href="argument-writing-grader.html">
         <div class="toolBtnHead">
-          <span class="toolBtnTitle">[수행] 글쓰기 채점표</span>
+          <span class="toolBtnTitleWrap"><span class="toolBtnTitle">[수행] 글쓰기 채점표</span><span class="toolBtnVersion"></span></span>
           <span class="toolBtnState ready">사용 가능</span>
         </div>
         <div class="toolBtnPanel">
@@ -326,7 +334,7 @@ main{min-width:0}
 
       <a class="toolBtn available" href="logical-speaking-grader.html">
         <div class="toolBtnHead">
-          <span class="toolBtnTitle">[수행] 말하기 채점표</span>
+          <span class="toolBtnTitleWrap"><span class="toolBtnTitle">[수행] 말하기 채점표</span><span class="toolBtnVersion" data-version-src="logical-speaking-grader.html" data-version-id="appVersion"></span></span>
           <span class="toolBtnState ready">사용 가능</span>
         </div>
         <div class="toolBtnPanel">
@@ -424,24 +432,14 @@ main{min-width:0}
   });
   render();
 })();
-// 각 채점기 파일에 적힌 버전을 읽어 한 줄로 보여 준다(채점기 버전을 올리면 따라 바뀐다).
-(async function(){
-  const tools = [
-    ['OMR 서술형', 'omr-grader.html', 'appVersionText'],
-    ['말하기', 'logical-speaking-grader.html', 'appVersion']
-  ];
-  const labels = await Promise.all(tools.map(async ([label, url, id]) => {
-    try{
-      const html = await (await fetch(url, {cache:'no-cache'})).text();
-      const match = html.match(new RegExp(`id="${id}"[^>]*>\\s*(v[0-9][0-9.]*)\\s*<`));
-      return match ? `${label} ${match[1]}` : '';
-    }catch{ return ''; }
-  }));
-  const text = labels.filter(Boolean).join(' · ');
-  const el = document.getElementById('toolVersions');
-  el.textContent = text;
-  el.hidden = !text;
-})();
+// 각 채점기 파일에 적힌 버전을 읽어 버튼 제목 아래에 작게 보여 준다(채점기 버전을 올리면 따라 바뀐다).
+document.querySelectorAll('[data-version-src]').forEach(async el => {
+  try{
+    const html = await (await fetch(el.dataset.versionSrc, {cache:'no-cache'})).text();
+    const match = html.match(new RegExp(`id="${el.dataset.versionId}"[^>]*>\\s*(v[0-9][0-9.]*)\\s*<`));
+    if(match) el.textContent = match[1];
+  }catch{}
+});
 </script>
 </body>
 </html>
