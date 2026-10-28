@@ -1,5 +1,6 @@
 const {test, beforeEach} = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 
 // 브라우저 대신 쓸 localStorage와 가짜 드라이브
 const store = new Map();
@@ -21,7 +22,11 @@ globalThis.fetch = async (url, options={}) => {
   drive.calls.push(`${method} ${u.pathname}`);
   if(drive.offline) throw new TypeError('network');
   const touch = f => { f.version += 1; f.modifiedTime = new Date(Date.now() + f.version).toISOString(); };
-  const meta = f => ({id:f.id, name:f.name, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false});
+  const meta = f => ({
+    id:f.id, name:f.name, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
+    ...(f.folder || drive.noChecksum ? {} : {md5Checksum:crypto.createHash('md5').update(f.content).digest('hex')}),
+    headRevisionId:drive.noChecksum ? `r${f.version}` : undefined
+  });
   if(u.pathname === '/drive/v3/files' && method === 'GET'){
     const q = u.searchParams.get('q');
     const app = /value='([^']+)'/.exec(q)[1];
@@ -56,7 +61,7 @@ globalThis.fetch = async (url, options={}) => {
 };
 
 const G = require('../google-drive-sync.js');
-const {fingerprint, syncAction} = G._test;
+const {fingerprint, syncAction, sameRemote} = G._test;
 
 function signIn(email='teacher@example.com'){
   localStorage.setItem(G.AUTH_KEY, JSON.stringify({token:'t', expiresAt:Date.now() + 3600e3, email}));
@@ -84,12 +89,64 @@ const last = g => g.statuses.at(-1);
 beforeEach(() => { store.clear(); resetDrive(); G._test.resetFolder(); });
 
 test('syncAction: 바뀐 쪽에 따라 올리기·받기·충돌을 고른다', () => {
-  const base = {syncedHash:'a', knownVersion:'3', remoteExists:true};
-  assert.equal(syncAction({...base, localHash:'a', remoteVersion:'3'}), 'none');
-  assert.equal(syncAction({...base, localHash:'b', remoteVersion:'3'}), 'upload');
-  assert.equal(syncAction({...base, localHash:'a', remoteVersion:'4'}), 'download');
-  assert.equal(syncAction({...base, localHash:'b', remoteVersion:'4'}), 'conflict');
+  const base = {syncedHash:'a', remoteExists:true};
+  assert.equal(syncAction({...base, localHash:'a', remoteSame:true}), 'none');
+  assert.equal(syncAction({...base, localHash:'b', remoteSame:true}), 'upload');
+  assert.equal(syncAction({...base, localHash:'a', remoteSame:false}), 'download');
+  assert.equal(syncAction({...base, localHash:'b', remoteSame:false}), 'conflict');
   assert.equal(syncAction({...base, localHash:'a', remoteExists:false}), 'missing');
+});
+
+test('sameRemote: version보다 내용 체크섬을 먼저 본다', () => {
+  assert.equal(sameRemote({md5:'x', version:'3'}, {md5Checksum:'x', version:'9'}), true);
+  assert.equal(sameRemote({md5:'x', version:'3'}, {md5Checksum:'y', version:'3'}), false);
+  assert.equal(sameRemote({rev:'r1'}, {headRevisionId:'r1', version:'9'}), true);
+  assert.equal(sameRemote({version:'3'}, {version:'3'}), true);
+  assert.equal(sameRemote({}, {version:'3'}), false);
+});
+
+test('저장 직후 구글 서버가 version만 올려도 충돌로 보지 않는다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  const file = drive.files.get(g.doc.link.fileId);
+  for(let i=0;i<3;i++){
+    file.version += 2;
+    g.data.records[`n${i}`] = i;
+    await g.doc.sync();
+  }
+  assert.equal(g.conflicts.length, 0);
+  assert.equal(last(g).state, 'saved');
+  assert.deepEqual(JSON.parse(file.content).records, {a:1, n0:0, n1:1, n2:2});
+});
+
+test('체크섬이 없어도 내용이 마지막 저장과 같으면 충돌로 보지 않는다', async () => {
+  signIn();
+  drive.noChecksum = true;
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  const file = drive.files.get(g.doc.link.fileId);
+  file.version += 1;
+  g.data.records.b = 2;
+  await g.doc.sync();
+  assert.equal(g.conflicts.length, 0);
+  assert.deepEqual(JSON.parse(file.content).records, {a:1, b:2});
+});
+
+test('이전 형식(version만 기억)의 연결도 충돌 없이 이어진다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  const key = G.DOC_PREFIX + 'omr';
+  const old = JSON.parse(localStorage.getItem(key));
+  delete old.remote;
+  old.version = '1';
+  localStorage.setItem(key, JSON.stringify(old));
+  drive.files.get(old.fileId).version += 3;
+  const again = grader('omr', {records:{a:1, b:2}});
+  await again.doc.open();
+  assert.equal(again.conflicts.length, 0);
+  assert.deepEqual(JSON.parse(drive.files.get(old.fileId).content).records, {a:1, b:2});
 });
 
 test('fingerprint: 화면 위치 같은 값은 무시하고 채점 내용 변화만 본다', () => {

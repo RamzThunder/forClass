@@ -29,10 +29,22 @@
     volatileKeys.forEach(key => delete copy[key]);
     return hash(JSON.stringify(copy));
   }
-  function syncAction({localHash, syncedHash, knownVersion, remoteVersion, remoteExists}){
+  // 드라이브 파일 내용이 바뀌었는지 알려 주는 표시. version은 구글 서버 내부 처리로도 올라가서
+  // 내용 체크섬(md5Checksum)을 먼저 보고, 없을 때만 리비전 ID와 version을 쓴다.
+  function remoteTag(meta){
+    return {md5:meta?.md5Checksum || '', rev:meta?.headRevisionId || '', version:String(meta?.version ?? '')};
+  }
+  function sameRemote(known, meta){
+    if(!known || !meta) return false;
+    const now = remoteTag(meta);
+    if(known.md5 && now.md5) return known.md5 === now.md5;
+    if(known.rev && now.rev) return known.rev === now.rev;
+    return Boolean(known.version) && known.version === now.version;
+  }
+  function syncAction({localHash, syncedHash, remoteSame, remoteExists}){
     if(!remoteExists) return 'missing';
     const dirty = localHash !== syncedHash;
-    if(String(remoteVersion) === String(knownVersion)) return dirty ? 'upload' : 'none';
+    if(remoteSame) return dirty ? 'upload' : 'none';
     return dirty ? 'conflict' : 'download';
   }
   function timeLabel(iso){
@@ -186,7 +198,7 @@
     }
     return res;
   }
-  const FILE_FIELDS = 'id,name,modifiedTime,version';
+  const FILE_FIELDS = 'id,name,modifiedTime,version,md5Checksum,headRevisionId';
   let folderCache = null;
   async function folderId(){
     if(folderCache) return folderCache;
@@ -256,7 +268,7 @@
     }
     function localFingerprint(payload){ return fingerprint(payload, volatileKeys); }
     function remember(meta, fp){
-      saveLink({fileId:meta.id, name:meta.name, version:String(meta.version), modifiedTime:meta.modifiedTime, syncedHash:fp, email:account()?.email || ''});
+      saveLink({fileId:meta.id, name:meta.name, remote:remoteTag(meta), modifiedTime:meta.modifiedTime, syncedHash:fp, email:account()?.email || ''});
     }
     function savedMessage(){ return `드라이브 저장됨 · ${timeLabel(link.modifiedTime)}`; }
     function applyData(fn){
@@ -291,19 +303,19 @@
       remember(await updateFile(link.fileId, text), fp);
       setStatus('saved', savedMessage());
     }
-    async function pull(meta, message='드라이브의 최신 기록을 불러왔습니다'){
+    async function pull(meta, data=null, message='드라이브의 최신 기록을 불러왔습니다'){
       setStatus('loading', '드라이브에서 받는 중…');
-      const data = await download(meta.id);
+      data = data || await download(meta.id);
       applyData(() => options.apply(data));
       remember(meta, localFingerprint(options.build()));
       setStatus('saved', `${message} · ${timeLabel(meta.modifiedTime)}`);
       try{ options.onPulled?.(meta); }catch(err){ console.warn(err); }
     }
-    async function mergeAndUpload(meta){
+    async function mergeAndUpload(meta, data=null){
       setStatus('loading', '드라이브 기록과 합치는 중…');
-      const data = await download(meta.id);
+      data = data || await download(meta.id);
       applyData(() => options.merge(data));
-      link = {...link, fileId:meta.id, version:String(meta.version)};
+      link = {...link, fileId:meta.id, remote:remoteTag(meta)};
       const payload = options.build();
       await upload(JSON.stringify(payload), localFingerprint(payload));
     }
@@ -344,10 +356,20 @@
         if(reason === 'auto' && fp === link.syncedHash && status.state === 'saved') return;
         setStatus('checking', '드라이브 확인 중…');
         const meta = await getMeta(link.fileId);
-        const action = syncAction({localHash:fp, syncedHash:link.syncedHash, knownVersion:link.version, remoteVersion:meta?.version, remoteExists:Boolean(meta)});
+        const known = link.remote || {version:link.version};
+        let action = syncAction({localHash:fp, syncedHash:link.syncedHash, remoteSame:sameRemote(known, meta), remoteExists:Boolean(meta)});
+        let remoteData = null;
+        if(action === 'download' || action === 'conflict'){
+          // 표시만 바뀌고 내용은 마지막으로 맞춘 그대로면 다른 기기 변경이 아니다.
+          remoteData = await download(meta.id);
+          if(localFingerprint(remoteData) === link.syncedHash){
+            saveLink({...link, remote:remoteTag(meta), modifiedTime:meta.modifiedTime});
+            action = fp === link.syncedHash ? 'none' : 'upload';
+          }
+        }
         if(action === 'none'){ setStatus('saved', savedMessage()); return; }
         if(action === 'upload'){ await upload(JSON.stringify(payload), fp); return; }
-        if(action === 'download'){ await pull(meta); return; }
+        if(action === 'download'){ await pull(meta, remoteData); return; }
         if(action === 'missing'){
           saveLink(null);
           if(options.isEmpty()) setStatus('idle', '드라이브 파일이 삭제되었습니다 · 채점하면 새로 저장됩니다');
@@ -355,9 +377,9 @@
           return;
         }
         const choice = await options.resolveConflict?.({name:meta.name, modifiedTime:meta.modifiedTime, timeLabel:timeLabel(meta.modifiedTime)});
-        if(choice === 'merge') await mergeAndUpload(meta);
-        else if(choice === 'remote') await pull(meta);
-        else if(choice === 'local'){ link = {...link, version:String(meta.version)}; await upload(JSON.stringify(payload), fp); }
+        if(choice === 'merge') await mergeAndUpload(meta, remoteData);
+        else if(choice === 'remote') await pull(meta, remoteData);
+        else if(choice === 'local'){ link = {...link, remote:remoteTag(meta)}; await upload(JSON.stringify(payload), fp); }
         else setStatus('conflict', '다른 기기의 변경과 겹칩니다 · 드라이브 창에서 확인해 주세요');
       });
     }
@@ -415,7 +437,7 @@
   }
 
   const exported = {CLIENT_ID, SCOPE, AUTH_KEY, DOC_PREFIX, prepare, signIn, signOut, account, authState, onAuthChange, createDoc, timeLabel,
-    _test:{hash, fingerprint, syncAction, listFiles, getMeta, download, createFile, updateFile, resetFolder:() => { folderCache = null; }}};
+    _test:{hash, fingerprint, syncAction, sameRemote, listFiles, getMeta, download, createFile, updateFile, resetFolder:() => { folderCache = null; }}};
   root.GoogleDriveSync = exported;
   if(typeof module !== 'undefined') module.exports = exported;
 })(typeof window !== 'undefined' ? window : globalThis);
