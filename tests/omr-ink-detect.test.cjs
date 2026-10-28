@@ -10,7 +10,7 @@ function source(name){
 }
 const c = vm.createContext({});
 vm.runInContext('const INK_BLANK_RATIO = 0.004; const INK_SHORT_SHARE = .3;', c);
-for(const name of ['inkGridFromPixels','dilateInkCells','printedInkMask','inkRatiosForGrids','inkShortLimit','inkCandidateReason']) vm.runInContext(source(name), c);
+for(const name of ['removeLongInkLines','inkGridFromPixels','dilateInkCells','printedInkMask','inkRatiosForGrids','inkShortLimit','inkCandidateReason']) vm.runInContext(source(name), c);
 
 const W = 240, H = 90, GW = 80, GH = 30;
 // 흰 종이에 인쇄된 밑줄 두 개가 있는 답안 칸
@@ -88,3 +88,23 @@ test('학생이 적으면 인쇄물을 빼지 않는다(학생 답을 인쇄물�
   assert.ok(ratios[0] > 0.01);
 });
 
+
+test('색으로 인쇄된 OMR 양식(청록 줄·번호)은 잉크로 세지 않는다', () => {
+  const s = sheet();
+  const teal = [128, 191, 167];
+  for(let y = 0; y < H; y++){ s.paint(20, y, teal); s.paint(21, y, teal); }
+  for(let y = 10; y < 30; y++) for(let x = 30; x < 36; x++) s.paint(x, y, [102, 167, 152]);   // 문항 번호
+  const lines = [...grid(sheet()).cells].filter(Boolean).length;
+  assert.equal([...grid(s).cells].filter(Boolean).length, lines);
+});
+
+test('학생마다 위치가 다른 긴 줄은 인쇄된 줄로 보고 지운다', () => {
+  const pages = [];
+  for(let i = 0; i < 8; i++){
+    const s = sheet({shift:i * 4});           // 4px(1칸 이상)씩 밀린 스캔
+    for(let y = 0; y < H; y++) s.paint(12 + i * 4, y, [30, 30, 30]);   // 세로 테두리도 밀림
+    pages.push(grid(s));
+  }
+  const ratios = c.inkRatiosForGrids(pages);
+  ratios.forEach((ratio, i) => assert.equal(c.inkCandidateReason(ratio, false), '미작성 추정', `${i}: ${ratio}`));
+});
