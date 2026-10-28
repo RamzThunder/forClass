@@ -98,3 +98,21 @@ test('미작성 후보: 넘겨보기 전에는 미리보기를 그대로 보여 
   c.renderUnwrittenOcrCandidates();
   assert.equal((c.els.unwrittenOcrList.innerHTML.match(/unwrittenOcrThumb/g) || []).length, 2);
 });
+
+test('미작성 후보 찾기: 문항 답안 칸이 뒷면에 있으면 뒷면을 잘라 검사한다', async () => {
+  const cropped = [];
+  const state = {pdf:{}, page:1, settings:{unwrittenIncludeFewInk:true}, keywordFilter:null, unwrittenOcr:{running:false, candidates:[], status:''}};
+  const c = vm.createContext({state, showToast(){}, updateChrome(){}, renderUnwrittenOcrCandidates(){}, setUnwrittenOcrStatus(){}, console,
+    isOcrUnwrittenFilter:() => false,
+    baseProgressPages:() => [1, 3],
+    isQuestionCompletedOnPage:() => false,
+    pageWithStudentCropSide:page => page + 1,          // 이 문항은 뒷면(짝수 쪽)에 있다
+    cropCanvasForPage:async page => { cropped.push(page); return {page}; },
+    inkGridFromCanvas:canvas => canvas, inkThumb:() => 'thumb',
+    inkRatiosForGrids:grids => grids.map(() => 0), inkShortLimit:() => 0.01,
+    inkCandidateReason:() => '미작성 추정', studentTextForPage:page => `${page}쪽`});
+  vm.runInContext('async ' + source('runUnwrittenOcrScan'), c);
+  await c.runUnwrittenOcrScan();
+  assert.deepEqual(cropped, [2, 4]);
+  assert.deepEqual([...state.unwrittenOcr.candidates.map(x => x.page)], [1, 3]);
+});
