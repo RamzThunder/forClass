@@ -325,11 +325,11 @@ textarea{min-height:72px;resize:vertical}
 .unwrittenOcrList{display:grid;gap:7px;margin-top:10px}
 .unwrittenOcrItem{border:1px solid var(--line);border-radius:8px;background:#fbfcfe;padding:9px;display:grid;gap:7px}
 .unwrittenOcrItem.current{border-color:var(--accent);background:var(--soft)}
+.unwrittenOcrThumb{display:block;width:100%;max-height:120px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff}
 .unwrittenOcrBrowse{width:100%}
 .unwrittenOcrTop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .unwrittenOcrName{font-size:13px;font-weight:900;line-height:1.35}
 .unwrittenOcrMeta{font-size:11px;color:var(--muted);font-weight:800;line-height:1.4}
-.unwrittenOcrText{font-size:12px;line-height:1.45;color:var(--muted);word-break:keep-all;overflow-wrap:anywhere}
 .reviewAssistPanel.hidden{display:none}
 .reviewAssistList{display:grid;gap:8px;align-content:start;max-height:62vh;overflow:auto}
 .reviewAssistItem{border:1px solid var(--line);border-radius:8px;background:#fff;padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
@@ -826,7 +826,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.14.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.15.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1029,8 +1029,8 @@ textarea{min-height:72px;resize:vertical}
         <button class="btn mini" id="runUnwrittenOcrBtn" type="button">후보 찾기</button>
       </div>
       <div class="unwrittenOcrControls">
-        <label class="checkField" style="margin:0"><input id="unwrittenOcrShortInput" type="checkbox"> 10자 이하 답안도 후보에 포함</label>
-        <div class="statusLine" id="unwrittenOcrStatus">현재 문항 답안 영역을 텍스트 인식으로 훑어 미작성 후보만 보여줍니다.</div>
+        <label class="checkField" style="margin:0"><input id="unwrittenOcrShortInput" type="checkbox"> 글씨가 적은 답안도 후보에 포함</label>
+        <div class="statusLine" id="unwrittenOcrStatus">현재 문항 답안 칸의 펜 자국을 세어 미작성 후보만 보여줍니다.</div>
         <button class="btn mini primary unwrittenOcrBrowse hidden" id="browseUnwrittenOcrBtn" type="button">후보만 넘겨보기</button>
       </div>
       <div class="unwrittenOcrList" id="unwrittenOcrList"></div>
@@ -1407,8 +1407,8 @@ textarea{min-height:72px;resize:vertical}
         </label>
         <label class="field" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px">
           <span>
-            <span class="label">미작성 후보 OCR</span>
-            <span class="statusLine">현재 문항 답안 영역을 텍스트 인식으로 훑어 미작성 후보를 보여줍니다. 확정은 직접 확인 후 수동으로 합니다.</span>
+            <span class="label">미작성 후보 찾기</span>
+            <span class="statusLine">현재 문항 답안 칸의 펜 자국을 세어 미작성 후보를 보여줍니다. 확정은 직접 확인 후 수동으로 합니다.</span>
           </span>
           <input id="unwrittenOcrEnabledInput" type="checkbox" style="width:auto;min-height:auto">
         </label>
@@ -1656,7 +1656,7 @@ const FILE_HANDLE_DB = "publicOmrEssayGraderFiles.v1";
 const LAST_PDF_HANDLE_KEY = "lastPdfHandle";
 const LAST_PDF_BLOB_KEY = "lastPdfBlob";
 const EXAM_CAPTURE_PREFIX = `${EXAM_CAPTURE_KEY}.`;
-const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
 const defaultRubric = [
   {name:"내용 충실성 충족", pt:4},
   {name:"근거와 설명 충족", pt:3},
@@ -5401,16 +5401,16 @@ function renderUnwrittenOcrCandidates(){
       <div class="unwrittenOcrTop">
         <div>
           <div class="unwrittenOcrName">${escapeHtml(candidate.studentText)}</div>
-          <div class="unwrittenOcrMeta">${escapeHtml(activeQuestion().label)} · ${escapeHtml(candidate.reason)} · 인식 ${escapeHtml(String(candidate.charCount))}자</div>
+          <div class="unwrittenOcrMeta">${escapeHtml(activeQuestion().label)} · ${escapeHtml(candidate.reason)} · 잉크 ${escapeHtml(formatInkPercent(candidate.inkRatio))}</div>
         </div>
         <div class="compactBtns">
           <button class="btn mini" type="button" data-unwritten-ocr-go="${escapeHtml(candidate.page)}">이동</button>
           <button class="btn mini primary" type="button" data-unwritten-ocr-mark="${escapeHtml(candidate.page)}">전체 미작성</button>
         </div>
       </div>
-      <div class="unwrittenOcrText">${escapeHtml(candidate.preview || "인식된 글자 없음")}</div>
+      ${candidate.thumb ? `<img class="unwrittenOcrThumb" src="${escapeHtml(candidate.thumb)}" alt="${escapeHtml(candidate.studentText)} 답안 칸">` : ""}
     </div>
-  `).join("") : `<div class="statusLine">${escapeHtml(state.unwrittenOcr.running ? "OCR로 후보를 찾는 중입니다." : "후보 없음")}</div>`;
+  `).join("") : `<div class="statusLine">${escapeHtml(state.unwrittenOcr.running ? "답안 칸을 확인하는 중입니다." : "후보 없음")}</div>`;
 }
 
 function resetUnwrittenOcrCandidates(status=""){
@@ -5527,17 +5527,128 @@ function loadTesseract(){
   return tesseractLoadPromise;
 }
 
-async function recognizeCropText(canvas, pageNumber, index, total){
-  const Tesseract = await loadTesseract();
-  const result = await Tesseract.recognize(canvas, "kor+eng", {
-    logger: message => {
-      if(message?.status === "recognizing text" && Number.isFinite(message.progress)){
-        const pct = Math.round(message.progress * 100);
-        setUnwrittenOcrStatus(`텍스트 인식 중: ${index + 1}/${total}명 · ${pct}%`);
+// ---------- 미작성 후보: 펜 자국 세기 ----------
+// 답안 칸을 고정 크기 격자로 줄이고, 종이 바탕보다 확실히 어둡거나(검정·연필) 색이 진한(파랑·빨강 펜) 칸을 잉크로 본다.
+const INK_GRID_W = 160;
+const INK_SUB = 3;
+const INK_BLANK_RATIO = 0.004;
+// 글씨 적음: 이번 시험 학생 잉크 양 중간값의 30% 미만(글씨 크기·칸 크기가 달라도 맞춰진다)
+const INK_SHORT_SHARE = .3;
+
+function inkGridFromPixels(data, width, height, gridW, gridH){
+  const lum = new Float32Array(width * height);
+  const sat = new Float32Array(width * height);
+  for(let i = 0, p = 0; p < lum.length; i += 4, p++){
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    lum[p] = .299 * r + .587 * g + .114 * b;
+    sat[p] = Math.max(r, g, b) - Math.min(r, g, b);
+  }
+  // 종이 바탕 밝기: 밝은 쪽 90% 지점(글씨가 많아도 바탕은 흔들리지 않는다)
+  const sorted = Float32Array.from(lum).sort();
+  const paper = sorted[Math.floor(sorted.length * .9)] || 255;
+  const cells = new Uint8Array(gridW * gridH);
+  const cw = width / gridW, ch = height / gridH;
+  for(let gy = 0; gy < gridH; gy++){
+    for(let gx = 0; gx < gridW; gx++){
+      let hits = 0;
+      const x0 = Math.floor(gx * cw), x1 = Math.max(x0 + 1, Math.floor((gx + 1) * cw));
+      const y0 = Math.floor(gy * ch), y1 = Math.max(y0 + 1, Math.floor((gy + 1) * ch));
+      for(let y = y0; y < y1 && y < height; y++){
+        for(let x = x0; x < x1 && x < width; x++){
+          const p = y * width + x;
+          if(lum[p] < paper - 60 || (sat[p] > 70 && lum[p] < paper - 25)) hits++;
+        }
+      }
+      if(hits >= 2) cells[gy * gridW + gx] = 1;
+    }
+  }
+  return {w:gridW, h:gridH, cells};
+}
+
+function inkGridFromCanvas(canvas){
+  const gridW = INK_GRID_W;
+  const gridH = Math.max(8, Math.min(400, Math.round(canvas.height / Math.max(1, canvas.width) * gridW)));
+  const small = document.createElement("canvas");
+  small.width = gridW * INK_SUB;
+  small.height = gridH * INK_SUB;
+  const ctx = small.getContext("2d", {alpha:false, willReadFrequently:true});
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, small.width, small.height);
+  ctx.drawImage(canvas, 0, 0, small.width, small.height);
+  const {data} = ctx.getImageData(0, 0, small.width, small.height);
+  return inkGridFromPixels(data, small.width, small.height, gridW, gridH);
+}
+
+// 여러 학생의 격자를 겹쳐, 거의 모든 학생(85% 이상)에게 같은 자리에 있는 자국을 인쇄물(줄·테두리·안내 문구)로 보고 뺀다.
+// 스캔이 조금 밀려도 되도록 겹칠 때 각 격자를 한 칸씩 넓혀 센다. 학생이 적거나 칸 크기가 다르면 빼지 않는다.
+// 인쇄물로 본 자리가 칸의 30%를 넘으면 학생 글씨를 잘못 잡은 것이므로 기준을 높이고, 그래도 넘으면 빼지 않는다.
+function dilateInkCells(cells, w, h){
+  const out = new Uint8Array(cells.length);
+  for(let y = 0; y < h; y++){
+    for(let x = 0; x < w; x++){
+      if(!cells[y * w + x]) continue;
+      for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++){
+        const nx = x + dx, ny = y + dy;
+        if(nx >= 0 && ny >= 0 && nx < w && ny < h) out[ny * w + nx] = 1;
       }
     }
+  }
+  return out;
+}
+
+function printedInkMask(grids){
+  if(grids.length < 6) return null;
+  const {w, h} = grids[0];
+  const hits = new Uint16Array(w * h);
+  grids.forEach(grid => dilateInkCells(grid.cells, w, h).forEach((v, i) => { if(v) hits[i]++; }));
+  for(const share of [.85, .97]){
+    const mask = hits.map(count => count >= grids.length * share ? 1 : 0);
+    if(mask.reduce((sum, v) => sum + v, 0) <= mask.length * .3) return mask;
+  }
+  return null;
+}
+
+function inkRatiosForGrids(grids){
+  const sizeKey = grid => `${grid.w}x${grid.h}`;
+  const groups = new Map();
+  grids.forEach(grid => {
+    if(!groups.has(sizeKey(grid))) groups.set(sizeKey(grid), []);
+    groups.get(sizeKey(grid)).push(grid);
   });
-  return result?.data?.text || "";
+  const masks = new Map([...groups].map(([key, list]) => [key, printedInkMask(list)]));
+  return grids.map(grid => {
+    const mask = masks.get(sizeKey(grid));
+    let ink = 0;
+    grid.cells.forEach((v, i) => { if(v && !mask?.[i]) ink++; });
+    return grid.cells.length ? ink / grid.cells.length : 0;
+  });
+}
+
+function inkShortLimit(ratios){
+  const sorted = [...ratios].sort((a,b) => a - b);
+  const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+  return Math.max(INK_BLANK_RATIO * 2, median * INK_SHORT_SHARE);
+}
+
+function inkCandidateReason(ratio, includeShort, shortLimit=INK_BLANK_RATIO * 2){
+  if(ratio < INK_BLANK_RATIO) return "미작성 추정";
+  if(includeShort && ratio < shortLimit) return "글씨 적음";
+  return "";
+}
+
+function formatInkPercent(ratio){
+  const pct = Number(ratio || 0) * 100;
+  return `${pct < 1 ? pct.toFixed(2) : pct.toFixed(1)}%`;
+}
+
+function inkThumb(canvas){
+  const width = Math.min(320, canvas.width);
+  const thumb = document.createElement("canvas");
+  thumb.width = width;
+  thumb.height = Math.max(1, Math.round(canvas.height * width / canvas.width));
+  const ctx = thumb.getContext("2d", {alpha:false});
+  ctx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
+  return thumb.toDataURL("image/jpeg", .7);
 }
 
 async function readCurrentAnswerWithOcr(answerEl=els.answerText, statusEl=els.autoDetectStatus, buttonEl=els.answerOcrBtn){
@@ -5595,7 +5706,7 @@ async function runUnwrittenOcrScan(){
     state.keywordFilter = null;
     updateChrome();
   }
-  state.unwrittenOcr = {running:true, candidates:[], status:"텍스트 인식 엔진을 준비하는 중입니다."};
+  state.unwrittenOcr = {running:true, candidates:[], status:"답안 칸을 준비하는 중입니다."};
   renderUnwrittenOcrCandidates();
   const includeShort = Boolean(state.settings?.unwrittenOcrIncludeShort);
   const pages = baseProgressPages().filter(page => !isQuestionCompletedOnPage(page));
@@ -5606,36 +5717,35 @@ async function runUnwrittenOcrScan(){
     return;
   }
   try{
-    await loadTesseract();
+    const scanned = [];
     for(let index = 0; index < pages.length; index++){
       const pageNumber = pages[index];
-      setUnwrittenOcrStatus(`답안 영역 준비 중: ${index + 1}/${total}명`);
+      setUnwrittenOcrStatus(`답안 칸 확인 중: ${index + 1}/${total}명`);
       const canvas = await cropCanvasForPage(pageNumber);
-      const text = await recognizeCropText(canvas, pageNumber, index, total);
-      const meaningful = meaningfulOcrText(text);
-      const charCount = meaningful.length;
-      const isBlank = charCount === 0;
-      const isShort = includeShort && charCount > 0 && charCount <= 10;
-      if(isBlank || isShort){
-        state.unwrittenOcr.candidates.push({
-          page:pageNumber,
-          studentText:studentTextForPage(pageNumber),
-          charCount,
-          reason:isBlank ? "미작성 추정" : "10자 이하",
-          preview:String(text || "").trim().replace(/\s+/g, " ").slice(0, 80)
-        });
-        renderUnwrittenOcrCandidates();
-      }
+      scanned.push({page:pageNumber, grid:inkGridFromCanvas(canvas), thumb:inkThumb(canvas)});
     }
+    const ratios = inkRatiosForGrids(scanned.map(item => item.grid));
+    const shortLimit = inkShortLimit(ratios);
+    scanned.forEach((item, index) => {
+      const reason = inkCandidateReason(ratios[index], includeShort, shortLimit);
+      if(!reason) return;
+      state.unwrittenOcr.candidates.push({
+        page:item.page,
+        studentText:studentTextForPage(item.page),
+        inkRatio:ratios[index],
+        reason,
+        thumb:item.thumb
+      });
+    });
     state.unwrittenOcr.running = false;
-    state.unwrittenOcr.status = `후보 찾기 완료: ${state.unwrittenOcr.candidates.length}명`;
+    state.unwrittenOcr.status = `후보 찾기 완료: ${state.unwrittenOcr.candidates.length}명 / ${total}명 확인`;
     renderUnwrittenOcrCandidates();
   }catch(err){
     console.error(err);
     state.unwrittenOcr.running = false;
     state.unwrittenOcr.status = `후보 찾기를 완료하지 못했습니다: ${err.message}`;
     renderUnwrittenOcrCandidates();
-    showToast("미작성 후보 OCR을 실행하지 못했습니다.");
+    showToast("미작성 후보 찾기를 실행하지 못했습니다.");
   }
 }
 
