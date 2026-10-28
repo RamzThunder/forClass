@@ -11,7 +11,7 @@ globalThis.localStorage = {
 };
 let drive;
 function resetDrive(){
-  drive = {files:new Map(), next:1, calls:[]};
+  drive = {files:new Map(), sessions:new Map(), next:1, calls:[], dropPuts:0};
 }
 function json(body, status=200){
   return {ok:status < 400, status, json:async () => body, text:async () => typeof body === 'string' ? body : JSON.stringify(body)};
@@ -24,14 +24,37 @@ globalThis.fetch = async (url, options={}) => {
   const touch = f => { f.version += 1; f.modifiedTime = new Date(Date.now() + f.version).toISOString(); };
   const meta = f => ({
     id:f.id, name:f.name, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
-    ...(f.folder || drive.noChecksum ? {} : {md5Checksum:crypto.createHash('md5').update(f.content).digest('hex')}),
+    ...(f.folder || drive.noChecksum ? {} : {md5Checksum:crypto.createHash('md5').update(f.bytes || f.content || '').digest('hex')}),
     headRevisionId:drive.noChecksum ? `r${f.version}` : undefined
   });
+  // 재개 가능 업로드 세션
+  if(u.hostname === 'upload.test'){
+    const session = drive.sessions.get(u.pathname);
+    const range = options.headers['Content-Range'];
+    if(drive.dropPuts > 0 && range !== `bytes */${session.total}`){ drive.dropPuts -= 1; throw new TypeError('network'); }
+    const status308 = () => ({ok:false, status:308, headers:{get:k => k === 'Range' && session.received ? `bytes=0-${session.received - 1}` : null}});
+    if(range.startsWith('bytes */')) return status308();
+    const [, from] = /bytes (\d+)-(\d+)\/(\d+)/.exec(range).map(Number);
+    assert.equal(from, session.received, '서버가 받은 곳부터 이어서 올려야 한다');
+    const bytes = Buffer.from(await options.body.arrayBuffer());
+    session.chunks.push(bytes);
+    session.received += bytes.length;
+    if(session.received < session.total) return status308();
+    const f = {id:`f${drive.next++}`, name:session.meta.name, app:session.meta.appProperties.forClassApp, key:session.meta.appProperties.forClassKey, bytes:Buffer.concat(session.chunks), version:1, modifiedTime:new Date().toISOString()};
+    drive.files.set(f.id, f);
+    return json({id:f.id, name:f.name, size:String(f.bytes.length)});
+  }
+  if(u.pathname === '/upload/drive/v3/files' && method === 'POST' && u.searchParams.get('uploadType') === 'resumable'){
+    const path = `/session/${drive.next++}`;
+    drive.sessions.set(path, {meta:JSON.parse(options.body), total:Number(options.headers['X-Upload-Content-Length']), received:0, chunks:[]});
+    return {...json({}), headers:{get:k => k === 'Location' ? `https://upload.test${path}` : null}};
+  }
   if(u.pathname === '/drive/v3/files' && method === 'GET'){
     const q = u.searchParams.get('q');
     const app = /value='([^']+)'/.exec(q)[1];
+    const fileKey = /key='forClassKey' and value='([^']+)'/.exec(q)?.[1];
     const isFolder = q.includes('forClassRoot');
-    const files = [...drive.files.values()].filter(f => !f.trashed && (isFolder ? f.folder : f.app === app))
+    const files = [...drive.files.values()].filter(f => !f.trashed && (isFolder ? f.folder : f.app === app) && (!fileKey || f.key === fileKey))
       .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
     return json({files:files.map(meta)});
   }
@@ -54,6 +77,16 @@ globalThis.fetch = async (url, options={}) => {
     const f = drive.files.get(m[2]);
     if(!f) return json({error:{message:'not found'}}, 404);
     if(method === 'PATCH'){ f.content = options.body; touch(f); return json(meta(f)); }
+    if(u.searchParams.get('alt') === 'media' && f.bytes){
+      let sent = false;
+      return {ok:true, status:200, headers:{get:k => k === 'Content-Length' ? String(f.bytes.length) : null}, body:{getReader:() => ({
+        read:async () => {
+          if(sent) return {done:true};
+          sent = true;
+          return {done:false, value:new Uint8Array(f.bytes)};
+        }
+      })}};
+    }
     if(u.searchParams.get('alt') === 'media') return json(f.content);
     return json(meta(f));
   }
@@ -295,4 +328,31 @@ test('다른 계정으로 로그인하면 이전 계정의 파일 연결을 쓰�
   G._test.resetFolder();
   await g.doc.sync();
   assert.notEqual(g.doc.link.fileId, oldId);
+});
+
+test('큰 PDF는 조각으로 나눠 올리고, 같은 파일을 찾고, 그대로 받아 온다', async () => {
+  signIn();
+  const bytes = Buffer.alloc(20 * 1024 * 1024 + 123, 7);
+  bytes[5] = 1; bytes[bytes.length - 1] = 9;
+  const progress = [];
+  const meta = await G.files.uploadLarge({app:'omr-pdf', key:'시험.pdf|20971643', name:'시험.pdf', mimeType:'application/pdf', blob:new Blob([bytes]), onProgress:p => progress.push(p)});
+  const stored = drive.files.get(meta.id);
+  assert.equal(Buffer.compare(stored.bytes, bytes), 0);
+  assert.equal(progress.at(-1), 1);
+  assert.ok(progress.length >= 4, '조각마다 진행률을 알린다');
+  assert.equal((await G.files.findByKey('omr-pdf', '시험.pdf|20971643')).id, meta.id);
+  assert.equal(await G.files.findByKey('omr-pdf', '시험.pdf|1'), null);
+  const got = [];
+  const blob = await G.files.downloadBlob(meta.id, {mimeType:'application/pdf', onProgress:p => got.push(p)});
+  assert.equal(Buffer.compare(Buffer.from(await blob.arrayBuffer()), bytes), 0);
+  assert.equal(blob.type, 'application/pdf');
+  assert.equal(got.at(-1), 1);
+});
+
+test('PDF를 올리다 인터넷이 끊겨도 받은 곳부터 이어서 올린다', async () => {
+  signIn();
+  const bytes = Buffer.alloc(17 * 1024 * 1024, 3);
+  drive.dropPuts = 1;
+  const meta = await G.files.uploadLarge({app:'omr-pdf', key:'k', name:'a.pdf', blob:new Blob([bytes])});
+  assert.equal(Buffer.compare(drive.files.get(meta.id).bytes, bytes), 0);
 });

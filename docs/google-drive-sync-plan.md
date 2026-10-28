@@ -67,6 +67,12 @@ OMR 채점기를 먼저 연결하고, 나머지 채점기는 그다음에 연결
   - "전체 초기화"를 하면 이전 파일과 연결을 끊고, 다음 채점부터 새 파일(`[OMR] 시험제목.json`)에 저장한다.
 - [x] 테스트: `tests/google-drive-sync.test.cjs` (가짜 드라이브로 저장·받기·충돌·오프라인·만료 흐름)
 
+- [x] 시험 PDF 브라우저 보관 + 드라이브 저장 (OMR v1.10.0)
+  - 연 PDF를 IndexedDB(`publicOmrEssayGraderFiles.v1` / `lastPdfBlob`)에 하나만 보관한다. 다음에 열 때 권한 요청 없이 바로 열린다(사파리·아이패드 포함). 새 PDF를 열거나 전체 초기화하면 이전 것은 지운다.
+  - 로그인 상태에서 PDF를 열면 드라이브에 올릴지 한 번 묻는다(거절하면 같은 PDF는 다시 묻지 않음). 8MB씩 재개 가능 업로드를 한다.
+  - 드라이브 PDF는 `appProperties.forClassApp='omr-pdf'`, `forClassKey=hash(이름|크기)`로 찾는다. 채점 기록의 `settings.pdfDriveFile`에 연결 정보를 넣어 다른 기기가 알 수 있게 한다.
+  - 시작 순서: 브라우저 보관 PDF → (크롬) 파일 위치 기억 → 드라이브 PDF 받기 제안.
+
 ## 남은 일
 - [ ] 실제 구글 계정으로 GitHub Pages에서 로그인·저장·다른 기기 불러오기 확인
 - [ ] 글쓰기 채점기 연결 (`persistState()`에 `driveDoc.changed()`, 백업/복원 함수로 build·apply·merge 연결)

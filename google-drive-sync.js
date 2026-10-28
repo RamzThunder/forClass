@@ -251,6 +251,94 @@
     })).json();
   }
 
+  // ---------- 큰 파일(PDF 등) ----------
+  // 같은 파일인지 찾는 열쇠. appProperties 값 길이 제한(약 120바이트) 때문에 해시로 줄인다.
+  async function findByKey(app, key){
+    const q = `appProperties has { key='forClassApp' and value='${escapeQuery(app)}' } and appProperties has { key='forClassKey' and value='${hash(String(key))}' } and trashed=false`;
+    const res = await api(`${API}/files?q=${encodeURIComponent(q)}&pageSize=1&fields=files(id,name,size,modifiedTime)`);
+    return (await res.json()).files?.[0] || null;
+  }
+  const UPLOAD_CHUNK = 8 * 1024 * 1024; // 256KB의 배수여야 한다.
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  function rangeEnd(res){
+    const range = res.headers?.get?.('Range');
+    const match = /bytes=0-(\d+)/.exec(range || '');
+    return match ? Number(match[1]) + 1 : null;
+  }
+  // 재개 가능 업로드: 조각마다 올리고, 끊기면 서버가 받은 곳부터 다시 올린다.
+  async function uploadLarge({app, key, name, mimeType='application/octet-stream', blob, onProgress}){
+    const parent = await folderId();
+    const start = await api(`${UPLOAD}/files?uploadType=resumable&fields=id,name,size,modifiedTime`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json; charset=UTF-8', 'X-Upload-Content-Type':mimeType, 'X-Upload-Content-Length':String(blob.size)},
+      body:JSON.stringify({name, mimeType, parents:[parent], appProperties:{forClassApp:app, forClassKey:hash(String(key))}})
+    });
+    const session = start.headers.get('Location');
+    if(!session) throw new DriveError('드라이브 업로드를 시작하지 못했습니다.', 'http');
+    const total = blob.size;
+    let offset = 0, failures = 0;
+    const report = () => { try{ onProgress?.(total ? offset / total : 1); }catch{} };
+    const recover = async () => {
+      failures += 1;
+      if(failures > 6) throw new DriveError('인터넷 연결이 불안정해 업로드를 멈췄습니다. 잠시 후 다시 올려 주세요.', 'offline');
+      await wait(Math.min(15000, 1500 * failures));
+      try{
+        const res = await fetch(session, {method:'PUT', headers:{'Content-Range':`bytes */${total}`}});
+        if(res.status === 308){ offset = rangeEnd(res) ?? 0; return null; }
+        if(res.ok) return res.json();
+      }catch{}
+      return null;
+    };
+    report();
+    while(true){
+      const end = Math.min(offset + UPLOAD_CHUNK, total);
+      let res;
+      try{
+        res = await fetch(session, {
+          method:'PUT',
+          headers:{'Content-Range':total ? `bytes ${offset}-${end - 1}/${total}` : 'bytes */0'},
+          body:blob.slice(offset, end)
+        });
+      }catch{
+        const done = await recover();
+        if(done){ offset = total; report(); return done; }
+        continue;
+      }
+      if(res.status === 308){
+        offset = rangeEnd(res) ?? end;
+        failures = 0;
+        report();
+        continue;
+      }
+      if(res.ok){ offset = total; report(); return res.json(); }
+      if(res.status === 401) { expireToken(); throw new DriveError('구글 로그인이 만료되었습니다.', 'auth', 401); }
+      if(res.status >= 500 || res.status === 429){
+        const done = await recover();
+        if(done){ offset = total; report(); return done; }
+        continue;
+      }
+      throw new DriveError(`드라이브 업로드 실패 (${res.status})`, 'http', res.status);
+    }
+  }
+  async function downloadBlob(id, {size=0, mimeType='', onProgress}={}){
+    const res = await api(`${API}/files/${encodeURIComponent(id)}?alt=media`);
+    const total = Number(res.headers?.get?.('Content-Length')) || Number(size) || 0;
+    if(!res.body?.getReader || !total) return res.blob();
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    while(true){
+      let step;
+      try{ step = await reader.read(); }
+      catch{ throw new DriveError('내려받는 중에 인터넷 연결이 끊겼습니다.', 'offline'); }
+      if(step.done) break;
+      chunks.push(step.value);
+      received += step.value.length;
+      try{ onProgress?.(Math.min(1, received / total)); }catch{}
+    }
+    return new Blob(chunks, mimeType ? {type:mimeType} : {});
+  }
+
   // ---------- 채점기 하나의 드라이브 파일 ----------
   // options: app, title(), build(), apply(data), merge(data), isEmpty(), volatileKeys,
   //          resolveConflict(info) -> 'merge'|'remote'|'local'|null, onNeedChoice(files), onStatus(status), onPulled(), delay
@@ -437,6 +525,7 @@
   }
 
   const exported = {CLIENT_ID, SCOPE, AUTH_KEY, DOC_PREFIX, prepare, signIn, signOut, account, authState, onAuthChange, createDoc, timeLabel,
+    files:{findByKey, uploadLarge, downloadBlob, getMeta},
     _test:{hash, fingerprint, syncAction, sameRemote, listFiles, getMeta, download, createFile, updateFile, resetFolder:() => { folderCache = null; }}};
   root.GoogleDriveSync = exported;
   if(typeof module !== 'undefined') module.exports = exported;

@@ -64,6 +64,10 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .driveFileRow.current{border-color:var(--accent);background:var(--soft)}
 .driveFileName{font-size:13px;font-weight:750;overflow-wrap:anywhere}
 .driveFileRow .compactBtns{flex:0 0 auto}
+.pdfTransfer{position:fixed;right:16px;bottom:16px;z-index:79;width:min(300px,calc(100vw - 32px));border:1px solid var(--line);border-radius:8px;background:var(--panel);box-shadow:var(--shadow);padding:10px 12px;display:grid;gap:7px}
+.pdfTransferText{color:var(--ink);font-size:12px;font-weight:750;line-height:1.45}
+.pdfTransferBar{height:6px;border-radius:999px;background:#e8edf3;overflow:hidden}
+.pdfTransferFill{height:100%;width:0;background:var(--accent);transition:width .2s ease}
 .actionDivider{width:1px;align-self:stretch;min-height:32px;background:var(--line);margin:4px 2px}
 .canvasActionBtn{position:absolute;right:12px;top:12px;z-index:9;min-height:34px;padding:6px 9px;font-size:12px;font-weight:900;box-shadow:0 8px 22px rgba(23,32,51,.16)}
 #saveCropBtn{top:58px}
@@ -816,7 +820,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.9.2</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.10.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1116,6 +1120,10 @@ textarea{min-height:72px;resize:vertical}
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="pdfTransfer hidden" id="pdfTransfer" role="status" aria-live="polite">
+  <div class="pdfTransferText" id="pdfTransferText"></div>
+  <div class="pdfTransferBar"><div class="pdfTransferFill" id="pdfTransferFill"></div></div>
+</div>
 
 <div class="modalBackdrop hidden" id="keywordModal" role="dialog" aria-modal="true" aria-labelledby="keywordModalTitle">
   <div class="modal">
@@ -1175,6 +1183,16 @@ textarea{min-height:72px;resize:vertical}
           <div class="compactBtns">
             <button class="btn mini" id="driveSyncBtn" type="button">지금 저장</button>
             <button class="btn mini" id="driveCreateBtn" type="button">현재 작업을 새 파일로 올리기</button>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="field" style="margin-bottom:0">
+          <span class="label">시험 PDF</span>
+          <div class="statusLine" id="drivePdfText">드라이브에 저장된 PDF가 없습니다.</div>
+          <div class="compactBtns">
+            <button class="btn mini" id="drivePdfUploadBtn" type="button">지금 연 PDF를 드라이브에 저장</button>
+            <button class="btn mini" id="drivePdfDownloadBtn" type="button">드라이브에서 PDF 받아 열기</button>
           </div>
         </div>
       </section>
@@ -1601,7 +1619,7 @@ textarea{min-height:72px;resize:vertical}
       </div>
     </div>
     <div class="restorePdfBody">
-      <div class="restorePdfDescription">직전에 사용한 PDF가 있습니다. 파일을 다시 열어 마지막 채점 위치부터 이어갈 수 있습니다.</div>
+      <div class="restorePdfDescription" id="restorePdfDescription">직전에 사용한 PDF가 있습니다. 파일을 다시 열어 마지막 채점 위치부터 이어갈 수 있습니다.</div>
       <div class="restorePdfFile"><span class="restorePdfFileBadge">PDF</span><span class="restorePdfFileName" id="restorePdfMessage"></span></div>
     </div>
     <div class="restorePdfActions">
@@ -1628,6 +1646,7 @@ const MOBILE_VIEWER_HEIGHT_KEY = "publicOmrEssayGraderMobileViewerHeight.v1";
 const EXAM_CAPTURE_KEY = "publicOmrEssayGraderExamCapture.v1";
 const FILE_HANDLE_DB = "publicOmrEssayGraderFiles.v1";
 const LAST_PDF_HANDLE_KEY = "lastPdfHandle";
+const LAST_PDF_BLOB_KEY = "lastPdfBlob";
 const EXAM_CAPTURE_PREFIX = `${EXAM_CAPTURE_KEY}.`;
 const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
 const defaultRubric = [
@@ -1766,6 +1785,8 @@ let cropDraft = null;
 let pendingShortcutAction = "";
 let saveDirectoryHandle = null;
 let driveDoc = null;
+let currentPdfFile = null;
+let pdfTransferBusy = false;
 
 function loadSavedState(){
   try{
@@ -3051,10 +3072,91 @@ async function chooseAndOpenPdf(){
 }
 
 async function offerLastPdfRestore(){
-  if(!state.lastPdfName || typeof window.showOpenFilePicker !== "function") return;
+  if(!state.lastPdfName || typeof window.showOpenFilePicker !== "function") return false;
   const handle = await savedPdfHandle();
-  if(!handle || handle.name !== state.lastPdfName) return;
-  els.restorePdfMessage.textContent = handle.name;
+  if(!handle || handle.name !== state.lastPdfName) return false;
+  showRestorePdfModal("handle", handle.name);
+  return true;
+}
+
+// ---------- PDF 브라우저 보관 ----------
+// 파일 위치 대신 PDF 자체를 브라우저(IndexedDB)에 하나만 보관해 두고, 다음에 열 때 바로 연다.
+async function cachedPdfEntry(){
+  try{
+    const {db, store} = await pdfHandleStore();
+    const entry = await new Promise((resolve, reject) => {
+      const request = store.get(LAST_PDF_BLOB_KEY);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return entry?.blob ? entry : null;
+  }catch(err){
+    console.warn(err);
+    return null;
+  }
+}
+
+async function writeCachedPdf(entry){
+  const {db, tx, store} = await pdfHandleStore("readwrite");
+  if(entry) store.put(entry, LAST_PDF_BLOB_KEY);
+  else store.delete(LAST_PDF_BLOB_KEY);
+  await new Promise((resolve, reject) => {
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function storeCachedPdf(file){
+  try{
+    const current = await cachedPdfEntry();
+    if(current && current.name === file.name && current.size === file.size) return;
+    await writeCachedPdf(null);
+    await writeCachedPdf({name:file.name, size:file.size, lastModified:file.lastModified || Date.now(), blob:file});
+    navigator.storage?.persist?.().catch(() => {});
+  }catch(err){
+    console.warn("PDF를 브라우저에 보관하지 못했습니다.", err);
+    showToast("브라우저 저장 공간이 부족해 PDF를 보관하지 못했습니다. 다음에는 PDF를 다시 열어야 합니다.");
+  }
+}
+
+async function clearCachedPdf(){
+  try{ await writeCachedPdf(null); }catch(err){ console.warn(err); }
+}
+
+async function openCachedPdf(){
+  const entry = await cachedPdfEntry();
+  if(!entry || !state.lastPdfName || entry.name !== state.lastPdfName) return false;
+  try{
+    const file = new File([entry.blob], entry.name, {type:"application/pdf", lastModified:entry.lastModified});
+    await openPdf(file, {fromCache:true, keepHandle:true});
+    showToast(`${entry.name}을 바로 열었습니다.`);
+    return true;
+  }catch(err){
+    console.warn("보관된 PDF를 열지 못했습니다.", err);
+    await clearCachedPdf();
+    return false;
+  }
+}
+
+async function restorePdfOnStartup(){
+  if(await openCachedPdf()) return;
+  if(await offerLastPdfRestore()) return;
+  offerDrivePdf();
+}
+
+let restorePdfMode = "handle";
+function showRestorePdfModal(mode, name){
+  restorePdfMode = mode;
+  const fromDrive = mode === "drive";
+  const link = drivePdfLink();
+  els.restorePdfMessage.textContent = fromDrive && link?.size ? `${name} · ${formatBytes(link.size)}` : name;
+  $("restorePdfDescription").textContent = fromDrive
+    ? "구글 드라이브에 이 시험의 PDF가 저장되어 있습니다. 이 기기로 받아서 열면 다음부터는 바로 열립니다."
+    : "직전에 사용한 PDF가 있습니다. 파일을 다시 열어 마지막 채점 위치부터 이어갈 수 있습니다.";
+  els.restorePdfConfirmBtn.textContent = fromDrive ? "드라이브에서 받기" : "PDF 열기";
   els.restorePdfModal.classList.remove("hidden");
 }
 
@@ -3133,10 +3235,12 @@ async function openPdf(file, options={}){
   setMode("grade");
   loadRecordIntoForm();
   updateChrome();
-  if(!isRememberedPdf) await requestPagesPerStudentConfirmation();
+  if(!isRememberedPdf && !options.fromDrive) await requestPagesPerStudentConfirmation();
   await renderCurrentPage();
   persist();
-  await storePdfHandle(options.handle || null);
+  if(!options.keepHandle) await storePdfHandle(options.handle || null);
+  currentPdfFile = file;
+  afterPdfOpened(file, options);
 }
 
 async function renderCurrentPage(){
@@ -8440,6 +8544,9 @@ async function resetAllDataForNewExam(){
     return;
   }
   resetAppStateForNewExam();
+  delete state.settings.pdfDriveFile;
+  currentPdfFile = null;
+  await clearCachedPdf();
   driveDoc?.detach();
   await storePdfHandle(null);
   persist();
@@ -10452,7 +10559,12 @@ els.settingsTutorialBtn.addEventListener("click", startTutorial);
 els.closeTutorialStartBtn.addEventListener("click", () => els.tutorialStartModal.classList.add("hidden"));
 els.tutorialChoosePdfBtn.addEventListener("click", chooseTutorialPdf);
 els.tutorialWithoutPdfBtn.addEventListener("click", () => startTutorial({withoutPdf:true}));
-els.restorePdfConfirmBtn.addEventListener("click", restoreLastPdf);
+els.restorePdfConfirmBtn.addEventListener("click", () => {
+  if(restorePdfMode === "drive"){
+    els.restorePdfModal.classList.add("hidden");
+    openPdfFromDrive();
+  }else restoreLastPdf();
+});
 els.restorePdfCancelBtn.addEventListener("click", () => els.restorePdfModal.classList.add("hidden"));
 els.restorePdfModal.addEventListener("click", evt => {
   if(evt.target === els.restorePdfModal) els.restorePdfModal.classList.add("hidden");
@@ -11242,6 +11354,15 @@ function renderDriveModal(){
     ? `${link.name} · 마지막 저장 ${GoogleDriveSync.timeLabel(link.modifiedTime)}`
     : "연결된 파일이 없습니다.";
   ["driveSyncBtn", "driveCreateBtn", "driveRefreshBtn"].forEach(id => { $(id).disabled = auth !== "signed-in"; });
+  const pdfLink = drivePdfLink();
+  const pdfOnDrive = Boolean(pdfLink && currentPdfFile && pdfLink.key === pdfDriveKey(currentPdfFile));
+  $("drivePdfText").textContent = pdfLink
+    ? `${pdfLink.name} · ${formatBytes(pdfLink.size)} · 드라이브에 저장됨${pdfOnDrive ? " (지금 연 PDF)" : ""}`
+    : currentPdfFile ? `지금 연 PDF(${currentPdfFile.name})는 아직 드라이브에 없습니다.` : "드라이브에 저장된 PDF가 없습니다.";
+  $("drivePdfUploadBtn").classList.toggle("hidden", !currentPdfFile || pdfOnDrive);
+  $("drivePdfDownloadBtn").classList.toggle("hidden", !pdfLink || pdfOnDrive);
+  $("drivePdfUploadBtn").disabled = auth !== "signed-in" || pdfTransferBusy;
+  $("drivePdfDownloadBtn").disabled = auth !== "signed-in" || pdfTransferBusy;
 }
 async function refreshDriveFiles(){
   const list = $("driveFileList");
@@ -11282,6 +11403,122 @@ async function runDriveAction(task){
   renderDriveModal();
   refreshDriveFiles();
 }
+// ---------- PDF 드라이브 저장 ----------
+function formatBytes(bytes){
+  const mb = (Number(bytes) || 0) / 1024 / 1024;
+  return mb >= 1 ? `${mb >= 100 ? Math.round(mb) : mb.toFixed(1)}MB` : `${Math.max(1, Math.round((Number(bytes) || 0) / 1024))}KB`;
+}
+function pdfDriveKey(file){ return `${file.name}|${file.size}`; }
+function drivePdfLink(){
+  const link = state.settings?.pdfDriveFile;
+  return link && link.id ? link : null;
+}
+function linkDrivePdf(meta, file){
+  state.settings.pdfDriveFile = {id:meta.id, name:file.name, size:file.size, key:pdfDriveKey(file)};
+  persist();
+  renderDriveModal();
+}
+function showPdfTransfer(text, ratio){
+  $("pdfTransfer").classList.remove("hidden");
+  $("pdfTransferText").textContent = text;
+  $("pdfTransferFill").style.width = `${Math.round(Math.max(0, Math.min(1, ratio || 0)) * 100)}%`;
+}
+function hidePdfTransfer(){ $("pdfTransfer").classList.add("hidden"); }
+
+function afterPdfOpened(file, options={}){
+  if(!options.fromCache) storeCachedPdf(file);
+  if(!options.fromDrive) offerPdfDriveUpload(file);
+  renderDriveModal();
+}
+
+const PDF_UPLOAD_DECLINED_KEY = "forClass.omr.pdfUploadDeclined";
+async function offerPdfDriveUpload(file){
+  if(!window.GoogleDriveSync || GoogleDriveSync.authState() !== "signed-in" || pdfTransferBusy) return;
+  const key = pdfDriveKey(file);
+  if(drivePdfLink()?.key === key) return;
+  try{
+    const found = await GoogleDriveSync.files.findByKey("omr-pdf", key);
+    if(found){ linkDrivePdf(found, file); return; }
+  }catch(err){
+    console.warn(err);
+    return;
+  }
+  try{ if(localStorage.getItem(PDF_UPLOAD_DECLINED_KEY) === key) return; }catch{}
+  if(currentPdfFile !== file) return;
+  const ok = confirm(`이 PDF를 구글 드라이브에도 저장할까요?\n\n${file.name} (${formatBytes(file.size)})\n\n저장해 두면 다른 컴퓨터에서도 이 PDF를 받아서 바로 열 수 있습니다. 올리는 동안에도 채점할 수 있습니다.`);
+  if(!ok){
+    try{ localStorage.setItem(PDF_UPLOAD_DECLINED_KEY, key); }catch{}
+    showToast("나중에 드라이브 창에서 PDF를 저장할 수 있습니다.");
+    return;
+  }
+  uploadPdfToDrive(file);
+}
+
+async function uploadPdfToDrive(file){
+  if(pdfTransferBusy) return;
+  pdfTransferBusy = true;
+  renderDriveModal();
+  const label = `PDF를 드라이브에 저장하는 중 · ${formatBytes(file.size)}`;
+  showPdfTransfer(label, 0);
+  try{
+    const key = pdfDriveKey(file);
+    const meta = await GoogleDriveSync.files.findByKey("omr-pdf", key) || await GoogleDriveSync.files.uploadLarge({
+      app:"omr-pdf", key, name:file.name, mimeType:"application/pdf", blob:file,
+      onProgress:ratio => showPdfTransfer(`${label} · ${Math.round(ratio * 100)}%`, ratio)
+    });
+    linkDrivePdf(meta, file);
+    try{ localStorage.removeItem(PDF_UPLOAD_DECLINED_KEY); }catch{}
+    showToast("PDF를 드라이브에 저장했습니다.");
+  }catch(err){
+    alert(`PDF를 드라이브에 저장하지 못했습니다: ${err.message}\n\n드라이브 창에서 다시 시도할 수 있습니다.`);
+  }finally{
+    pdfTransferBusy = false;
+    hidePdfTransfer();
+    renderDriveModal();
+  }
+}
+
+function offerDrivePdf(){
+  const link = drivePdfLink();
+  if(!link || state.pdf || pdfTransferBusy || !window.GoogleDriveSync || GoogleDriveSync.authState() !== "signed-in") return false;
+  if(!els.restorePdfModal.classList.contains("hidden")) return false;
+  showRestorePdfModal("drive", link.name);
+  return true;
+}
+
+async function openPdfFromDrive(){
+  const link = drivePdfLink();
+  if(!link || pdfTransferBusy) return;
+  if(GoogleDriveSync.authState() !== "signed-in"){
+    alert("구글 로그인이 필요합니다. 드라이브 창에서 로그인해 주세요.");
+    return;
+  }
+  pdfTransferBusy = true;
+  renderDriveModal();
+  const label = `드라이브에서 PDF 받는 중 · ${formatBytes(link.size)}`;
+  showPdfTransfer(label, 0);
+  try{
+    const blob = await GoogleDriveSync.files.downloadBlob(link.id, {
+      size:link.size, mimeType:"application/pdf",
+      onProgress:ratio => showPdfTransfer(`${label} · ${Math.round(ratio * 100)}%`, ratio)
+    });
+    showPdfTransfer("PDF 여는 중…", 1);
+    const file = new File([blob], link.name, {type:"application/pdf"});
+    await openPdf(file, {fromDrive:true});
+    showToast(`${link.name}을 열었습니다. 다음부터는 이 기기에서 바로 열립니다.`);
+  }catch(err){
+    const missing = err.status === 404;
+    alert(missing
+      ? "드라이브에서 PDF를 찾을 수 없습니다. 삭제되었을 수 있습니다. PDF를 직접 열어 주세요."
+      : `드라이브에서 PDF를 받지 못했습니다: ${err.message}`);
+    if(missing){ delete state.settings.pdfDriveFile; persist(); }
+  }finally{
+    pdfTransferBusy = false;
+    hidePdfTransfer();
+    renderDriveModal();
+  }
+}
+
 function setupDrive(){
   if(!window.GoogleDriveSync) return;
   GoogleDriveSync.prepare();
@@ -11300,7 +11537,10 @@ function setupDrive(){
       showToast("드라이브와 이 기기에 모두 채점 기록이 있습니다. 사용할 방법을 골라 주세요.");
     },
     onStatus:renderDriveStatus,
-    onPulled:() => showToast("드라이브에서 최신 채점 기록을 불러왔습니다.")
+    onPulled:() => {
+      showToast("드라이브에서 최신 채점 기록을 불러왔습니다.");
+      offerDrivePdf();
+    }
   });
   $("driveBtn").addEventListener("click", openDriveModal);
   $("closeDriveModalBtn").addEventListener("click", () => $("driveModal").classList.add("hidden"));
@@ -11329,7 +11569,16 @@ function setupDrive(){
     if(!confirm("현재 작업을 드라이브에 새 파일로 올리고, 앞으로 이 파일에 자동 저장할까요?")) return;
     runDriveAction(() => driveDoc.createFile());
   });
-  GoogleDriveSync.onAuthChange(() => { renderDriveModal(); if(!$("driveModal").classList.contains("hidden")) refreshDriveFiles(); });
+  GoogleDriveSync.onAuthChange(auth => {
+    renderDriveModal();
+    if(!$("driveModal").classList.contains("hidden")) refreshDriveFiles();
+    if(auth === "signed-in" && currentPdfFile) offerPdfDriveUpload(currentPdfFile);
+  });
+  $("drivePdfUploadBtn").addEventListener("click", () => { if(currentPdfFile) uploadPdfToDrive(currentPdfFile); });
+  $("drivePdfDownloadBtn").addEventListener("click", () => {
+    if(state.pdf && !confirm("지금 열린 PDF 대신 드라이브의 PDF를 받아서 열까요?")) return;
+    openPdfFromDrive();
+  });
   driveDoc.open();
 }
 
@@ -11346,7 +11595,7 @@ updateChrome();
 updateSaveDirectoryStatus();
 updateUndoButton();
 promptInitialSetupIfNeeded();
-if(!needsInitialSetup()) offerLastPdfRestore();
+if(!needsInitialSetup()) restorePdfOnStartup();
 openStudentScoreLink();
 </script>
 
