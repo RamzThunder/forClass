@@ -11,7 +11,7 @@ function source(name){
 function setup(){
   const state = {settings:{externalOfflineWrittenCount:2}, lastPdfName:'시험.pdf', questions:[{id:'q1'}], records:{'2':{studentIndex:2, page:3, className:'1반', number:'2', name:'테스트'}}, page:1};
   const context = vm.createContext({state, URL, window:{location:{href:'https://example.test/omr-grader.html'}}, nonNegativeNumber:value => Math.max(0, Number(value) || 0), studentIndexForPage:page => Math.ceil(page / 2), firstPageForStudentIndex:index => index * 2 - 1, showToast:message => {context.message = message;}, saveCurrent(){}, persist(){}, loadRecordIntoForm(){}, updateChrome(){}, document:{querySelectorAll:() => []}, $:() => ({scrollIntoView(){}, querySelector:() => ({focus(){}})})});
-  for(const name of ['externalOfflineWrittenCount','externalScoreNumber','normalizeExternalScores','revisedExternalScores','studentScoreEditUrl']) vm.runInContext(source(name), context);
+  for(const name of ['offlineWrittenCountValue','externalOfflineWrittenCount','externalScoreNumber','normalizeExternalScores','revisedExternalScores','studentScoreEditUrl']) vm.runInContext(source(name), context);
   vm.runInContext('async ' + source('openStudentScoreLink'), context);
   return context;
 }
@@ -122,4 +122,18 @@ test('외부 점수 합계가 같아도 각 문항 수정 기록, 0점과 되돌
   assert.equal(c.state.keywordReview.changes.length,4);
   assert.equal(c.state.keywordReview.changes[2].before,0);
   assert.equal(c.state.keywordReview.changes[2].after,4);
+});
+test('오프라인 서술형 문제 수는 0개도 가능하고, 0개면 오프라인 점수를 더하지 않음', () => {
+  const c = setup();
+  assert.equal(c.offlineWrittenCountValue(0), 0);
+  assert.equal(c.offlineWrittenCountValue('0'), 0);
+  assert.equal(c.offlineWrittenCountValue(undefined), 1);
+  assert.equal(c.offlineWrittenCountValue(''), 1);
+  assert.equal(c.offlineWrittenCountValue(45), 30);
+  c.state.settings.externalOfflineWrittenCount = 0;
+  assert.equal(c.externalOfflineWrittenCount(), 0);
+  const result = c.normalizeExternalScores({selected:30, offlineWrittenScores:[4,6], imported:true});
+  assert.deepEqual([...result.offlineWrittenScores], []);
+  assert.equal(result.offlineWritten, 0);
+  assert.equal(c.revisedExternalScores({selected:30, imported:true}, ['28']).selected, 28);
 });
