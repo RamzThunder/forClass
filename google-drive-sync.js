@@ -12,7 +12,7 @@
   const FOLDER_MIME = 'application/vnd.google-apps.folder';
   // 협동채점에서 동료 파일을 처음 열 때 쓰는 구글 파일 선택창(Picker) 설정.
   // API 키는 공개돼도 되는 값이다. Google Cloud 콘솔에서 Picker API를 켜고, 키를 사이트 주소로 제한해 둔다.
-  const PICKER_API_KEY = '';
+  const PICKER_API_KEY = 'AIzaSyCs7nmBRoCbGfjFKCtlYnxhLVRKjkK9-Wg';
   const APP_ID = CLIENT_ID.split('-')[0];
 
   // ---------- 순수 함수 (테스트 대상) ----------
