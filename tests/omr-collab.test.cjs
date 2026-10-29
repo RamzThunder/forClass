@@ -97,7 +97,7 @@ test('invitation shares PDF with existing members and retries failed PDF shares'
     ensureMyDriveFile:async () => 'json1',
     saveCollab:next => {ctx.state.settings.collab = ctx.normalizeCollab(next);}
   });
-  ctx.GoogleDriveSync.files = {share:async (id, email) => {
+  ctx.GoogleDriveSync.files = {getMeta:async () => ({ownedByMe:true}), share:async (id, email) => {
     calls.push([id, email]);
     if(fail) throw new Error('denied');
   }};
@@ -110,15 +110,15 @@ test('invitation shares PDF with existing members and retries failed PDF shares'
   assert.deepEqual(calls, [['pdf1','b@school.kr'], ['pdf1','b@school.kr']]);
 });
 
-test('recipient does not attempt to reshare the owner PDF', async () => {
+test('recipient does not reshare PDF even when cached owner is incorrect', async () => {
   const ctx = setup({collab:baseCollab});
   const calls = [];
   Object.assign(ctx, {
-    drivePdfLink:() => ({id:'pdf1', ownerEmail:'b@school.kr'}),
+    drivePdfLink:() => ({id:'pdf1', ownerEmail:'a@school.kr'}),
     ensureMyDriveFile:async () => 'json1',
     saveCollab:next => {ctx.state.settings.collab = ctx.normalizeCollab(next);}
   });
-  ctx.GoogleDriveSync.files = {share:async id => calls.push(id)};
+  ctx.GoogleDriveSync.files = {getMeta:async () => ({ownedByMe:false}), share:async id => calls.push(id)};
   loadAsync(ctx, 'shareMyCollabFile');
   await ctx.shareMyCollabFile();
   assert.deepEqual(calls, ['json1']);
@@ -151,4 +151,20 @@ test('missing PDF link is recovered from peer without replacing an existing PDF'
   assert.equal(ctx.state.settings.pdfDriveFile.ownerEmail, 'b@school.kr');
   ctx.adoptCollabPdf({settings:{pdfDriveFile:{id:'pdf2'}}}, 'c@school.kr');
   assert.equal(ctx.state.settings.pdfDriveFile.id, 'pdf1');
+});
+
+
+test('collaboration repairs a shared JSON link before sharing', async () => {
+  const ctx = setup({collab:{...baseCollab, sharedWith:['b@school.kr']}});
+  let detached = false;
+  Object.assign(ctx, {
+    driveDoc:{link:{fileId:'peer-json'}, detach(){this.link = {}; detached = true;},
+      async sync(){this.link = {fileId:'my-json'};}, async createFile(){}},
+    saveCollab:next => {ctx.state.settings.collab = ctx.normalizeCollab(next);}
+  });
+  ctx.GoogleDriveSync.files = {getMeta:async () => ({ownedByMe:false})};
+  loadAsync(ctx, 'ensureMyDriveFile');
+  assert.equal(await ctx.ensureMyDriveFile(), 'my-json');
+  assert.equal(detached, true);
+  assert.equal(ctx.state.settings.collab.sharedWith.length, 0);
 });

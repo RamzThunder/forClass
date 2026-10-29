@@ -23,7 +23,7 @@ globalThis.fetch = async (url, options={}) => {
   if(drive.offline) throw new TypeError('network');
   const touch = f => { f.version += 1; f.modifiedTime = new Date(Date.now() + f.version).toISOString(); };
   const meta = f => ({
-    id:f.id, name:f.name, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
+    id:f.id, name:f.name, ownedByMe:f.ownedByMe !== false, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
     ...(f.folder || drive.noChecksum ? {} : {md5Checksum:crypto.createHash('md5').update(f.bytes || f.content || '').digest('hex')}),
     headRevisionId:drive.noChecksum ? `r${f.version}` : undefined
   });
@@ -54,7 +54,7 @@ globalThis.fetch = async (url, options={}) => {
     const app = /value='([^']+)'/.exec(q)[1];
     const fileKey = /key='forClassKey' and value='([^']+)'/.exec(q)?.[1];
     const isFolder = q.includes('forClassRoot');
-    const files = [...drive.files.values()].filter(f => !f.trashed && (isFolder ? f.folder : f.app === app) && (!fileKey || f.key === fileKey))
+    const files = [...drive.files.values()].filter(f => !f.trashed && (!q.includes("'me' in owners") || f.ownedByMe !== false) && (isFolder ? f.folder : f.app === app) && (!fileKey || f.key === fileKey))
       .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
     return json({files:files.map(meta)});
   }
@@ -407,4 +407,32 @@ test('충돌 확인 중에는 저장 대기로 덮지 않는다', async () => {
   assert.equal(last(g).state, 'conflict');
   g.doc.changed();
   assert.equal(last(g).state, 'conflict');
+});
+
+
+test('shared files and folders are excluded from personal storage discovery', async () => {
+  signIn();
+  drive.files.set('peer-json', {id:'peer-json', app:'omr', name:'peer', ownedByMe:false, version:1, modifiedTime:'2026-01-01', content:'{}'});
+  drive.files.set('peer-folder', {id:'peer-folder', folder:true, ownedByMe:false, version:1, modifiedTime:'2026-01-01'});
+  drive.files.set('peer-pdf', {id:'peer-pdf', app:'omr-pdf', key:G._test.hash('answer'), ownedByMe:false, version:1, modifiedTime:'2026-01-01'});
+  assert.deepEqual(await G._test.listFiles('omr'), []);
+  assert.equal(await G.files.findByKey('omr-pdf', 'answer'), null);
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.sync();
+  assert.notEqual(g.doc.link.fileId, 'peer-json');
+  assert.equal([...drive.files.values()].filter(f => f.folder).length, 2);
+});
+
+test('old shared JSON connection saves local work to a new owned file', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.sync();
+  const oldId = g.doc.link.fileId;
+  drive.files.get(oldId).ownedByMe = false;
+  const original = drive.files.get(oldId).content;
+  g.data.records.b = 2;
+  await g.doc.sync();
+  assert.notEqual(g.doc.link.fileId, oldId);
+  assert.equal(drive.files.get(oldId).content, original);
+  assert.deepEqual(JSON.parse(drive.files.get(g.doc.link.fileId).content).records, {a:1,b:2});
 });

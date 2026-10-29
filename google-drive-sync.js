@@ -235,11 +235,11 @@
     }
     return res;
   }
-  const FILE_FIELDS = 'id,name,modifiedTime,version,md5Checksum,headRevisionId';
+  const FILE_FIELDS = 'id,name,modifiedTime,version,md5Checksum,headRevisionId,ownedByMe';
   let folderCache = null;
   async function folderId(){
     if(folderCache) return folderCache;
-    const q = `mimeType='${FOLDER_MIME}' and appProperties has { key='forClassRoot' and value='1' } and trashed=false`;
+    const q = `mimeType='${FOLDER_MIME}' and appProperties has { key='forClassRoot' and value='1' } and 'me' in owners and trashed=false`;
     const list = await (await api(`${API}/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1`)).json();
     if(list.files?.length){ folderCache = list.files[0].id; return folderCache; }
     const created = await (await api(`${API}/files?fields=id`, {
@@ -251,7 +251,7 @@
     return folderCache;
   }
   async function listFiles(app){
-    const q = `appProperties has { key='forClassApp' and value='${escapeQuery(app)}' } and trashed=false`;
+    const q = `appProperties has { key='forClassApp' and value='${escapeQuery(app)}' } and 'me' in owners and trashed=false`;
     const res = await api(`${API}/files?q=${encodeURIComponent(q)}&orderBy=modifiedTime desc&pageSize=50&fields=files(${FILE_FIELDS})`);
     return (await res.json()).files || [];
   }
@@ -348,7 +348,7 @@
   // ---------- 큰 파일(PDF 등) ----------
   // 같은 파일인지 찾는 열쇠. appProperties 값 길이 제한(약 120바이트) 때문에 해시로 줄인다.
   async function findByKey(app, key){
-    const q = `appProperties has { key='forClassApp' and value='${escapeQuery(app)}' } and appProperties has { key='forClassKey' and value='${hash(String(key))}' } and trashed=false`;
+    const q = `appProperties has { key='forClassApp' and value='${escapeQuery(app)}' } and appProperties has { key='forClassKey' and value='${hash(String(key))}' } and 'me' in owners and trashed=false`;
     const res = await api(`${API}/files?q=${encodeURIComponent(q)}&pageSize=1&fields=files(id,name,size,modifiedTime)`);
     return (await res.json()).files?.[0] || null;
   }
@@ -541,6 +541,11 @@
         }
         setStatus('checking', '드라이브 확인 중…');
         const meta = await getMeta(link.fileId);
+        if(meta?.ownedByMe === false){
+          saveLink(null);
+          await createNew(payload);
+          return;
+        }
         const known = link.remote || {version:link.version};
         let action = syncAction({localHash:fp, syncedHash:link.syncedHash, remoteSame:sameRemote(known, meta), remoteExists:Boolean(meta)});
         let remoteData = null;
@@ -596,12 +601,14 @@
       openFile:id => run(async () => {
         const meta = await getMeta(id);
         if(!meta) throw new DriveError('드라이브 파일을 찾을 수 없습니다.', 'http', 404);
+        if(meta.ownedByMe === false) throw new DriveError('공유받은 파일은 협동채점의 동료 채점 파일 추가로 연결해 주세요.', 'permission');
         await pull(meta);
       }),
       // 지금 작업과 드라이브 파일을 합치고 그 파일에 이어서 저장
       mergeFile:id => run(async () => {
         const meta = await getMeta(id);
         if(!meta) throw new DriveError('드라이브 파일을 찾을 수 없습니다.', 'http', 404);
+        if(meta.ownedByMe === false) throw new DriveError('공유받은 파일에는 내 채점을 저장할 수 없습니다.', 'permission');
         await mergeAndUpload(meta);
       }),
       createFile:() => run(async () => { await createNew(options.build()); }),

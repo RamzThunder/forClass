@@ -847,7 +847,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.24.1 베타</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.24.2 베타</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -12537,6 +12537,13 @@ async function fetchCollabPeer(fileId, {force=false}={}){
 
 async function ensureMyDriveFile(){
   if(!driveDoc) throw new Error("구글 드라이브를 쓸 수 없습니다.");
+  if(driveDoc.link.fileId){
+    const meta = await GoogleDriveSync.files.getMeta(driveDoc.link.fileId);
+    if(!meta || meta.ownedByMe === false){
+      driveDoc.detach();
+      if(collabState()) saveCollab({...collabState(), sharedWith:[]});
+    }
+  }
   for(let attempt = 0; attempt < 4 && !driveDoc.link.fileId; attempt++){
     if(attempt) await new Promise(resolve => setTimeout(resolve, 800));
     await driveDoc.sync();
@@ -12551,12 +12558,14 @@ async function shareMyCollabFile(){
   const collab = collabState();
   if(!collab) return [];
   const me = collabMyEmail();
-  const targets = collab.members.map(member => member.email).filter(email => email !== me && !collab.sharedWith.includes(email));
+  const fileId = await ensureMyDriveFile();
+  const targets = collabState().members.map(member => member.email).filter(email => email !== me && !collabState().sharedWith.includes(email));
   const pdf = drivePdfLink();
-  const pdfTargets = pdf && (!pdf.ownerEmail || pdf.ownerEmail === me)
+  // 예전 연결에 저장된 ownerEmail은 잘못됐을 수 있으므로 Drive의 실제 소유권을 확인한다.
+  const pdfMeta = pdf ? await GoogleDriveSync.files.getMeta(pdf.id) : null;
+  const pdfTargets = pdfMeta?.ownedByMe === true
     ? collab.members.map(member => member.email).filter(email => email !== me && collab.pdfSharedWith?.[email] !== pdf.id) : [];
   if(!targets.length && !pdfTargets.length) return [];
-  const fileId = await ensureMyDriveFile();
   const message = `「${state.appTitle}」 OMR 협동채점에 초대합니다. 채점 도구의 구글 드라이브 창 → 협동채점 → 「동료 채점 파일 추가」에서 이 파일을 골라 주세요.`;
   const failed = [];
   const shared = [];
