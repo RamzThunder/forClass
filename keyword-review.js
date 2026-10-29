@@ -78,6 +78,14 @@
     data.deletedChangeIds=[...new Set([...(data.deletedChangeIds || []),id])];
     return true;
   }
+  // 여러 건을 한 번에 지운다. 지운 id를 남겨 두어 다른 기기와 합칠 때 되살아나지 않게 한다.
+  function deleteChanges(data,ids){
+    const remove=new Set((ids || []).filter(id=>data.changes.some(c=>c.id===id)));
+    if(!remove.size) return 0;
+    data.changes=data.changes.filter(c=>!remove.has(c.id));
+    data.deletedChangeIds=[...new Set([...(data.deletedChangeIds || []),...remove])];
+    return remove.size;
+  }
   function merge(left,right){
     const next=restore(left),incoming=restore(right);
     next.deletedChangeIds=[...new Set([...next.deletedChangeIds,...incoming.deletedChangeIds])];
@@ -95,7 +103,7 @@
     });
     return next;
   }
-  const api={stable,fingerprint,empty,restore,key,ensure,stats,mark,complete,differences,deleteChange,merge};
+  const api={stable,fingerprint,empty,restore,key,ensure,stats,mark,complete,differences,deleteChange,deleteChanges,merge};
   root.KeywordReview=api;
   if(typeof module!=='undefined') module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

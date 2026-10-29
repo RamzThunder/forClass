@@ -847,7 +847,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.23.0 베타</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.24.0 베타</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1185,7 +1185,7 @@ textarea{min-height:72px;resize:vertical}
   <div class="modal">
     <div class="modalHead"><h2 class="panelTitle" id="reviewChangesTitle">채점 검토 · 점수 수정 내역</h2><button class="btn mini" id="closeReviewChangesBtn">닫기</button></div>
     <div style="padding:16px;display:grid;gap:12px">
-      <div class="compactBtns"><label>반 <select id="reviewChangesClass"><option value="">전체 반</option></select></label><button class="btn mini" id="copyReviewChangesBtn">전달용 텍스트 복사</button><button class="btn mini" id="exportReviewChangesBtn">CSV 내려받기</button></div>
+      <div class="compactBtns"><label>반 <select id="reviewChangesClass"><option value="">전체 반</option></select></label><button class="btn mini" id="copyReviewChangesBtn">전달용 텍스트 복사</button><button class="btn mini" id="exportReviewChangesBtn">CSV 내려받기</button><button class="btn mini danger" id="clearReviewChangesBtn">보이는 내역 모두 삭제</button></div>
       <div class="statusLine" id="reviewChangesSummary"></div>
       <div class="reviewHistoryList" id="reviewChangesList"></div>
       <textarea class="hidden" id="reviewChangesCopy" aria-label="복사할 수정 내역" readonly></textarea>
@@ -5956,7 +5956,8 @@ function inkThumb(canvas){
 }
 
 // ---------- 전체 OCR: 여러 학생 답안을 한꺼번에 읽기 ----------
-// 읽은 글자는 채점 기록과 따로 이 기기에만 보관한다(채점 진행률에 섞이지 않게). 시험 PDF가 바뀌면 비운다.
+// 읽은 글자는 채점 기록과 따로 보관한다(채점 진행률에 섞이지 않게). 백업·드라이브 파일에는 ocrTexts로 함께 담는다.
+// 항목마다 고친 시각(at)을 남겨, 다른 기기와 합칠 때 더 최근 것을 쓴다. 지운 글자도 빈 글자로 시각을 남긴다. 시험 PDF가 바뀌면 비운다.
 const OCR_TEXT_KEY = `${STORAGE_KEY}.ocrTexts`;
 let ocrTextStore = null;
 let batchOcr = {running:false, stop:false};
@@ -5970,15 +5971,41 @@ function ocrTextStoreFor(){
   return ocrTextStore;
 }
 function ocrTextId(page, questionId){return `${recordKey(page)}|${questionId}`}
+function normalizeOcrEntry(entry){
+  if(typeof entry === "string") return {text:entry, at:0};
+  if(!entry || typeof entry !== "object") return null;
+  return {text:String(entry.text || ""), at:Number(entry.at) || 0};
+}
+function writeOcrTextStore(){
+  try{ localStorage.setItem(OCR_TEXT_KEY, JSON.stringify(ocrTextStore)); }catch(err){ console.warn(err); }
+}
 function savedOcrText(page=state.page, questionId=state.activeQuestion){
-  return ocrTextStoreFor().texts[ocrTextId(page, questionId)] || "";
+  return normalizeOcrEntry(ocrTextStoreFor().texts[ocrTextId(page, questionId)])?.text || "";
 }
 function saveOcrText(page, questionId, text){
   const store = ocrTextStoreFor();
+  const id = ocrTextId(page, questionId);
   const value = String(text || "").trim();
-  if(value) store.texts[ocrTextId(page, questionId)] = value;
-  else delete store.texts[ocrTextId(page, questionId)];
-  try{ localStorage.setItem(OCR_TEXT_KEY, JSON.stringify(store)); }catch(err){ console.warn(err); }
+  if(value === savedOcrText(page, questionId)) return;
+  store.texts[id] = {text:value, at:Date.now()};
+  writeOcrTextStore();
+  driveDoc?.changed();
+}
+// 백업·드라이브 파일의 OCR 글자를 합친다. 같은 학생·문항이면 더 최근에 고친 쪽을 쓴다.
+// replace는 작업 전체를 그 파일로 바꿀 때(불러오기)로, PDF가 달라도 그 파일 것을 받는다.
+function mergeOcrTexts(incoming, {replace=false}={}){
+  if(!incoming || typeof incoming !== "object" || !incoming.texts || typeof incoming.texts !== "object") return;
+  const store = ocrTextStoreFor();
+  if(String(incoming.pdfName || "") !== store.pdfName){
+    if(!replace) return;
+    ocrTextStore = {pdfName:String(incoming.pdfName || ""), texts:{}};
+  }
+  Object.entries(incoming.texts).forEach(([id, entry]) => {
+    const next = normalizeOcrEntry(entry);
+    const current = normalizeOcrEntry(ocrTextStore.texts[id]);
+    if(next && (!current || next.at > current.at)) ocrTextStore.texts[id] = next;
+  });
+  writeOcrTextStore();
 }
 
 // 여러 장을 읽을 때는 OCR 엔진을 한 번만 띄워 두고 계속 쓴다.
@@ -7305,6 +7332,16 @@ function deleteReviewChange(id){
   $('reviewChangesCopy').value='';$('reviewChangesCopy').classList.add('hidden');
   showToast('수정 내역을 삭제했습니다.');
 }
+function clearReviewChanges(){
+  const rows=reviewChangeRows();
+  if(!rows.length) return;
+  const cls=$('reviewChangesClass').value;
+  if(!confirm(`${cls ? `${cls} ` : ''}수정 내역 ${rows.length}건을 모두 삭제할까요?\n학생의 현재 점수는 그대로 유지됩니다. 삭제한 내역은 되돌릴 수 없으니, 필요하면 먼저 CSV로 내려받아 두세요.`)) return;
+  const count=KeywordReview.deleteChanges(state.keywordReview,rows.map(c=>c.id));
+  persist();renderReviewChanges();
+  $('reviewChangesCopy').value='';$('reviewChangesCopy').classList.add('hidden');
+  showToast(`수정 내역 ${count}건을 삭제했습니다.`);
+}
 function reviewScoreSnapshot(){
   const result={};
   Object.values(state.records).forEach(rec=>{
@@ -7358,7 +7395,7 @@ function renderReviewChanges(){
   const rows=reviewChangeRows();
   $('reviewChangesSummary').textContent=`점수 수정 ${rows.length}건 · ${new Set(rows.map(c=>c.studentKey)).size}명 (되돌린 변경도 시간순으로 기록)`;
   $('reviewChangesList').innerHTML=rows.map(c=>`<article class="reviewChangeRow"><strong>${escapeHtml([c.className,c.number?c.number+'번':'',c.name].filter(Boolean).join(' '))} · ${escapeHtml(c.questionLabel)}</strong><div>${formatScore(c.before)} → ${formatScore(c.after)}점 (${formatSignedScore(c.after-c.before)}) · 전체 합계 ${formatScore(c.totalBefore)} → ${formatScore(c.totalAfter)}점</div><div class="statusLine">${escapeHtml(new Date(c.at).toLocaleString('ko-KR'))} · ${escapeHtml(c.context)}</div><div>${escapeHtml(c.detail)}</div><label>전달 메모 <input class="reviewChangeNote" data-change-id="${escapeHtml(c.id)}" value="${escapeHtml(c.note || '')}" placeholder="변경 사유나 전달할 내용을 적어 주세요"></label><div class="compactBtns"><button class="btn mini danger" type="button" data-delete-review-change="${escapeHtml(c.id)}">이 수정 내역 삭제</button></div></article>`).join('') || '<div class="statusLine">검토 중 점수가 바뀌면 여기에 기록됩니다. 이전 수정 내역은 소급해서 기록하지 않습니다.</div>';
-  $('copyReviewChangesBtn').disabled=!rows.length;$('exportReviewChangesBtn').disabled=!rows.length;
+  $('copyReviewChangesBtn').disabled=!rows.length;$('exportReviewChangesBtn').disabled=!rows.length;$('clearReviewChangesBtn').disabled=!rows.length;
   updateReviewChangesCount();
 }
 function openReviewChanges(){
@@ -9182,7 +9219,8 @@ function buildJsonBackup(){
     records:structuredClone(state.records),
     keywordReview:structuredClone(state.keywordReview),
     settings:structuredClone(state.settings),
-    examCaptures:examCaptureMap()
+    examCaptures:examCaptureMap(),
+    ocrTexts:structuredClone(ocrTextStoreFor())
   };
 }
 
@@ -9271,6 +9309,7 @@ function importJsonBackup(payload){
 
   state.appTitle = data.appTitle || data.title || state.appTitle;
   state.fileName = data.sourcePdfName || data.fileName || state.fileName;
+  mergeOcrTexts(data.ocrTexts, {replace:true});
   state.questions = nextQuestions || structuredClone(defaultQuestions);
   if(data.crop) state.questions[0].crop = data.crop;
   if(Array.isArray(data.rubric)) state.questions[0].rubric = data.rubric;
@@ -9466,6 +9505,7 @@ function mergeJsonBackup(payload, conflictMode="keep"){
   applyRosterToRecords();
   if(!state.questions.some(q => q.id === state.activeQuestion)) state.activeQuestion = state.questions[0]?.id || state.activeQuestion;
   restoreExamCaptures(data.examCaptures, conflictMode === "replace" ? "replace-present" : "keep");
+  mergeOcrTexts(data.ocrTexts);
   persist();
   updateQuestionControls();
   updateRosterStatus();
@@ -11444,6 +11484,7 @@ $('reviewDoneOverlay').addEventListener('click',async evt=>{
 $('closeReviewChangesBtn').addEventListener('click',()=>$('reviewChangesModal').classList.add('hidden'));
 $('reviewChangesModal').addEventListener('click',evt=>{if(evt.target===$('reviewChangesModal')) evt.target.classList.add('hidden');});
 $('reviewChangesClass').addEventListener('change',renderReviewChanges);
+$('clearReviewChangesBtn').addEventListener('click',clearReviewChanges);
 $('copyReviewChangesBtn').addEventListener('click',copyReviewChanges);
 $('exportReviewChangesBtn').addEventListener('click',exportReviewChanges);
 $('reviewChangesList').addEventListener('click',evt=>{
@@ -12588,7 +12629,7 @@ function addCollabPeerFiles(){
           if(!sameSetup){
             if(!confirm(`「${meta.name}」의 문항·루브릭·학생 명렬 설정을 받아 협동채점을 시작할까요?\n\n지금 이 기기에 있는 작업은 화면에서 바뀌고, 드라이브에는 새 파일로 저장됩니다. 필요하면 먼저 JSON 백업을 저장해 주세요.`)) return;
             driveDoc?.detach();
-            importJsonBackup({...data, records:{}, settings:{...(data.settings || {}), collab:null, pdfDriveFile:undefined}});
+            importJsonBackup({...data, records:{}, ocrTexts:null, settings:{...(data.settings || {}), collab:null, pdfDriveFile:undefined}});
           }
           base = {groupId:peerCollab?.groupId || `collab_${Date.now().toString(36)}`, selfEmail:me, members:[{email:me, name:GoogleDriveSync.account()?.name || ""}], assignments:{}, assignmentsAt:"", peers:{}, sharedWith:[]};
         }
