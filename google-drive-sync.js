@@ -235,7 +235,7 @@
     }
     return res;
   }
-  const FILE_FIELDS = 'id,name,modifiedTime,version,md5Checksum,headRevisionId,ownedByMe';
+  const FILE_FIELDS = 'id,name,modifiedTime,version,md5Checksum,headRevisionId,ownedByMe,capabilities(canShare),owners(emailAddress)';
   let folderCache = null;
   async function folderId(){
     if(folderCache) return folderCache;
@@ -270,14 +270,30 @@
   }
   // 앱이 만든 내 파일을 다른 계정에 보기 전용으로 공유한다.
   async function shareFile(id, email, message=''){
+    const meta = await getMeta(id);
+    if(!meta) throw new DriveError('공유할 파일을 찾을 수 없습니다.', 'http', 404);
+    if(meta.ownedByMe !== true){
+      throw new DriveError('내 소유 파일인지 확인되지 않아 공유를 중단했습니다. 페이지를 새로고침한 뒤 다시 연결해 주세요.', 'permission');
+    }
+    if(meta.capabilities?.canShare === false){
+      throw new DriveError(`「${meta.name}」은 Google Drive에서 공유가 제한된 파일입니다. 드라이브에서 공유 설정을 확인해 주세요.`, 'permission');
+    }
     const params = new URLSearchParams({sendNotificationEmail:'true', fields:'id'});
     if(message) params.set('emailMessage', message);
-    return (await api(`${API}/files/${encodeURIComponent(id)}/permissions?${params}`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({type:'user', role:'reader', emailAddress:normalizeEmail(email)})
-    })).json();
+    try{
+      return await (await api(`${API}/files/${encodeURIComponent(id)}/permissions?${params}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({type:'user', role:'reader', emailAddress:normalizeEmail(email)})
+      })).json();
+    }catch(err){
+      if(err.status === 400 || err.status === 403){
+        throw new DriveError(`「${meta.name}」 자동 공유를 Google이 거부했습니다. 내 소유 파일 확인 완료 · 공유 가능: ${meta.capabilities?.canShare === true ? '예' : '확인 불가'}. 협동채점의 「드라이브에서 내 파일 열기」에서 공유를 시도해 주세요.\n${err.message}`, err.kind, err.status);
+      }
+      throw err;
+    }
   }
+
   function pickerAvailable(){ return Boolean(PICKER_API_KEY); }
   let pickerPromise = null;
   function loadPicker(){

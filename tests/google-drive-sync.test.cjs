@@ -23,7 +23,7 @@ globalThis.fetch = async (url, options={}) => {
   if(drive.offline) throw new TypeError('network');
   const touch = f => { f.version += 1; f.modifiedTime = new Date(Date.now() + f.version).toISOString(); };
   const meta = f => ({
-    id:f.id, name:f.name, ownedByMe:f.ownedByMe !== false, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
+    capabilities:{canShare:f.canShare !== false}, id:f.id, name:f.name, ownedByMe:f.ownedByMe !== false, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
     ...(f.folder || drive.noChecksum ? {} : {md5Checksum:crypto.createHash('md5').update(f.bytes || f.content || '').digest('hex')}),
     headRevisionId:drive.noChecksum ? `r${f.version}` : undefined
   });
@@ -71,6 +71,11 @@ globalThis.fetch = async (url, options={}) => {
     const f = {id:`f${drive.next++}`, name:metaPart.name, app:metaPart.appProperties.forClassApp, content, version:1, modifiedTime:new Date().toISOString()};
     drive.files.set(f.id, f);
     return json(meta(f));
+  }
+  if(u.pathname.endsWith('/permissions') && method === 'POST'){
+    drive.lastPermission = JSON.parse(options.body);
+    if(drive.shareError) return json({error:{message:'sharing denied'}}, drive.shareError);
+    return json({id:'permission1'});
   }
   const m = /^\/(upload\/)?drive\/v3\/files\/([^/]+)$/.exec(u.pathname);
   if(m){
@@ -435,4 +440,35 @@ test('old shared JSON connection saves local work to a new owned file', async ()
   assert.notEqual(g.doc.link.fileId, oldId);
   assert.equal(drive.files.get(oldId).content, original);
   assert.deepEqual(JSON.parse(drive.files.get(g.doc.link.fileId).content).records, {a:1,b:2});
+});
+
+
+test('sharing verifies actual ownership and sharing capability before mutation', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.sync();
+  const id = g.doc.link.fileId;
+  const file = drive.files.get(id);
+  file.ownedByMe = false;
+  await assert.rejects(G.files.share(id, 'peer@example.com'), /내 소유/);
+  file.ownedByMe = true;
+  file.canShare = false;
+  await assert.rejects(G.files.share(id, 'peer@example.com'), /공유가 제한/);
+  assert.equal(drive.calls.filter(c => c.endsWith('/permissions')).length, 0);
+  file.canShare = true;
+  await G.files.share(id, 'PEER@example.com');
+  assert.deepEqual(drive.lastPermission, {type:'user', role:'reader', emailAddress:'peer@example.com'});
+});
+
+test('Google rejection identifies the verified file and keeps sharing failure visible', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.sync();
+  drive.shareError = 400;
+  await assert.rejects(G.files.share(g.doc.link.fileId, 'peer@example.com'), err => {
+    assert.equal(err.status, 400);
+    assert.match(err.message, /내 소유 파일 확인 완료/);
+    assert.match(err.message, /드라이브에서 내 파일 열기/);
+    return true;
+  });
 });
