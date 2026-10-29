@@ -296,14 +296,14 @@
     return pickerPromise;
   }
   // 나에게 공유된 JSON 파일을 고르게 한다. 고른 파일은 이 앱이 읽을 수 있게 된다.
-  async function pickFiles({title='파일 선택'}={}){
+  async function pickFiles({title='파일 선택', mimeTypes='application/json'}={}){
     if(!PICKER_API_KEY) throw new DriveError('구글 파일 선택창 설정(API 키)이 아직 없습니다.', 'config');
     const t = token();
     if(!t) throw new DriveError('구글 로그인이 필요합니다.', 'auth');
     await loadPicker();
     const picker = root.google.picker;
     return new Promise(resolve => {
-      const view = new picker.DocsView(picker.ViewId.DOCS).setMimeTypes('application/json').setOwnedByMe(false);
+      const view = new picker.DocsView(picker.ViewId.DOCS).setMimeTypes(mimeTypes).setOwnedByMe(false);
       new picker.PickerBuilder()
         .addView(view)
         .setOAuthToken(t)

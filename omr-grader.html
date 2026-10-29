@@ -12230,7 +12230,7 @@ function drivePdfLink(){
   return link && link.id ? link : null;
 }
 function linkDrivePdf(meta, file){
-  state.settings.pdfDriveFile = {id:meta.id, name:file.name, size:file.size, key:pdfDriveKey(file)};
+  state.settings.pdfDriveFile = {id:meta.id, name:file.name, size:file.size, key:pdfDriveKey(file), ownerEmail:collabMyEmail()};
   persist();
   renderDriveModal();
 }
@@ -12284,6 +12284,8 @@ async function uploadPdfToDrive(file){
     });
     linkDrivePdf(meta, file);
     try{ localStorage.removeItem(PDF_UPLOAD_DECLINED_KEY); }catch{}
+    const failed = await shareMyCollabFile();
+    if(failed.length) alert(`PDF 공유 실패: ${failed.join("\n")}`);
     showToast("PDF를 드라이브에 저장했습니다.");
   }catch(err){
     alert(`PDF를 드라이브에 저장하지 못했습니다: ${err.message}\n\n드라이브 창에서 다시 시도할 수 있습니다.`);
@@ -12302,6 +12304,19 @@ function offerDrivePdf(){
   return true;
 }
 
+async function downloadDrivePdf(link, options){
+  try{
+    return await GoogleDriveSync.files.downloadBlob(link.id, options);
+  }catch(err){
+    if(![403, 404].includes(err.status) || !GoogleDriveSync.pickerAvailable()) throw err;
+    alert(`PDF 접근을 허용하려면 다음 파일 선택창에서 「${link.name}」을 선택해 주세요. 목록에 없으면 초대한 선생님께 PDF 공유를 요청해 주세요.`);
+    const picked = await GoogleDriveSync.pickFiles({title:`협동채점 PDF 선택: ${link.name}`, mimeTypes:"application/pdf"});
+    if(!picked.length) throw new Error("PDF 선택을 취소했습니다. 다시 받기를 눌러 이어갈 수 있습니다.");
+    if(!picked.some(file => file.id === link.id)) throw new Error("연결된 PDF와 다른 파일입니다. 안내된 PDF를 선택해 주세요.");
+    return GoogleDriveSync.files.downloadBlob(link.id, options);
+  }
+}
+
 async function openPdfFromDrive(){
   const link = drivePdfLink();
   if(!link || pdfTransferBusy) return;
@@ -12314,7 +12329,7 @@ async function openPdfFromDrive(){
   const label = `드라이브에서 PDF 받는 중 · ${formatBytes(link.size)}`;
   showPdfTransfer(label, 0);
   try{
-    const blob = await GoogleDriveSync.files.downloadBlob(link.id, {
+    const blob = await downloadDrivePdf(link, {
       size:link.size, mimeType:"application/pdf",
       onProgress:ratio => showPdfTransfer(`${label} · ${Math.round(ratio * 100)}%`, ratio)
     });
@@ -12323,11 +12338,9 @@ async function openPdfFromDrive(){
     await openPdf(file, {fromDrive:true});
     showToast(`${link.name}을 열었습니다. 다음부터는 이 기기에서 바로 열립니다.`);
   }catch(err){
-    const missing = err.status === 404;
-    alert(missing
-      ? "드라이브에서 PDF를 찾을 수 없습니다. 삭제되었을 수 있습니다. PDF를 직접 열어 주세요."
+    alert(err.status === 403 || err.status === 404
+      ? "PDF에 접근할 수 없습니다. 초대한 선생님이 PDF도 공유했는지 확인하고 다시 시도해 주세요."
       : `드라이브에서 PDF를 받지 못했습니다: ${err.message}`);
-    if(missing){ delete state.settings.pdfDriveFile; persist(); }
   }finally{
     pdfTransferBusy = false;
     hidePdfTransfer();
@@ -12374,6 +12387,7 @@ function normalizeCollab(value){
     assignments,
     assignmentsAt:String(value.assignmentsAt || ""),
     peers,
+    pdfSharedWith:{...(value.pdfSharedWith || {})},
     sharedWith:[...new Set((Array.isArray(value.sharedWith) ? value.sharedWith : []).map(collabEmail).filter(Boolean))]
   };
 }
@@ -12538,7 +12552,10 @@ async function shareMyCollabFile(){
   if(!collab) return [];
   const me = collabMyEmail();
   const targets = collab.members.map(member => member.email).filter(email => email !== me && !collab.sharedWith.includes(email));
-  if(!targets.length) return [];
+  const pdf = drivePdfLink();
+  const pdfTargets = pdf && (!pdf.ownerEmail || pdf.ownerEmail === me)
+    ? collab.members.map(member => member.email).filter(email => email !== me && collab.pdfSharedWith?.[email] !== pdf.id) : [];
+  if(!targets.length && !pdfTargets.length) return [];
   const fileId = await ensureMyDriveFile();
   const message = `「${state.appTitle}」 OMR 협동채점에 초대합니다. 채점 도구의 구글 드라이브 창 → 협동채점 → 「동료 채점 파일 추가」에서 이 파일을 골라 주세요.`;
   const failed = [];
@@ -12551,6 +12568,14 @@ async function shareMyCollabFile(){
       failed.push(`${email}: ${err.message}`);
     }
   }
+  const pdfSharedWith = {...collab.pdfSharedWith};
+  for(const email of pdfTargets){
+    try{
+      await GoogleDriveSync.files.share(pdf.id, email, `「${state.appTitle}」 협동채점 PDF입니다.`);
+      pdfSharedWith[email] = pdf.id;
+    }catch(err){ failed.push(`${email} PDF: ${err.message}`); }
+  }
+  saveCollab({...collabState(), pdfSharedWith});
   if(shared.length) saveCollab({...collabState(), sharedWith:[...collabState().sharedWith, ...shared]});
   return failed;
 }
@@ -12583,7 +12608,7 @@ function inviteCollabMembers(){
       showToast("초대할 선생님의 구글 계정 이메일을 입력해 주세요.");
       return;
     }
-    if(!confirm(`이 선생님들께 내 채점 파일을 보기 전용으로 공유할까요?\n\n${emails.join("\n")}\n\n공유 알림 메일이 갑니다. 학생 점수가 공유되니 같은 학교 선생님인지 확인해 주세요.`)) return;
+    if(!confirm(`이 선생님들께 내 채점 파일과 드라이브에 저장된 PDF를 보기 전용으로 공유할까요?\n\n${emails.join("\n")}\n\n공유 알림 메일이 갑니다. 학생 점수가 공유되니 같은 학교 선생님인지 확인해 주세요.`)) return;
     const base = collabState() || {
       groupId:`collab_${Date.now().toString(36)}`,
       selfEmail:me,
@@ -12629,15 +12654,17 @@ function addCollabPeerFiles(){
           if(!sameSetup){
             if(!confirm(`「${meta.name}」의 문항·루브릭·학생 명렬 설정을 받아 협동채점을 시작할까요?\n\n지금 이 기기에 있는 작업은 화면에서 바뀌고, 드라이브에는 새 파일로 저장됩니다. 필요하면 먼저 JSON 백업을 저장해 주세요.`)) return;
             driveDoc?.detach();
-            importJsonBackup({...data, records:{}, ocrTexts:null, settings:{...(data.settings || {}), collab:null, pdfDriveFile:undefined}});
+            importJsonBackup({...data, records:{}, ocrTexts:null, settings:{...(data.settings || {}), collab:null, pdfDriveFile:data.settings?.pdfDriveFile ? {...data.settings.pdfDriveFile, ownerEmail:owner.email} : undefined}});
           }
           base = {groupId:peerCollab?.groupId || `collab_${Date.now().toString(36)}`, selfEmail:me, members:[{email:me, name:GoogleDriveSync.account()?.name || ""}], assignments:{}, assignmentsAt:"", peers:{}, sharedWith:[]};
         }
         const next = mergeCollabInfo(base, peerCollab, owner);
         next.peers[owner.email] = {fileId:meta.id, name:owner.name, fileName:meta.name, modifiedTime:meta.modifiedTime, pulledAt:new Date().toISOString()};
         saveCollab(next);
+        adoptCollabPdf(data, owner.email);
         applyCollabPeerData(owner.email, data);
         refreshAfterCollabPull();
+        offerDrivePdf();
         messages.push(`${owner.name || owner.email} 선생님 파일을 연결했습니다.`);
       }catch(err){
         messages.push(err.message);
@@ -12663,6 +12690,7 @@ async function pullCollabPeers({quiet=false, force=false}={}){
         next.peers[email] = {...next.peers[email], name:owner.name || peer.name, fileName:meta.name, modifiedTime:meta.modifiedTime, pulledAt:new Date().toISOString()};
       }
       state.settings.collab = normalizeCollab(next);
+      adoptCollabPdf(data, owner.email || email);
       answers += applyCollabPeerData(email, data);
     }catch(err){
       errors.push(`${collabMemberName(email)}: ${err.message}`);
@@ -12673,6 +12701,14 @@ async function pullCollabPeers({quiet=false, force=false}={}){
   if(errors.length && !quiet) alert(`일부 동료 채점을 불러오지 못했습니다.\n\n${errors.join("\n")}`);
   else if(errors.length) console.warn(errors);
   else if(!quiet) showToast(`동료 채점을 불러왔습니다 · ${answers}건`);
+}
+
+function adoptCollabPdf(data, ownerEmail){
+  const link = data.settings?.pdfDriveFile;
+  if(drivePdfLink() || !link?.id) return;
+  state.settings.pdfDriveFile = {...link, ownerEmail:link.ownerEmail || ownerEmail};
+  persist();
+  offerDrivePdf();
 }
 
 function autoPullCollab(){

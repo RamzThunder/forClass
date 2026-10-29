@@ -83,3 +83,72 @@ test('invite reads the typed emails before the panel is redrawn', () => {
   assert.ok(body.indexOf('collabInviteInput') < body.indexOf('runCollabTask'));
   assert.match(html, /id="collabInviteInput"[^>]*value="\$\{escapeHtml\(collabInviteDraft\)\}"/);
 });
+
+function loadAsync(ctx, name){
+  vm.runInContext('async ' + source(name), ctx);
+}
+
+test('invitation shares PDF with existing members and retries failed PDF shares', async () => {
+  const ctx = setup({collab:{...baseCollab, sharedWith:['b@school.kr']}});
+  const calls = [];
+  let fail = true;
+  Object.assign(ctx, {
+    drivePdfLink:() => ({id:'pdf1', ownerEmail:'a@school.kr'}),
+    ensureMyDriveFile:async () => 'json1',
+    saveCollab:next => {ctx.state.settings.collab = ctx.normalizeCollab(next);}
+  });
+  ctx.GoogleDriveSync.files = {share:async (id, email) => {
+    calls.push([id, email]);
+    if(fail) throw new Error('denied');
+  }};
+  loadAsync(ctx, 'shareMyCollabFile');
+  assert.equal((await ctx.shareMyCollabFile()).length, 1);
+  assert.equal(ctx.state.settings.collab.pdfSharedWith['b@school.kr'], undefined);
+  fail = false;
+  await ctx.shareMyCollabFile();
+  await ctx.shareMyCollabFile();
+  assert.deepEqual(calls, [['pdf1','b@school.kr'], ['pdf1','b@school.kr']]);
+});
+
+test('recipient does not attempt to reshare the owner PDF', async () => {
+  const ctx = setup({collab:baseCollab});
+  const calls = [];
+  Object.assign(ctx, {
+    drivePdfLink:() => ({id:'pdf1', ownerEmail:'b@school.kr'}),
+    ensureMyDriveFile:async () => 'json1',
+    saveCollab:next => {ctx.state.settings.collab = ctx.normalizeCollab(next);}
+  });
+  ctx.GoogleDriveSync.files = {share:async id => calls.push(id)};
+  loadAsync(ctx, 'shareMyCollabFile');
+  await ctx.shareMyCollabFile();
+  assert.deepEqual(calls, ['json1']);
+});
+
+test('PDF permission failure uses PDF Picker and retries the same file', async () => {
+  const ctx = setup();
+  let attempts = 0;
+  ctx.alert = () => {};
+  ctx.GoogleDriveSync.files = {downloadBlob:async id => {
+    assert.equal(id, 'pdf1');
+    if(++attempts === 1) throw {status:404};
+    return 'pdf bytes';
+  }};
+  ctx.GoogleDriveSync.pickerAvailable = () => true;
+  ctx.GoogleDriveSync.pickFiles = async options => {
+    assert.equal(options.mimeTypes, 'application/pdf');
+    return [{id:'pdf1'}];
+  };
+  loadAsync(ctx, 'downloadDrivePdf');
+  assert.equal(await ctx.downloadDrivePdf({id:'pdf1', name:'답안.pdf'}, {}), 'pdf bytes');
+  assert.equal(attempts, 2);
+});
+
+test('missing PDF link is recovered from peer without replacing an existing PDF', () => {
+  const ctx = setup();
+  Object.assign(ctx, {drivePdfLink:() => ctx.state.settings.pdfDriveFile, persist:() => {}, offerDrivePdf:() => {}});
+  vm.runInContext(source('adoptCollabPdf'), ctx);
+  ctx.adoptCollabPdf({settings:{pdfDriveFile:{id:'pdf1'}}}, 'b@school.kr');
+  assert.equal(ctx.state.settings.pdfDriveFile.ownerEmail, 'b@school.kr');
+  ctx.adoptCollabPdf({settings:{pdfDriveFile:{id:'pdf2'}}}, 'c@school.kr');
+  assert.equal(ctx.state.settings.pdfDriveFile.id, 'pdf1');
+});
