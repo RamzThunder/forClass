@@ -160,6 +160,13 @@ body.offlineQuestionActive .side > #offlineQuestionNote{display:block!important}
 .highlightLinkMenu{position:fixed;z-index:60;width:min(280px,calc(100vw - 16px));max-height:min(420px,calc(100vh - 16px));overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px;box-shadow:0 14px 34px rgba(10,16,26,.22);display:grid;gap:7px}
 .highlightLinkGroup{display:grid;gap:5px}
 .highlightLinkMenu .keywordChip{width:100%}
+.highlightLinkDots{display:inline-flex;gap:3px;margin-left:5px;vertical-align:-1px}
+.highlightLinkDot{width:11px;height:11px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(23,32,51,.28)}
+.highlightLinkDot.red{background:#ff6b64}
+.highlightLinkDot.yellow{background:#ffe04f}
+.highlightLinkDot.green{background:#62d77b}
+.highlightLinkDot.blue{background:#4f8df7}
+.highlightLinkDot.purple{background:#a679ec}
 .highlightColorBtn.on::before{outline:2px solid var(--accent);outline-offset:2px}
 body:not(.pdfLoaded) .answerZoomControls{display:none}
 .app.multiWindowMain .viewer{height:100%;overflow:hidden}
@@ -837,7 +844,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.20.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.21.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -3896,6 +3903,7 @@ function setHighlightLink(color, link){
   else delete question.highlightLinks[color];
   persist();
   updateHighlightButtons();
+  renderRubric();
 }
 
 function isDeductKeywordOn(link){
@@ -3918,6 +3926,17 @@ function releaseHighlightDeduct(removed, remaining){
   if(!stillUsed) setDeductKeywordFromHighlight(link, false);
 }
 
+// 감점 문구에 연결된 형광펜 색을 작은 동그라미로 보여준다.
+function highlightLinkDotsHtml(item, keyword){
+  if(item?.type !== "deduct") return "";
+  const colors = HIGHLIGHT_COLORS.filter(color => {
+    const link = highlightLinkInfo(color);
+    return link && link.item.id === item.id && link.keyword === keyword;
+  });
+  if(!colors.length) return "";
+  return `<span class="highlightLinkDots">${colors.map(color => `<span class="highlightLinkDot ${color}" title="${escapeHtml(highlightColorLabel(color))} 연결"></span>`).join("")}</span>`;
+}
+
 function closeHighlightLinkMenu(){
   document.querySelectorAll(".highlightLinkMenu").forEach(menu => menu.remove());
 }
@@ -3935,7 +3954,7 @@ function openHighlightLinkMenu(color, anchor){
     const chips = keywords.length
       ? keywords.map(keyword => {
           const on = current && current.item.id === item.id && current.keyword === keyword;
-          return `<button class="keywordChip reject${on ? " on" : ""}" type="button" data-link-item="${escapeHtml(item.id)}" data-link-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} <span>-${escapeHtml(formatScore(keywordScore(item, "reject", keyword)))}</span></button>`;
+          return `<button class="keywordChip reject${on ? " on" : ""}" type="button" data-link-item="${escapeHtml(item.id)}" data-link-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} <span>-${escapeHtml(formatScore(keywordScore(item, "reject", keyword)))}</span>${highlightLinkDotsHtml(item, keyword)}</button>`;
         }).join("")
       : `<div class="keywordEmpty">감점 문구가 없습니다.</div>`;
     return `<div class="highlightLinkGroup"><div class="label">${escapeHtml(item.sub ? `${item.sub} · ${item.name}` : item.name)}</div>${chips}</div>`;
@@ -5414,7 +5433,7 @@ function keywordButtonsHtml(item, type, keywords, keywordHits){
     const partialClass = on && type === "accept" && isPartialScore(item, keywordHits?.[item.id]) ? " partialScore" : "";
     const score = keywordScore(item, type, keyword);
     const label = type === "accept" ? `+${score}` : score ? `-${score}` : "0";
-    return `<button class="keywordChip ${type}${on}${partialClass}"${state.settings?.keywordLinkEnabled && (type === "accept" ? item.acceptLinks : item.rejectLinks)?.[keyword] ? ` title="${escapeHtml("연계 미인정: " + (type === "accept" ? item.acceptLinks : item.rejectLinks)[keyword])}"` : ""} type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} · ${escapeHtml(label)}점</button>`;
+    return `<button class="keywordChip ${type}${on}${partialClass}"${state.settings?.keywordLinkEnabled && (type === "accept" ? item.acceptLinks : item.rejectLinks)?.[keyword] ? ` title="${escapeHtml("연계 미인정: " + (type === "accept" ? item.acceptLinks : item.rejectLinks)[keyword])}"` : ""} type="button" data-id="${escapeHtml(item.id)}" data-type="${type}" data-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} · ${escapeHtml(label)}점${type === "reject" ? highlightLinkDotsHtml(item, keyword) : ""}</button>`;
   }).join("")}</div>`;
 }
 
