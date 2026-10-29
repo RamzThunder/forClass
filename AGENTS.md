@@ -7,3 +7,4 @@
 # Deployment
 
 - After completing requested changes and relevant checks, commit and push to `main` to deploy through GitHub Pages, then verify deployment. The user has requested deployment by default.
+- Before deployment, bump the affected tool’s visible version (patch for bug fixes), ensure the home page displays it, and create the matching release tag for OMR (`omr-vX.Y.Z`).

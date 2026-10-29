@@ -436,7 +436,7 @@ main{min-width:0}
 document.querySelectorAll('[data-version-src]').forEach(async el => {
   try{
     const html = await (await fetch(el.dataset.versionSrc, {cache:'no-cache'})).text();
-    const match = html.match(new RegExp(`id="${el.dataset.versionId}"[^>]*>\\s*(v[0-9][0-9.]*)\\s*<`));
+    const match = html.match(new RegExp(`id="${el.dataset.versionId}"[^>]*>\\s*(v[0-9][0-9.]*(?: 베타)?)\\s*<`));
     if(match) el.textContent = match[1];
   }catch{}
 });
