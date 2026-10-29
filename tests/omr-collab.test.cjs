@@ -77,3 +77,9 @@ test('email list parsing keeps valid unique addresses', () => {
   const sync = require('../google-drive-sync.js');
   assert.deepEqual(sync.parseEmails('B@school.kr, c@school.kr\nb@school.kr 잘못된값'), ['b@school.kr', 'c@school.kr']);
 });
+
+test('invite reads the typed emails before the panel is redrawn', () => {
+  const body = source('inviteCollabMembers');
+  assert.ok(body.indexOf('collabInviteInput') < body.indexOf('runCollabTask'));
+  assert.match(html, /id="collabInviteInput"[^>]*value="\$\{escapeHtml\(collabInviteDraft\)\}"/);
+});
