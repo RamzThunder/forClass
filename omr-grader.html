@@ -847,7 +847,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.22.3 베타</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.23.0 베타</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1038,10 +1038,12 @@ textarea{min-height:72px;resize:vertical}
         <h2 class="panelTitle">답안 텍스트 (자동 채점 보조)</h2>
         <div class="compactBtns">
           <button class="btn mini" id="answerOcrBtn" type="button">OCR 읽어오기</button>
+          <button class="btn mini" id="batchOcrBtn" type="button" title="현재 범위의 채점 안 끝난 학생 답안을 한꺼번에 OCR로 읽습니다">전체 OCR</button>
           <button class="btn mini" id="autoDetectBtn" type="button">키워드 자동 탐지</button>
         </div>
       </div>
       <div class="statusLine" style="margin-bottom:6px">학생 답안을 붙여넣으면 루브릭 키워드를 자동으로 탐지합니다. 탐지 후 결과를 직접 확인·수정하세요.</div>
+      <label class="checkField" style="margin:0 0 6px"><input id="batchOcrDetectInput" type="checkbox"> 전체 OCR 후 키워드 자동 탐지도 함께</label>
       <textarea id="answerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
       <div class="autoDetectStatus" id="autoDetectStatus"></div>
     </section>
@@ -1810,7 +1812,7 @@ const els = {
   spinnerOverlay:$("spinnerOverlay"), progressFill:$("progressFill"), progressText:$("progressText"),
   toast:$("toast"),
   answerText:$("answerText"),
-  answerOcrBtn:$("answerOcrBtn"), autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus"),
+  answerOcrBtn:$("answerOcrBtn"), batchOcrBtn:$("batchOcrBtn"), batchOcrDetectInput:$("batchOcrDetectInput"), autoDetectBtn:$("autoDetectBtn"), autoDetectStatus:$("autoDetectStatus"),
   sourceHighlightModal:$("sourceHighlightModal"), sourceHighlightModalBody:$("sourceHighlightModalBody"), closeSourceHighlightModalBtn:$("closeSourceHighlightModalBtn")
   ,mobileScanNav:$("mobileScanNav"), mobilePrevBtn:$("mobilePrevBtn"), mobileNextBtn:$("mobileNextBtn"),
   mobileDiscussionBtn:$("mobileDiscussionBtn"), mobilePageText:$("mobilePageText"), mobileStudentText:$("mobileStudentText"),
@@ -4549,7 +4551,7 @@ function loadRecordIntoForm(){
   sourceHighlightRanges = [];
   updateDiscussionButton();
   updateCompleteButton();
-  els.answerText.value = "";
+  els.answerText.value = savedOcrText();
   state.sourceCheckAnswers = {};
   els.autoDetectStatus.textContent = "";
   renderRubric();
@@ -4822,6 +4824,7 @@ body.popupCompleted .popupLockBanner{display:block}
     const popupAnswer = evt.target.closest("#popupAnswerText");
     if(popupAnswer){
       els.answerText.value = popupAnswer.value;
+      if(state.pdf) saveOcrText(state.page, state.activeQuestion, popupAnswer.value);
       return;
     }
     const exampleInput = evt.target.closest(".subExampleAnswerInput");
@@ -5952,6 +5955,117 @@ function inkThumb(canvas){
   return thumb.toDataURL("image/jpeg", .7);
 }
 
+// ---------- 전체 OCR: 여러 학생 답안을 한꺼번에 읽기 ----------
+// 읽은 글자는 채점 기록과 따로 이 기기에만 보관한다(채점 진행률에 섞이지 않게). 시험 PDF가 바뀌면 비운다.
+const OCR_TEXT_KEY = `${STORAGE_KEY}.ocrTexts`;
+let ocrTextStore = null;
+let batchOcr = {running:false, stop:false};
+
+function ocrTextStoreFor(){
+  const pdfName = state.fileName || state.lastPdfName || "";
+  if(!ocrTextStore){
+    try{ ocrTextStore = JSON.parse(localStorage.getItem(OCR_TEXT_KEY) || "null"); }catch{ ocrTextStore = null; }
+  }
+  if(!ocrTextStore || typeof ocrTextStore.texts !== "object" || ocrTextStore.pdfName !== pdfName) ocrTextStore = {pdfName, texts:{}};
+  return ocrTextStore;
+}
+function ocrTextId(page, questionId){return `${recordKey(page)}|${questionId}`}
+function savedOcrText(page=state.page, questionId=state.activeQuestion){
+  return ocrTextStoreFor().texts[ocrTextId(page, questionId)] || "";
+}
+function saveOcrText(page, questionId, text){
+  const store = ocrTextStoreFor();
+  const value = String(text || "").trim();
+  if(value) store.texts[ocrTextId(page, questionId)] = value;
+  else delete store.texts[ocrTextId(page, questionId)];
+  try{ localStorage.setItem(OCR_TEXT_KEY, JSON.stringify(store)); }catch(err){ console.warn(err); }
+}
+
+// 여러 장을 읽을 때는 OCR 엔진을 한 번만 띄워 두고 계속 쓴다.
+async function createBatchOcrReader(){
+  if(state.settings?.ocrEngine === "paddle"){
+    const ocr = await loadPaddleOcr();
+    return {read:async canvas => paddleItemsToText((await ocr.predict(canvas))?.[0]?.items), close:async () => {}};
+  }
+  const Tesseract = await loadTesseract();
+  const worker = await Tesseract.createWorker("kor+eng");
+  return {read:async canvas => String((await worker.recognize(canvas))?.data?.text || ""), close:() => worker.terminate()};
+}
+
+function updateBatchOcrButton(){
+  if(!els.batchOcrBtn) return;
+  els.batchOcrBtn.textContent = batchOcr.running ? (batchOcr.stop ? "중지하는 중…" : "전체 OCR 중지") : "전체 OCR";
+  els.batchOcrBtn.classList.toggle("danger", batchOcr.running);
+  els.batchOcrBtn.disabled = !state.pdf || (batchOcr.running && batchOcr.stop);
+}
+
+async function runBatchOcr(){
+  if(batchOcr.running){
+    batchOcr.stop = true;
+    updateBatchOcrButton();
+    return;
+  }
+  const statusEl = els.autoDetectStatus;
+  if(!state.pdf){ setAutoAssistStatus("PDF를 먼저 불러오세요.", true, statusEl); return; }
+  if(!guardPeerQuestion()) return;
+  const question = activeQuestion();
+  const pages = baseProgressPages().filter(page => !isQuestionCompletedOnPage(page));
+  const todo = pages.filter(page => !savedOcrText(page, question.id));
+  if(!todo.length){
+    setAutoAssistStatus(pages.length ? "현재 범위의 채점 안 끝난 답안은 이미 모두 OCR로 읽었습니다." : "현재 범위에 채점 안 끝난 답안이 없습니다.", false, statusEl);
+    return;
+  }
+  const detect = Boolean(els.batchOcrDetectInput?.checked);
+  const engine = state.settings?.ocrEngine === "paddle" ? "PaddleOCR" : "Tesseract";
+  const skipped = pages.length - todo.length;
+  if(!confirm(`${question.label} · 채점 안 끝난 학생 ${todo.length}명의 답안을 OCR로 읽을까요?${skipped ? `\n(이미 읽은 ${skipped}명은 건너뜁니다)` : ""}\n\n엔진: ${engine} · 한 명에 몇 초씩 걸립니다. 도중에 중지할 수 있습니다.${detect ? "\n읽은 뒤 키워드 자동 탐지도 함께 실행합니다. 탐지 결과는 꼭 확인해 주세요." : ""}`)) return;
+  batchOcr = {running:true, stop:false};
+  updateBatchOcrButton();
+  let read = 0;
+  let empty = 0;
+  let matched = 0;
+  let reader = null;
+  try{
+    setAutoAssistStatus(`${engine} 준비 중… 처음에는 모델을 내려받느라 시간이 걸립니다.`, false, statusEl);
+    reader = await createBatchOcrReader();
+    for(let index = 0; index < todo.length && !batchOcr.stop; index++){
+      const page = todo[index];
+      setAutoAssistStatus(`전체 OCR ${index + 1}/${todo.length} · ${studentTextForPage(page)}`, false, statusEl);
+      // 학생 첫 쪽이 아니라 이 문항 답안 칸이 있는 면을 잘라 읽는다.
+      const canvas = await cropCanvasForPage(pageWithStudentCropSide(page));
+      const text = (await reader.read(canvas)).trim();
+      if(state.activeQuestion !== question.id) throw new Error("읽는 도중 문항이 바뀌었습니다.");
+      saveOcrText(page, question.id, text);
+      read++;
+      if(!text){ empty++; continue; }
+      if(detect && !isQuestionCompletedOnPage(page)){
+        const key = recordKey(page);
+        ensureQuestionRecord(key);
+        matched += applyKeywordDetection(state.records[key].answers[question.id], text);
+      }
+    }
+    const stopped = batchOcr.stop ? "중지됨 · " : "";
+    setAutoAssistStatus(`${stopped}전체 OCR ${read}명 읽음${empty ? ` (글자 못 찾음 ${empty}명)` : ""}${detect ? ` · 키워드 ${matched}개 탐지` : ""}. 학생으로 이동하면 읽은 글자가 답안 텍스트 칸에 나옵니다.`, false, statusEl);
+  }catch(err){
+    console.error(err);
+    setAutoAssistStatus(`전체 OCR을 마치지 못했습니다 (${read}명 읽음): ${err.message}`, true, statusEl);
+    showToast("전체 OCR을 마치지 못했습니다.");
+  }finally{
+    try{ await reader?.close(); }catch{}
+    batchOcr = {running:false, stop:false};
+    updateBatchOcrButton();
+    if(!els.answerText.value.trim()) els.answerText.value = savedOcrText();
+    if(read && detect){
+      persist();
+      renderRubric();
+      updateResults();
+      updateKeywordSummary();
+      updateProgress();
+      updateClassControls();
+    }
+  }
+}
+
 async function readCurrentAnswerWithOcr(answerEl=els.answerText, statusEl=els.autoDetectStatus, buttonEl=els.answerOcrBtn){
   if(!state.pdf){
     setAutoAssistStatus("PDF를 먼저 불러오세요.", true, statusEl);
@@ -5972,6 +6086,7 @@ async function readCurrentAnswerWithOcr(answerEl=els.answerText, statusEl=els.au
     const text = (await recognizeAnswerText(canvas, message => setAutoAssistStatus(message, false, statusEl))).trim();
     if(answerEl) answerEl.value = text;
     els.answerText.value = text;
+    saveOcrText(state.page, state.activeQuestion, text);
     if(rubricPopupWindow && !rubricPopupWindow.closed){
       const popupAnswer = rubricPopupWindow.document.getElementById("popupAnswerText");
       if(popupAnswer && popupAnswer !== answerEl) popupAnswer.value = text;
@@ -6077,6 +6192,16 @@ function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDet
   snapshotCurrentQuestion("키워드 자동 탐지");
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
+  const matches = applyKeywordDetection(qrec, text);
+  if(!matches){setAutoAssistStatus("매칭되는 키워드가 없습니다. 답안 텍스트를 확인하세요.", false, statusEl);return;}
+  persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();
+  setAutoAssistStatus(`${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`, false, statusEl);
+}
+
+// 답안 글자에서 찾은 키워드를 한 학생의 문항 기록에 체크한다. 이미 체크된 것은 그대로 둔다.
+function applyKeywordDetection(qrec, text){
+  if(!qrec.keywordHits) qrec.keywordHits = {};
+  if(!qrec.scores) qrec.scores = {};
   const detected = detectKeywordsInText(text, activeRubric().flatMap(item => ["accept","reject"].flatMap(type => splitKeywords(item[type]))));
   let matches = 0;
   activeRubric().forEach(item => {
@@ -6099,9 +6224,7 @@ function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDet
       }
     }
   });
-  if(!matches){setAutoAssistStatus("매칭되는 키워드가 없습니다. 답안 텍스트를 확인하세요.", false, statusEl);return;}
-  persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();
-  setAutoAssistStatus(`${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`, false, statusEl);
+  return matches;
 }
 
 // 답안에서 찾은 키워드 목록. 더 긴 키워드 안에서만 나온 짧은 키워드는 뺀다.
@@ -6827,6 +6950,7 @@ function updateCompleteButton(){
   els.clearCurrentBtn.disabled = !state.pdf || completed || peer;
   if(els.addRubricBottomBtn) els.addRubricBottomBtn.disabled = !state.pdf;
   if(els.answerOcrBtn) els.answerOcrBtn.disabled = !state.pdf || completed;
+  updateBatchOcrButton();
   if(els.autoDetectBtn) els.autoDetectBtn.disabled = !state.pdf || completed;
   syncRubricPopup();
 }
@@ -11943,6 +12067,8 @@ window.addEventListener("keydown", evt => {
 
 els.answerOcrBtn.addEventListener("click", () => readCurrentAnswerWithOcr());
 els.autoDetectBtn.addEventListener("click", () => autoDetectKeywords());
+els.batchOcrBtn.addEventListener("click", runBatchOcr);
+els.answerText.addEventListener("input", () => { if(state.pdf) saveOcrText(state.page, state.activeQuestion, els.answerText.value); });
 els.closeSourceHighlightModalBtn.addEventListener("click", () => els.sourceHighlightModal.classList.add("hidden"));
 els.sourceHighlightModal.addEventListener("click", evt => {
   if(evt.target === els.sourceHighlightModal) els.sourceHighlightModal.classList.add("hidden");
