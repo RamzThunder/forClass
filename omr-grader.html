@@ -153,6 +153,13 @@ body.offlineQuestionActive .side > #offlineQuestionNote{display:block!important}
 .highlightColorBtn.yellow::before{background:#ffe04f}
 .highlightColorBtn.red::before{background:#ff6b64}
 .highlightColorBtn.green::before{background:#62d77b}
+.highlightColorBtn.blue::before{background:#4f8df7}
+.highlightColorBtn.purple::before{background:#a679ec}
+.highlightColorBtn{position:relative}
+.highlightColorBtn.linked::after{content:"";position:absolute;right:0;bottom:0;width:8px;height:8px;border-radius:50%;background:#b2453e;border:1.5px solid #fff}
+.highlightLinkMenu{position:fixed;z-index:60;width:min(280px,calc(100vw - 16px));max-height:min(420px,calc(100vh - 16px));overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px;box-shadow:0 14px 34px rgba(10,16,26,.22);display:grid;gap:7px}
+.highlightLinkGroup{display:grid;gap:5px}
+.highlightLinkMenu .keywordChip{width:100%}
 .highlightColorBtn.on::before{outline:2px solid var(--accent);outline-offset:2px}
 body:not(.pdfLoaded) .answerZoomControls{display:none}
 .app.multiWindowMain .viewer{height:100%;overflow:hidden}
@@ -193,6 +200,8 @@ button.fullPageSideLabel:hover,button.fullPageSideLabel.active{border-color:var(
 .answerHighlightBox.yellow{--highlight-border:rgba(211,142,0,.85);--highlight-bg:rgba(255,224,79,.38);--highlight-draft:rgba(255,224,79,.24)}
 .answerHighlightBox.red{--highlight-border:rgba(198,56,48,.86);--highlight-bg:rgba(255,107,100,.34);--highlight-draft:rgba(255,107,100,.22)}
 .answerHighlightBox.green{--highlight-border:rgba(42,133,68,.88);--highlight-bg:rgba(98,215,123,.34);--highlight-draft:rgba(98,215,123,.22)}
+.answerHighlightBox.blue{--highlight-border:rgba(37,99,196,.88);--highlight-bg:rgba(79,141,247,.32);--highlight-draft:rgba(79,141,247,.2)}
+.answerHighlightBox.purple{--highlight-border:rgba(118,68,190,.88);--highlight-bg:rgba(166,121,236,.32);--highlight-draft:rgba(166,121,236,.2)}
 .answerHighlightBox.draft{border-style:dashed;background:var(--highlight-draft, rgba(255,224,79,.24));pointer-events:none}
 .answerHighlightBox.editing{outline:2px solid #172033;outline-offset:2px}
 .highlightResizeHandle{position:absolute;right:-7px;bottom:-7px;width:15px;height:15px;border:2px solid #fff;border-radius:50%;background:var(--highlight-border, #d38e00);box-shadow:0 2px 7px rgba(10,16,26,.28);cursor:nwse-resize;z-index:8}
@@ -828,7 +837,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.19.4</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.20.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -926,6 +935,8 @@ textarea{min-height:72px;resize:vertical}
           <button class="btn mini highlightColorBtn red" id="highlightRedBtn" type="button" title="빨간 형광펜" aria-label="빨간 형광펜"></button>
           <button class="btn mini highlightColorBtn yellow on" id="highlightYellowBtn" type="button" title="노란 형광펜" aria-label="노란 형광펜"></button>
           <button class="btn mini highlightColorBtn green" id="highlightGreenBtn" type="button" title="초록 형광펜" aria-label="초록 형광펜"></button>
+          <button class="btn mini highlightColorBtn blue" id="highlightBlueBtn" type="button" title="파란 형광펜" aria-label="파란 형광펜"></button>
+          <button class="btn mini highlightColorBtn purple" id="highlightPurpleBtn" type="button" title="보라 형광펜" aria-label="보라 형광펜"></button>
         </div>
         <div class="examCapturePanel hidden" id="examCapturePanel">
           <div class="examCaptureHead">
@@ -1731,7 +1742,7 @@ const els = {
   examCaptureInput:$("examCaptureInput"), examCapturePreview:$("examCapturePreview"), examCaptureStatus:$("examCaptureStatus"),
   cropOverlay:$("cropOverlay"), calibrateBtn:$("calibrateBtn"), fullPageBtn:$("fullPageBtn"), studentCropBtn:$("studentCropBtn"), clearStudentCropBtn:$("clearStudentCropBtn"), saveCropBtn:$("saveCropBtn"),
   studentCropAreaControls:$("studentCropAreaControls"), studentCropAreaCountInput:$("studentCropAreaCountInput"), studentCropAreaButtons:$("studentCropAreaButtons"), gradeModeBtn:$("gradeModeBtn"),
-  highlightModeBtn:$("highlightModeBtn"), highlightYellowBtn:$("highlightYellowBtn"), highlightRedBtn:$("highlightRedBtn"), highlightGreenBtn:$("highlightGreenBtn"),
+  highlightModeBtn:$("highlightModeBtn"), highlightYellowBtn:$("highlightYellowBtn"), highlightRedBtn:$("highlightRedBtn"), highlightGreenBtn:$("highlightGreenBtn"), highlightBlueBtn:$("highlightBlueBtn"), highlightPurpleBtn:$("highlightPurpleBtn"),
   undoHighlightBtn:$("undoHighlightBtn"), pageHighlightLayer:$("pageHighlightLayer"), cropHighlightLayer:$("cropHighlightLayer"),
   tutorialBtn:$("tutorialBtn"), settingsTutorialBtn:$("settingsTutorialBtn"),
   tutorialStartModal:$("tutorialStartModal"), closeTutorialStartBtn:$("closeTutorialStartBtn"),
@@ -1803,6 +1814,9 @@ let sourceHighlightRanges = [];
 let tesseractLoadPromise = null;
 let highlightMode = false;
 let highlightColor = "yellow";
+// 형광펜 색 목록(툴바 순서). 색별 감점 연결은 문항마다 question.highlightLinks에 저장한다.
+const HIGHLIGHT_COLORS = ["red","yellow","green","blue","purple"];
+const HIGHLIGHT_COLOR_NAMES = {red:"빨간", yellow:"노란", green:"초록", blue:"파란", purple:"보라"};
 let activeHighlightEditor = null;
 let cropCompositeMode = false;
 let cropCompositeLayouts = [];
@@ -2426,7 +2440,8 @@ function normalizeQuestions(){
       subSourceTexts:typeof saved.subSourceTexts === "object" && saved.subSourceTexts !== null ? {...saved.subSourceTexts} : {},
       subs:normalizeQuestionSubs(saved),
       crop,
-      rubric:normalizeRubric(Array.isArray(saved.rubric) ? saved.rubric : structuredClone(fallback.rubric))
+      rubric:normalizeRubric(Array.isArray(saved.rubric) ? saved.rubric : structuredClone(fallback.rubric)),
+      highlightLinks:normalizeHighlightLinks(saved.highlightLinks)
     };
   });
   if(!state.questions.some(q => q.id === state.activeQuestion)) state.activeQuestion = state.questions[0].id;
@@ -2774,7 +2789,8 @@ function normalizeAnswerHighlights(highlights){
     .map(item => ({
       side:String(item.side || ""),
       view:item.view === "page" ? "page" : "crop",
-      color:["yellow","red","green"].includes(item.color) ? item.color : "yellow",
+      color:HIGHLIGHT_COLORS.includes(item.color) ? item.color : "yellow",
+      deductLink:normalizeHighlightLink(item.deductLink),
       memo:String(item.memo || "").trim(),
       x:clamp(Number(item.x) || 0, 0, 1),
       y:clamp(Number(item.y) || 0, 0, 1),
@@ -3712,7 +3728,7 @@ function renderAnswerHighlights(draft=null){
   const entries = currentViewHighlightEntries();
   if(draft) entries.push({item:draft, index:"draft"});
   layer.innerHTML = entries.map(({item, index}) => `
-    <div class="answerHighlightBox ${escapeHtml(item.color || "yellow")}${item.draft ? " draft" : ""}" data-highlight-index="${escapeHtml(index)}" title="${escapeHtml(item.memo || "더블클릭해서 메모 편집")}" style="left:${item.x * 100}%;top:${item.y * 100}%;width:${item.w * 100}%;height:${item.h * 100}%">
+    <div class="answerHighlightBox ${escapeHtml(item.color || "yellow")}${item.draft ? " draft" : ""}" data-highlight-index="${escapeHtml(index)}" title="${escapeHtml([item.memo || "더블클릭해서 메모 편집", item.deductLink ? `감점 연결: ${item.deductLink.keyword}` : ""].filter(Boolean).join("\n"))}" style="left:${item.x * 100}%;top:${item.y * 100}%;width:${item.w * 100}%;height:${item.h * 100}%">
       ${item.memo ? `<div class="answerHighlightNote">${escapeHtml(item.memo)}</div>` : ""}
     </div>
   `).join("");
@@ -3726,14 +3742,16 @@ function updateHighlightButtons(){
     els.highlightModeBtn.classList.toggle("highlightToolOn", Boolean(highlightMode));
     els.highlightModeBtn.title = highlightMode ? "형광펜 끄기" : "드래그해서 답안 위에 형광펜 표시";
   }
-  [
-    [els.highlightRedBtn, "red"],
-    [els.highlightYellowBtn, "yellow"],
-    [els.highlightGreenBtn, "green"]
-  ].forEach(([btn, color]) => {
+  HIGHLIGHT_COLORS.forEach(color => {
+    const btn = highlightColorButton(color);
     if(!btn) return;
+    const link = highlightLinkInfo(color);
     btn.disabled = !enabled;
     btn.classList.toggle("on", highlightColor === color);
+    btn.classList.toggle("linked", Boolean(link));
+    const title = `${highlightColorLabel(color)}${link ? ` · 감점 연결: ${link.item.name} / ${link.keyword}` : ""} (우클릭: 감점 연결)`;
+    btn.title = title;
+    btn.setAttribute("aria-label", title);
   });
   if(els.undoHighlightBtn){
     els.undoHighlightBtn.disabled = !enabled || !currentViewHighlights().length;
@@ -3743,7 +3761,7 @@ function updateHighlightButtons(){
 }
 
 function setHighlightColor(color){
-  if(!["yellow","red","green"].includes(color)) return;
+  if(!HIGHLIGHT_COLORS.includes(color)) return;
   highlightColor = color;
   if(state.pdf && state.mode !== "calibrate") highlightMode = true;
   updateHighlightButtons();
@@ -3765,11 +3783,14 @@ function toggleHighlightMode(){
 function addAnswerHighlight(highlight){
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
-  qrec.highlights = normalizeAnswerHighlights([...(qrec.highlights || []), {...highlight, color:highlightColor}]);
+  const link = highlightLinkInfo(highlightColor);
+  const deductLink = link ? {itemId:link.item.id, keyword:link.keyword} : null;
+  qrec.highlights = normalizeAnswerHighlights([...(qrec.highlights || []), {...highlight, color:highlightColor, deductLink}]);
   persist();
   renderAnswerHighlights();
   updateResults();
   updateClassControls();
+  if(deductLink) setDeductKeywordFromHighlight(deductLink, true);
 }
 
 function closeHighlightEditor(shouldRender=false){
@@ -3800,13 +3821,14 @@ function deleteAnswerHighlight(index){
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   const highlights = normalizeAnswerHighlights(qrec.highlights || []);
   if(!highlights[index]) return;
-  highlights.splice(index, 1);
+  const [removed] = highlights.splice(index, 1);
   qrec.highlights = highlights;
   cleanupRecord(recordKey());
   persist();
   renderAnswerHighlights();
   updateResults();
   updateClassControls();
+  releaseHighlightDeduct(removed, highlights);
 }
 
 function openHighlightEditor(index, anchor){
@@ -3838,6 +3860,117 @@ function openHighlightEditor(index, anchor){
   requestAnimationFrame(() => editor.querySelector(".highlightMemoInput")?.focus());
 }
 
+function normalizeHighlightLink(link){
+  if(!link || typeof link !== "object" || !link.itemId || !link.keyword) return null;
+  return {itemId:String(link.itemId), keyword:String(link.keyword)};
+}
+
+function normalizeHighlightLinks(links){
+  const result = {};
+  if(!links || typeof links !== "object") return result;
+  HIGHLIGHT_COLORS.forEach(color => {
+    const link = normalizeHighlightLink(links[color]);
+    if(link) result[color] = link;
+  });
+  return result;
+}
+
+function highlightColorButton(color){
+  return els[`highlight${color[0].toUpperCase()}${color.slice(1)}Btn`] || null;
+}
+
+// 연결된 감점 항목/문구가 지금 루브릭에 그대로 있을 때만 연결로 본다.
+function highlightLinkInfo(color, question=activeQuestion()){
+  const link = normalizeHighlightLink(question?.highlightLinks?.[color]);
+  if(!link) return null;
+  const item = (question.rubric || []).find(entry => entry.id === link.itemId && entry.type === "deduct");
+  if(!item || !splitKeywords(item.reject).includes(link.keyword)) return null;
+  return {item, keyword:link.keyword};
+}
+
+function setHighlightLink(color, link){
+  const question = activeQuestion();
+  if(!question || !HIGHLIGHT_COLORS.includes(color)) return;
+  question.highlightLinks = normalizeHighlightLinks(question.highlightLinks);
+  if(link) question.highlightLinks[color] = normalizeHighlightLink(link);
+  else delete question.highlightLinks[color];
+  persist();
+  updateHighlightButtons();
+}
+
+function isDeductKeywordOn(link){
+  return Boolean(currentQuestionRecord()?.keywordHits?.[link.itemId]?.reject?.includes(link.keyword));
+}
+
+// 형광펜으로 감점 문구를 켜거나 끈다. 이미 원하는 상태면 건드리지 않는다.
+function setDeductKeywordFromHighlight(link, on){
+  const item = activeRubric().find(entry => entry.id === link.itemId && entry.type === "deduct");
+  if(!item || !splitKeywords(item.reject).includes(link.keyword)) return;
+  if(isDeductKeywordOn(link) === on) return;
+  toggleKeywordHit(link.itemId, "reject", link.keyword);
+}
+
+// 연결된 형광펜을 지웠을 때, 같은 감점을 가리키는 형광펜이 더 없으면 감점도 해제한다.
+function releaseHighlightDeduct(removed, remaining){
+  const link = normalizeHighlightLink(removed?.deductLink);
+  if(!link) return;
+  const stillUsed = (remaining || []).some(item => item.deductLink?.itemId === link.itemId && item.deductLink?.keyword === link.keyword);
+  if(!stillUsed) setDeductKeywordFromHighlight(link, false);
+}
+
+function closeHighlightLinkMenu(){
+  document.querySelectorAll(".highlightLinkMenu").forEach(menu => menu.remove());
+}
+
+function openHighlightLinkMenu(color, anchor){
+  closeHighlightLinkMenu();
+  const question = activeQuestion();
+  if(!question) return;
+  const current = highlightLinkInfo(color);
+  const deductItems = (question.rubric || []).filter(item => item.type === "deduct");
+  const menu = document.createElement("div");
+  menu.className = "highlightLinkMenu";
+  const groups = deductItems.map(item => {
+    const keywords = splitKeywords(item.reject);
+    const chips = keywords.length
+      ? keywords.map(keyword => {
+          const on = current && current.item.id === item.id && current.keyword === keyword;
+          return `<button class="keywordChip reject${on ? " on" : ""}" type="button" data-link-item="${escapeHtml(item.id)}" data-link-keyword="${escapeHtml(keyword)}">${escapeHtml(keyword)} <span>-${escapeHtml(formatScore(keywordScore(item, "reject", keyword)))}</span></button>`;
+        }).join("")
+      : `<div class="keywordEmpty">감점 문구가 없습니다.</div>`;
+    return `<div class="highlightLinkGroup"><div class="label">${escapeHtml(item.sub ? `${item.sub} · ${item.name}` : item.name)}</div>${chips}</div>`;
+  }).join("");
+  menu.innerHTML = `
+    <div class="label">${escapeHtml(highlightColorLabel(color))} 감점 연결 · ${escapeHtml(question.label || "")}</div>
+    ${groups || `<div class="statusLine">이 문항에 감점용 루브릭 항목이 없습니다. 루브릭에서 감점용 항목을 먼저 만들어주세요.</div>`}
+    <div class="statusLine">연결하면 이 색으로 칠할 때 감점이 자동으로 선택되고, 그 형광펜을 지우면 감점도 해제됩니다.</div>
+    ${current ? `<button class="btn mini danger" type="button" data-link-clear>연결 해제</button>` : ""}
+  `;
+  menu.addEventListener("click", evt => {
+    const chip = evt.target.closest("[data-link-item]");
+    if(chip){
+      const same = current && current.item.id === chip.dataset.linkItem && current.keyword === chip.dataset.linkKeyword;
+      setHighlightLink(color, same ? null : {itemId:chip.dataset.linkItem, keyword:chip.dataset.linkKeyword});
+      showToast(same ? `${highlightColorLabel(color)} 감점 연결을 해제했습니다.` : `${highlightColorLabel(color)} → ${chip.dataset.linkKeyword} 감점에 연결했습니다.`);
+      closeHighlightLinkMenu();
+      return;
+    }
+    if(evt.target.closest("[data-link-clear]")){
+      setHighlightLink(color, null);
+      showToast(`${highlightColorLabel(color)} 감점 연결을 해제했습니다.`);
+      closeHighlightLinkMenu();
+    }
+  });
+  document.body.appendChild(menu);
+  const rect = anchor.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const left = clamp(rect.left, 8, Math.max(8, window.innerWidth - menuRect.width - 8));
+  const below = rect.bottom + 6;
+  const top = below + menuRect.height > window.innerHeight - 8 ? Math.max(8, rect.top - menuRect.height - 6) : below;
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
 function undoLastHighlight(){
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
@@ -3846,13 +3979,14 @@ function undoLastHighlight(){
   const highlights = normalizeAnswerHighlights(qrec.highlights || []);
   const index = highlights.map((item, i) => ({item, i})).reverse().find(entry => entry.item.view === view && entry.item.side === side)?.i;
   if(index == null) return;
-  highlights.splice(index, 1);
+  const [removed] = highlights.splice(index, 1);
   qrec.highlights = highlights;
   cleanupRecord(recordKey());
   persist();
   renderAnswerHighlights();
   updateResults();
   updateClassControls();
+  releaseHighlightDeduct(removed, highlights);
 }
 
 function selectCompositeSideFromClick(evt){
@@ -8082,6 +8216,8 @@ async function buildShareReportHtml(records, options){
   .highlightMiniBox.yellow{--highlight-border:rgba(211,142,0,.85);--highlight-bg:rgba(255,224,79,.38)}
   .highlightMiniBox.red{--highlight-border:rgba(198,56,48,.86);--highlight-bg:rgba(255,107,100,.34)}
   .highlightMiniBox.green{--highlight-border:rgba(42,133,68,.88);--highlight-bg:rgba(98,215,123,.34)}
+  .highlightMiniBox.blue{--highlight-border:rgba(37,99,196,.88);--highlight-bg:rgba(79,141,247,.32)}
+  .highlightMiniBox.purple{--highlight-border:rgba(118,68,190,.88);--highlight-bg:rgba(166,121,236,.32)}
   .highlightReportMeta{font-size:11px;font-weight:900;color:#647085;margin-bottom:5px}
   .highlightReportMemo{font-size:12px;line-height:1.55;white-space:pre-wrap}
   .badge{display:inline-block;border:1px solid #edcfcb;border-radius:999px;background:#fff7f6;color:#a33a35;padding:3px 7px;font-size:11px;font-weight:900;margin-left:6px}
@@ -8285,6 +8421,8 @@ async function buildStudentScoreScreenHtml(records, options){
   .highlightMiniBox.yellow{--highlight-border:rgba(211,142,0,.85);--highlight-bg:rgba(255,224,79,.38)}
   .highlightMiniBox.red{--highlight-border:rgba(198,56,48,.86);--highlight-bg:rgba(255,107,100,.34)}
   .highlightMiniBox.green{--highlight-border:rgba(42,133,68,.88);--highlight-bg:rgba(98,215,123,.34)}
+  .highlightMiniBox.blue{--highlight-border:rgba(37,99,196,.88);--highlight-bg:rgba(79,141,247,.32)}
+  .highlightMiniBox.purple{--highlight-border:rgba(118,68,190,.88);--highlight-bg:rgba(166,121,236,.32)}
   .highlightReportMeta{font-size:11px;font-weight:900;color:#647085;margin-bottom:5px}
   .highlightReportMemo{font-size:12px;line-height:1.55;white-space:pre-wrap}
   .badge{display:inline-block;border:1px solid #c9e7d2;border-radius:999px;background:#f4fbf7;color:#1f7a45;padding:2px 7px;font-size:11px;font-weight:900}
@@ -8643,7 +8781,7 @@ async function shareReportHighlightsHtml(rec, question, qrec){
 }
 
 function shareReportHighlightItemHtml(item, index, captureDataUrl=""){
-  const color = ["yellow","red","green"].includes(item.color) ? item.color : "yellow";
+  const color = HIGHLIGHT_COLORS.includes(item.color) ? item.color : "yellow";
   const memo = item.memo || "메모 없음";
   const view = item.view === "page" ? "전체 답안" : "답안 영역";
   const side = item.side ? ` · ${pageSideTextFromSide(item.side)}` : "";
@@ -8729,7 +8867,9 @@ function drawHighlightOverlayOnCapture(ctx, item, highlightRect, captureRect, wi
   const colorMap = {
     yellow:{fill:"rgba(255,224,79,.32)", stroke:"rgba(211,142,0,.95)"},
     red:{fill:"rgba(255,107,100,.28)", stroke:"rgba(198,56,48,.95)"},
-    green:{fill:"rgba(98,215,123,.28)", stroke:"rgba(42,133,68,.95)"}
+    green:{fill:"rgba(98,215,123,.28)", stroke:"rgba(42,133,68,.95)"},
+    blue:{fill:"rgba(79,141,247,.26)", stroke:"rgba(37,99,196,.95)"},
+    purple:{fill:"rgba(166,121,236,.26)", stroke:"rgba(118,68,190,.95)"}
   };
   const colors = colorMap[item.color] || colorMap.yellow;
   const x = ((highlightRect.x - captureRect.x) / captureRect.w) * width;
@@ -8753,7 +8893,7 @@ function pageForHighlight(rec, item){
 }
 
 function highlightColorLabel(color){
-  return color === "red" ? "빨간 형광펜" : color === "green" ? "초록 형광펜" : "노란 형광펜";
+  return `${HIGHLIGHT_COLOR_NAMES[color] || HIGHLIGHT_COLOR_NAMES.yellow} 형광펜`;
 }
 
 function pageSideTextFromSide(side){
@@ -10956,6 +11096,20 @@ els.highlightModeBtn.addEventListener("click", toggleHighlightMode);
 els.highlightYellowBtn.addEventListener("click", () => setHighlightColor("yellow"));
 els.highlightRedBtn.addEventListener("click", () => setHighlightColor("red"));
 els.highlightGreenBtn.addEventListener("click", () => setHighlightColor("green"));
+els.highlightBlueBtn.addEventListener("click", () => setHighlightColor("blue"));
+els.highlightPurpleBtn.addEventListener("click", () => setHighlightColor("purple"));
+HIGHLIGHT_COLORS.forEach(color => {
+  highlightColorButton(color)?.addEventListener("contextmenu", evt => {
+    evt.preventDefault();
+    openHighlightLinkMenu(color, evt.currentTarget);
+  });
+});
+document.addEventListener("pointerdown", evt => {
+  if(!evt.target.closest(".highlightLinkMenu")) closeHighlightLinkMenu();
+}, true);
+document.addEventListener("keydown", evt => {
+  if(evt.key === "Escape") closeHighlightLinkMenu();
+});
 els.undoHighlightBtn?.addEventListener("click", undoLastHighlight);
 els.gradeModeBtn.addEventListener("click", enterGradeMode);
 els.openRubricWindowBtn.addEventListener("click", openRubricPopup);
