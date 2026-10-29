@@ -628,6 +628,21 @@
         await mergeAndUpload(meta);
       }),
       createFile:() => run(async () => { await createNew(options.build()); }),
+      trashFile:async id => {
+        if(busy) throw new DriveError('드라이브 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.', 'busy');
+        let trashed = false;
+        await run(async () => {
+          if(id === link.fileId) throw new DriveError('자동 저장 중인 파일은 삭제할 수 없습니다. 다른 파일을 불러온 뒤 삭제해 주세요.', 'permission');
+          const meta = await getMeta(id);
+          if(!meta){ trashed = true; return; }
+          if(meta.ownedByMe !== true) throw new DriveError('내 소유 파일만 삭제할 수 있습니다.', 'permission');
+          await api(`${API}/files/${encodeURIComponent(id)}?fields=id,trashed`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})
+          });
+          trashed = true;
+        });
+        return trashed;
+      },
       // 새 시험을 시작할 때 이전 파일과의 연결을 끊는다. 다음 저장 때 새 파일이 만들어진다.
       detach(){
         clearTimeout(timer); timer = null; saveLink(null);

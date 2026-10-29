@@ -81,7 +81,11 @@ globalThis.fetch = async (url, options={}) => {
   if(m){
     const f = drive.files.get(m[2]);
     if(!f) return json({error:{message:'not found'}}, 404);
-    if(method === 'PATCH'){ f.content = options.body; touch(f); return json(meta(f)); }
+    if(method === 'PATCH'){
+      if(options.headers?.['Content-Type'] === 'application/json' && JSON.parse(options.body).trashed === true) f.trashed = true;
+      else f.content = options.body;
+      touch(f); return json(meta(f));
+    }
     if(u.searchParams.get('alt') === 'media' && f.bytes){
       let sent = false;
       return {ok:true, status:200, headers:{get:k => k === 'Content-Length' ? String(f.bytes.length) : null}, body:{getReader:() => ({
@@ -471,4 +475,36 @@ test('Google rejection identifies the verified file and keeps sharing failure vi
     assert.match(err.message, /드라이브에서 내 파일 열기/);
     return true;
   });
+});
+
+
+test('trash moves only inactive owned files to trash and preserves current work', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.sync();
+  const oldId = g.doc.link.fileId;
+  await g.doc.createFile();
+  const currentId = g.doc.link.fileId;
+  assert.equal(await g.doc.trashFile(currentId), false);
+  assert.equal(drive.files.get(currentId).trashed, undefined);
+  assert.equal(await g.doc.trashFile(oldId), true);
+  assert.equal(drive.files.get(oldId).trashed, true);
+  assert.deepEqual((await g.doc.list()).map(f => f.id), [currentId]);
+  assert.equal(g.doc.link.fileId, currentId);
+  assert.deepEqual(g.data.records, {a:1});
+});
+
+test('trash rejects peer files and reports server errors without removing files', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.sync();
+  const oldId = g.doc.link.fileId;
+  await g.doc.createFile();
+  drive.files.get(oldId).ownedByMe = false;
+  assert.equal(await g.doc.trashFile(oldId), false);
+  assert.equal(drive.files.get(oldId).trashed, undefined);
+  drive.files.get(oldId).ownedByMe = true;
+  drive.offline = true;
+  assert.equal(await g.doc.trashFile(oldId), false);
+  assert.equal(drive.files.get(oldId).trashed, undefined);
 });
