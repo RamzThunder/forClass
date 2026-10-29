@@ -10,8 +10,17 @@
   const API = 'https://www.googleapis.com/drive/v3';
   const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
   const FOLDER_MIME = 'application/vnd.google-apps.folder';
+  // 협동채점에서 동료 파일을 처음 열 때 쓰는 구글 파일 선택창(Picker) 설정.
+  // API 키는 공개돼도 되는 값이다. Google Cloud 콘솔에서 Picker API를 켜고, 키를 사이트 주소로 제한해 둔다.
+  const PICKER_API_KEY = '';
+  const APP_ID = CLIENT_ID.split('-')[0];
 
   // ---------- 순수 함수 (테스트 대상) ----------
+  function normalizeEmail(value){ return String(value || '').trim().toLowerCase(); }
+  function parseEmails(text){
+    const found = String(text || '').split(/[\s,;]+/).map(normalizeEmail).filter(value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value));
+    return [...new Set(found)];
+  }
   function hash(text){
     let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
     for(let i=0;i<text.length;i++){
@@ -254,6 +263,63 @@
       if(err.status === 404) return null;
       throw err;
     }
+  }
+  // 동료 파일 확인용. 주인 계정도 함께 받는다.
+  async function peerMeta(id){
+    return (await api(`${API}/files/${encodeURIComponent(id)}?fields=id,name,modifiedTime,trashed,owners(emailAddress,displayName)`)).json();
+  }
+  // 앱이 만든 내 파일을 다른 계정에 보기 전용으로 공유한다.
+  async function shareFile(id, email, message=''){
+    const params = new URLSearchParams({sendNotificationEmail:'true', fields:'id'});
+    if(message) params.set('emailMessage', message);
+    return (await api(`${API}/files/${encodeURIComponent(id)}/permissions?${params}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:'user', role:'reader', emailAddress:normalizeEmail(email)})
+    })).json();
+  }
+  function pickerAvailable(){ return Boolean(PICKER_API_KEY); }
+  let pickerPromise = null;
+  function loadPicker(){
+    if(pickerPromise) return pickerPromise;
+    pickerPromise = new Promise((resolve, reject) => {
+      const fail = () => { pickerPromise = null; reject(new Error('구글 파일 선택창을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.')); };
+      const load = () => root.gapi.load('picker', {callback:resolve, onerror:fail});
+      if(root.gapi?.load){ load(); return; }
+      const script = root.document.createElement('script');
+      script.src = 'https://apis.google.com/js/api.js';
+      script.async = true;
+      script.onload = load;
+      script.onerror = fail;
+      root.document.head.append(script);
+    });
+    return pickerPromise;
+  }
+  // 나에게 공유된 JSON 파일을 고르게 한다. 고른 파일은 이 앱이 읽을 수 있게 된다.
+  async function pickFiles({title='파일 선택'}={}){
+    if(!PICKER_API_KEY) throw new DriveError('구글 파일 선택창 설정(API 키)이 아직 없습니다.', 'config');
+    const t = token();
+    if(!t) throw new DriveError('구글 로그인이 필요합니다.', 'auth');
+    await loadPicker();
+    const picker = root.google.picker;
+    return new Promise(resolve => {
+      const view = new picker.DocsView(picker.ViewId.DOCS).setMimeTypes('application/json').setOwnedByMe(false);
+      new picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(t)
+        .setDeveloperKey(PICKER_API_KEY)
+        .setAppId(APP_ID)
+        .setTitle(title)
+        .setLocale('ko')
+        .enableFeature(picker.Feature.MULTISELECT_ENABLED)
+        .setCallback(data => {
+          const action = data[picker.Response.ACTION];
+          if(action === picker.Action.PICKED) resolve((data[picker.Response.DOCUMENTS] || []).map(doc => ({id:doc[picker.Document.ID], name:doc[picker.Document.NAME]})));
+          else if(action === picker.Action.CANCEL) resolve([]);
+        })
+        .build()
+        .setVisible(true);
+    });
   }
   async function download(id){
     const text = await (await api(`${API}/files/${encodeURIComponent(id)}?alt=media`)).text();
@@ -561,7 +627,8 @@
   }
 
   const exported = {CLIENT_ID, SCOPE, AUTH_KEY, DOC_PREFIX, prepare, signIn, signOut, account, authState, onAuthChange, createDoc, timeLabel,
-    files:{findByKey, uploadLarge, downloadBlob, getMeta},
+    normalizeEmail, parseEmails, pickerAvailable, pickFiles,
+    files:{findByKey, uploadLarge, downloadBlob, getMeta, peerMeta, download, share:shareFile},
     _test:{hash, fingerprint, needsAutoReconnect, blockAuto:until => { autoBlockedUntil = until; }, syncAction, sameRemote, listFiles, getMeta, download, createFile, updateFile, resetFolder:() => { folderCache = null; }}};
   root.GoogleDriveSync = exported;
   if(typeof module !== 'undefined') module.exports = exported;

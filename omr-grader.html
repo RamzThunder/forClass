@@ -67,6 +67,9 @@ h1{margin:0;font-size:20px;line-height:1.25}
 .driveFileRow.current{border-color:var(--accent);background:var(--soft)}
 .driveFileName{font-size:13px;font-weight:750;overflow-wrap:anywhere}
 .driveFileRow .compactBtns{flex:0 0 auto}
+.collabAssignRow select{width:auto;min-width:150px;min-height:32px;padding:6px 9px;font-size:12px}
+.collabBanner{border:1px solid #c9d7e8;border-radius:8px;background:#f3f7fc;color:#25476b;padding:9px 11px;margin-bottom:8px;font-size:13px;font-weight:900;line-height:1.4}
+.collabBanner .statusLine{font-weight:750;margin-top:2px}
 .pdfTransfer{position:fixed;right:16px;bottom:16px;z-index:79;width:min(300px,calc(100vw - 32px));border:1px solid var(--line);border-radius:8px;background:var(--panel);box-shadow:var(--shadow);padding:10px 12px;display:grid;gap:7px}
 .pdfTransferText{color:var(--ink);font-size:12px;font-weight:750;line-height:1.45}
 .pdfTransferBar{height:6px;border-radius:999px;background:#e8edf3;overflow:hidden}
@@ -844,7 +847,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.21.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.22.0 베타</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1223,6 +1226,13 @@ textarea{min-height:72px;resize:vertical}
             <button class="btn mini" id="drivePdfDownloadBtn" type="button">드라이브에서 PDF 받아 열기</button>
           </div>
         </div>
+      </section>
+      <section class="panel" id="collabPanel">
+        <div class="field">
+          <span class="label">협동채점 (베타)</span>
+          <div class="statusLine" id="collabStatusText">문항을 나눠 맡아 채점하고, 동료가 채점한 문항은 조회만 합니다.</div>
+        </div>
+        <div id="collabBody"></div>
       </section>
       <section class="panel">
         <div class="field">
@@ -2364,6 +2374,7 @@ function normalizeSettings(){
     externalOfflineWrittenMaxScores:Array.isArray(settings.externalOfflineWrittenMaxScores) ? settings.externalOfflineWrittenMaxScores.map(nonNegativeNumber).slice(0, 30) : [],
     externalOfflineWrittenExamples:Array.isArray(settings.externalOfflineWrittenExamples) ? settings.externalOfflineWrittenExamples.map(text => String(text || "")).slice(0, 30) : [],
     externalOfflineWrittenCrops:Array.isArray(settings.externalOfflineWrittenCrops) ? settings.externalOfflineWrittenCrops.map(normalizeOfflineWrittenCrop).slice(0, 30) : [],
+    collab:normalizeCollab(settings.collab),
     deductTemplate:{
       name:String(savedTemplate.name || defaultDeductTemplate.name).trim() || defaultDeductTemplate.name,
       keywords:normalizeKeywordText(savedTemplate.keywords || savedTemplate.keyword || ""),
@@ -2811,10 +2822,15 @@ function currentHighlightSide(){
   if(cropCompositeMode && !els.cropView.classList.contains("hidden") && activeCompositeSide) return activeCompositeSide;
   return pageSideLabel(state.page) || "page1";
 }
-function isRubricLocked(){return Boolean(currentQuestionRecord()?.completed)}
+function isRubricLocked(){return Boolean(currentQuestionRecord()?.completed) || isPeerQuestion()}
 function guardRubricUnlocked(){
   if(!isRubricLocked()) return true;
-  showToast("채점 완료된 답안입니다. 수정하려면 채점 완료를 해제해주세요.");
+  showToast(isPeerQuestion() ? peerQuestionMessage() : "채점 완료된 답안입니다. 수정하려면 채점 완료를 해제해주세요.");
+  return false;
+}
+function guardPeerQuestion(){
+  if(!isPeerQuestion()) return true;
+  showToast(peerQuestionMessage());
   return false;
 }
 function selectedKeywordRecords(itemId, type, keyword, questionId=state.activeQuestion){
@@ -3024,7 +3040,7 @@ async function setQuestion(id){
 
 function updateQuestionControls(){
   const offlineOptions = externalOfflineWrittenTitles().map((title, index) => `<option value="${escapeHtml(offlineQuestionId(index))}">${escapeHtml(title)}</option>`).join("");
-  const options = state.questions.map(q => `<option value="${escapeHtml(q.id)}">${escapeHtml(q.label)}</option>`).join("")
+  const options = state.questions.map(q => `<option value="${escapeHtml(q.id)}">${escapeHtml(q.label)}${escapeHtml(collabAssigneeTag(q.id))}</option>`).join("")
     + (offlineOptions ? `<optgroup label="오프라인 서술형 (영역 지정 전용)">${offlineOptions}</optgroup>` : "");
   if(els.questionSelect.innerHTML !== options) els.questionSelect.innerHTML = options;
   const question = activeQuestion();
@@ -3788,6 +3804,7 @@ function toggleHighlightMode(){
 }
 
 function addAnswerHighlight(highlight){
+  if(!guardPeerQuestion()){ renderAnswerHighlights(); return; }
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   const link = highlightLinkInfo(highlightColor);
@@ -3809,6 +3826,7 @@ function closeHighlightEditor(shouldRender=false){
 }
 
 function editAnswerHighlight(index, patch){
+  if(!guardPeerQuestion()){ renderAnswerHighlights(); return; }
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   const highlights = normalizeAnswerHighlights(qrec.highlights || []);
@@ -3824,6 +3842,7 @@ function editAnswerHighlight(index, patch){
 }
 
 function deleteAnswerHighlight(index){
+  if(!guardPeerQuestion()) return;
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   const highlights = normalizeAnswerHighlights(qrec.highlights || []);
@@ -3991,6 +4010,7 @@ function openHighlightLinkMenu(color, anchor){
 }
 
 function undoLastHighlight(){
+  if(!guardPeerQuestion()) return;
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   const view = currentHighlightView();
@@ -4549,7 +4569,7 @@ function renderRubric(){
   const subTotals = rubricSubTotals(activeRubric(), scores);
   const locked = isRubricLocked();
   els.rubricList.classList.toggle("locked", locked);
-  els.rubricList.innerHTML = "";
+  els.rubricList.innerHTML = collabBannerHtml();
   const question = activeQuestion();
   const reviewIssuesByItem = new Map();
   if(state.settings?.reviewAssistEnabled){
@@ -6696,12 +6716,12 @@ function syncFormToRecord(){
   rec.className = student?.className || rec.className || "";
   rec.number = student?.number || rec.number || "";
   rec.name = student?.name || rec.name || "";
-  rec.answers[state.activeQuestion].memo = els.memoInput.value.trim();
+  if(!isPeerQuestion()) rec.answers[state.activeQuestion].memo = els.memoInput.value.trim();
   cleanupRecord(recordKey());
 }
 
 function scheduleMemoSave(value=els.memoInput.value){
-  if(!state.pdf) return;
+  if(!state.pdf || isPeerQuestion()) return;
   ensureQuestionRecord();
   const key = recordKey();
   const questionId = state.activeQuestion;
@@ -6781,8 +6801,11 @@ function updateCompleteButton(){
   els.completeBtn.classList.toggle("on", completed);
   els.completeBtn.textContent = completed ? "채점 완료됨" : "채점 완료";
   els.completeBtn.setAttribute("aria-pressed", completed ? "true" : "false");
-  els.markAllUnwrittenBtn.disabled = !state.pdf || completed;
-  els.clearCurrentBtn.disabled = !state.pdf || completed;
+  const peer = isPeerQuestion();
+  els.completeBtn.disabled = !state.pdf || peer;
+  els.memoInput.readOnly = peer;
+  els.markAllUnwrittenBtn.disabled = !state.pdf || completed || peer;
+  els.clearCurrentBtn.disabled = !state.pdf || completed || peer;
   if(els.addRubricBottomBtn) els.addRubricBottomBtn.disabled = !state.pdf;
   if(els.answerOcrBtn) els.answerOcrBtn.disabled = !state.pdf || completed;
   if(els.autoDetectBtn) els.autoDetectBtn.disabled = !state.pdf || completed;
@@ -6791,6 +6814,7 @@ function updateCompleteButton(){
 
 function setCompletedFlag(completed){
   if(!state.pdf) return;
+  if(!guardPeerQuestion()) return false;
   ensureQuestionRecord();
   const qrec = state.records[recordKey()].answers[state.activeQuestion];
   if(completed && !hasScoreRubricSelection(qrec, activeQuestion())){
@@ -6827,6 +6851,7 @@ async function completeAndAdvance(){
 }
 
 function clearCurrentQuestion(){
+  if(!guardPeerQuestion()) return;
   if(!confirm("현재 답안의 현재 문항 채점 기록을 초기화할까요?")) return;
   snapshotCurrentQuestion("현재 문항 기록 삭제");
   const rec = currentRecord();
@@ -9517,6 +9542,7 @@ function confirmRubricChange(nextRubric, host=window, action="루브릭을 이�
 }
 
 function addInlineRubricItem(type="score", sub=subOptions()[0]){
+  if(!guardPeerQuestion()) return;
   if(state.editingRubricId && activeRubric().some(item => item.id === state.editingRubricId)){
     showToast("현재 편집 중인 루브릭을 먼저 적용하거나 닫아주세요.");
     focusInlineRubricEditor();
@@ -11966,6 +11992,7 @@ function renderDriveModal(){
   $("drivePdfDownloadBtn").classList.toggle("hidden", !pdfLink || pdfOnDrive);
   $("drivePdfUploadBtn").disabled = auth !== "signed-in" || pdfTransferBusy;
   $("drivePdfDownloadBtn").disabled = auth !== "signed-in" || pdfTransferBusy;
+  renderCollabPanel();
 }
 async function refreshDriveFiles(){
   const list = $("driveFileList");
@@ -12122,6 +12149,465 @@ async function openPdfFromDrive(){
   }
 }
 
+// ---------- 협동채점 (베타) ----------
+// 선생님마다 자기 드라이브 파일에만 저장한다. 내 파일은 동료에게 보기 전용으로 공유하고,
+// 동료가 맡은 문항은 동료 파일에서 읽어 와 잠근 채 보여 준다. 그래서 서로 덮어쓸 일이 없다.
+let collabBusy = false;
+let collabLastAutoPull = 0;
+const collabPeerCache = new Map();
+
+function collabEmail(value){return String(value || "").trim().toLowerCase()}
+function normalizeCollab(value){
+  if(!value || typeof value !== "object" || !value.groupId) return null;
+  const members = [];
+  (Array.isArray(value.members) ? value.members : []).forEach(member => {
+    const email = collabEmail(member?.email);
+    if(!email || members.some(item => item.email === email)) return;
+    members.push({email, name:String(member?.name || "").trim()});
+  });
+  const assignments = {};
+  Object.entries(value.assignments || {}).forEach(([questionId, email]) => {
+    if(collabEmail(email)) assignments[String(questionId)] = collabEmail(email);
+  });
+  const peers = {};
+  Object.entries(value.peers || {}).forEach(([email, peer]) => {
+    if(!collabEmail(email) || !peer?.fileId) return;
+    peers[collabEmail(email)] = {
+      fileId:String(peer.fileId),
+      name:String(peer.name || ""),
+      fileName:String(peer.fileName || ""),
+      modifiedTime:String(peer.modifiedTime || ""),
+      pulledAt:String(peer.pulledAt || "")
+    };
+  });
+  return {
+    groupId:String(value.groupId),
+    selfEmail:collabEmail(value.selfEmail),
+    members,
+    assignments,
+    assignmentsAt:String(value.assignmentsAt || ""),
+    peers,
+    sharedWith:[...new Set((Array.isArray(value.sharedWith) ? value.sharedWith : []).map(collabEmail).filter(Boolean))]
+  };
+}
+function collabState(){return state.settings?.collab || null}
+function collabMyEmail(){
+  const signedIn = window.GoogleDriveSync ? collabEmail(GoogleDriveSync.account()?.email) : "";
+  return signedIn || collabState()?.selfEmail || "";
+}
+function collabMemberName(email){
+  if(!email) return "";
+  if(email === collabMyEmail()) return "나";
+  const collab = collabState();
+  return collab?.members.find(member => member.email === email)?.name || collab?.peers?.[email]?.name || email;
+}
+function questionAssignee(questionId=state.activeQuestion){return collabState()?.assignments?.[questionId] || ""}
+function isPeerQuestion(questionId=state.activeQuestion){
+  const assignee = questionAssignee(questionId);
+  return Boolean(assignee && assignee !== collabMyEmail());
+}
+function peerQuestionMessage(){return `${collabMemberName(questionAssignee())} 담당 문항입니다. 조회만 할 수 있습니다.`}
+function collabAssigneeTag(questionId){
+  const assignee = questionAssignee(questionId);
+  return assignee ? ` · ${collabMemberName(assignee)}` : "";
+}
+function collabBannerHtml(){
+  if(!isPeerQuestion()) return "";
+  const assignee = questionAssignee();
+  const peer = collabState()?.peers?.[assignee];
+  const detail = peer
+    ? `마지막으로 불러온 시각 ${peer.pulledAt ? GoogleDriveSync.timeLabel(peer.pulledAt) : "없음"} · 최신 내용은 구글 드라이브 창의 「동료 채점 불러오기」로 받습니다.`
+    : "아직 이 선생님의 채점 파일을 연결하지 않았습니다. 구글 드라이브 창에서 「동료 채점 파일 추가」를 눌러 주세요.";
+  return `<div class="collabBanner">${escapeHtml(collabMemberName(assignee))} 담당 문항 · 조회만 가능<div class="statusLine">${escapeHtml(detail)}</div></div>`;
+}
+
+function saveCollab(next){
+  state.settings.collab = normalizeCollab(next);
+  persist();
+  updateQuestionControls();
+  renderRubric();
+  updateCompleteButton();
+  updateHighlightButtons();
+  renderDriveModal();
+}
+
+// 동료 파일에 담긴 협동 정보(구성원, 문항 담당)를 내 것과 합친다. 문항 담당은 더 최근에 바꾼 쪽을 따른다.
+function mergeCollabInfo(base, peerCollab, owner){
+  const next = normalizeCollab(base);
+  const addMember = (email, name="") => {
+    email = collabEmail(email);
+    if(!email) return;
+    const found = next.members.find(member => member.email === email);
+    if(found){ if(!found.name && name) found.name = name; }
+    else next.members.push({email, name});
+  };
+  if(owner?.email) addMember(owner.email, owner.name);
+  (peerCollab?.members || []).forEach(member => addMember(member.email, member.name));
+  if(peerCollab && peerCollab.assignmentsAt > next.assignmentsAt){
+    next.assignments = {...peerCollab.assignments};
+    next.assignmentsAt = peerCollab.assignmentsAt;
+  }
+  return next;
+}
+
+// 동료가 맡은 문항만 동료 파일 내용으로 바꾼다. 문항 설정(루브릭)도 동료 것을 따른다.
+function applyCollabPeerData(email, data){
+  const collab = collabState();
+  if(!collab) return 0;
+  const questionIds = Object.entries(collab.assignments).filter(([, assignee]) => assignee === email).map(([questionId]) => questionId);
+  if(!questionIds.length) return 0;
+  const peerQuestions = normalizedBackupQuestions(data);
+  questionIds.forEach(questionId => {
+    const peerQuestion = peerQuestions.find(question => question.id === questionId);
+    if(!peerQuestion) return;
+    const index = state.questions.findIndex(question => question.id === questionId);
+    if(index >= 0) state.questions[index] = structuredClone(peerQuestion);
+    else state.questions.push(structuredClone(peerQuestion));
+  });
+  const identityMap = recordIdentityMap();
+  const touched = new Set();
+  let answers = 0;
+  Object.entries(normalizedBackupRecords(data)).forEach(([sourceKey, sourceRec]) => {
+    const identity = recordIdentity(sourceRec);
+    let targetKey = identity ? identityMap.get(identity) : (state.records[sourceKey] && !recordIdentity(state.records[sourceKey]) ? sourceKey : "");
+    const hasAnswers = questionIds.some(questionId => mergeQrecHasData(sourceRec.answers?.[questionId]));
+    if(!targetKey){
+      if(!hasAnswers) return;
+      targetKey = sourceKey;
+      let suffix = 2;
+      while(state.records[targetKey]) targetKey = `${sourceKey}_${suffix++}`;
+      state.records[targetKey] = {...structuredClone(sourceRec), answers:{}};
+      if(identity) identityMap.set(identity, targetKey);
+    }
+    const target = state.records[targetKey];
+    target.answers = target.answers || {};
+    touched.add(targetKey);
+    questionIds.forEach(questionId => {
+      const sourceQrec = sourceRec.answers?.[questionId];
+      if(mergeQrecHasData(sourceQrec)){
+        target.answers[questionId] = structuredClone(sourceQrec);
+        answers++;
+      }else delete target.answers[questionId];
+    });
+  });
+  Object.entries(state.records).forEach(([key, rec]) => {
+    if(touched.has(key)) return;
+    questionIds.forEach(questionId => { if(rec.answers?.[questionId]) delete rec.answers[questionId]; });
+  });
+  return answers;
+}
+
+function refreshAfterCollabPull(){
+  normalizeQuestions();
+  normalizeRecords();
+  cleanupAllRecords();
+  applyRosterToRecords();
+  persist();
+  updateQuestionControls();
+  updateRosterStatus();
+  updateClassControls();
+  loadRecordIntoForm();
+  updateProgress();
+  if(state.pdf) renderCurrentPage();
+}
+
+async function fetchCollabPeer(fileId, {force=false}={}){
+  let meta;
+  try{
+    meta = await GoogleDriveSync.files.peerMeta(fileId);
+  }catch(err){
+    if(err.status === 403 || err.status === 404){
+      throw new Error(GoogleDriveSync.pickerAvailable()
+        ? "이 파일을 열 수 없습니다. 나에게 공유된 파일인지 확인해 주세요."
+        : "이 파일을 열 권한이 없습니다. 구글 파일 선택창 설정이 필요합니다.");
+    }
+    throw err;
+  }
+  if(meta.trashed) throw new Error(`「${meta.name}」 파일이 휴지통에 있습니다.`);
+  const owner = meta.owners?.[0] || {};
+  const cached = collabPeerCache.get(fileId);
+  let data = cached?.modifiedTime === meta.modifiedTime && !force ? cached.data : null;
+  if(!data){
+    data = jsonBackupData(await GoogleDriveSync.files.download(fileId));
+    collabPeerCache.set(fileId, {modifiedTime:meta.modifiedTime, data});
+  }
+  return {meta, data, owner:{email:collabEmail(owner.emailAddress), name:String(owner.displayName || "")}};
+}
+
+async function ensureMyDriveFile(){
+  if(!driveDoc) throw new Error("구글 드라이브를 쓸 수 없습니다.");
+  for(let attempt = 0; attempt < 4 && !driveDoc.link.fileId; attempt++){
+    if(attempt) await new Promise(resolve => setTimeout(resolve, 800));
+    await driveDoc.sync();
+    if(!driveDoc.link.fileId) await driveDoc.createFile();
+  }
+  if(!driveDoc.link.fileId) throw new Error("내 채점 파일을 드라이브에 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+  return driveDoc.link.fileId;
+}
+
+// 아직 공유하지 않은 구성원에게만 내 파일을 보기 전용으로 공유한다(공유 알림 메일이 한 번만 가도록).
+async function shareMyCollabFile(){
+  const collab = collabState();
+  if(!collab) return [];
+  const me = collabMyEmail();
+  const targets = collab.members.map(member => member.email).filter(email => email !== me && !collab.sharedWith.includes(email));
+  if(!targets.length) return [];
+  const fileId = await ensureMyDriveFile();
+  const message = `「${state.appTitle}」 OMR 협동채점에 초대합니다. 채점 도구의 구글 드라이브 창 → 협동채점 → 「동료 채점 파일 추가」에서 이 파일을 골라 주세요.`;
+  const failed = [];
+  const shared = [];
+  for(const email of targets){
+    try{
+      await GoogleDriveSync.files.share(fileId, email, message);
+      shared.push(email);
+    }catch(err){
+      failed.push(`${email}: ${err.message}`);
+    }
+  }
+  if(shared.length) saveCollab({...collabState(), sharedWith:[...collabState().sharedWith, ...shared]});
+  return failed;
+}
+
+async function runCollabTask(task){
+  if(collabBusy) return;
+  if(!window.GoogleDriveSync || GoogleDriveSync.authState() !== "signed-in"){
+    showToast("협동채점은 구글 로그인 후 쓸 수 있습니다.");
+    return;
+  }
+  collabBusy = true;
+  renderCollabPanel();
+  try{
+    await task();
+  }catch(err){
+    alert(err.message);
+  }finally{
+    collabBusy = false;
+    renderCollabPanel();
+  }
+}
+
+function inviteCollabMembers(){
+  return runCollabTask(async () => {
+    const me = collabMyEmail();
+    const emails = GoogleDriveSync.parseEmails($("collabInviteInput")?.value || "").filter(email => email !== me);
+    if(!emails.length){
+      showToast("초대할 선생님의 구글 계정 이메일을 입력해 주세요.");
+      return;
+    }
+    if(!confirm(`이 선생님들께 내 채점 파일을 보기 전용으로 공유할까요?\n\n${emails.join("\n")}\n\n공유 알림 메일이 갑니다. 학생 점수가 공유되니 같은 학교 선생님인지 확인해 주세요.`)) return;
+    const base = collabState() || {
+      groupId:`collab_${Date.now().toString(36)}`,
+      selfEmail:me,
+      members:[{email:me, name:GoogleDriveSync.account()?.name || ""}],
+      assignments:{},
+      assignmentsAt:"",
+      peers:{},
+      sharedWith:[]
+    };
+    const members = [...base.members];
+    emails.forEach(email => { if(!members.some(member => member.email === email)) members.push({email, name:""}); });
+    saveCollab({...base, members});
+    const failed = await shareMyCollabFile();
+    if($("collabInviteInput")) $("collabInviteInput").value = "";
+    if(failed.length) alert(`일부 선생님께 공유하지 못했습니다.\n\n${failed.join("\n")}`);
+    else showToast("내 채점 파일을 공유했습니다. 동료 선생님도 내 파일을 「동료 채점 파일 추가」로 연결하면 됩니다.");
+  });
+}
+
+function addCollabPeerFiles(){
+  return runCollabTask(async () => {
+    let picked = [];
+    if(GoogleDriveSync.pickerAvailable()){
+      picked = await GoogleDriveSync.pickFiles({title:"동료 선생님의 OMR 채점 파일 선택"});
+    }else{
+      const code = prompt("동료 선생님의 협동 코드를 붙여 넣어 주세요.\n(동료 화면의 구글 드라이브 창 → 협동채점 → 「내 협동 코드」)");
+      if(code?.trim()) picked = [{id:code.trim()}];
+    }
+    if(!picked.length) return;
+    const me = collabMyEmail();
+    const messages = [];
+    for(const file of picked){
+      try{
+        const {meta, data, owner} = await fetchCollabPeer(file.id, {force:true});
+        if(!owner.email) throw new Error("파일 주인을 확인할 수 없습니다.");
+        if(owner.email === me) throw new Error("내 파일입니다. 동료 선생님의 파일을 골라 주세요.");
+        const peerCollab = normalizeCollab(data.settings?.collab);
+        let base = collabState();
+        if(!base){
+          // 처음 참여할 때: 문항 번호가 맞지 않으면 동료의 문항·루브릭 설정을 받아 새로 시작한다.
+          const myIds = new Set(state.questions.map(question => question.id));
+          const sameSetup = (data.questions || []).some(question => myIds.has(question.id));
+          if(!sameSetup){
+            if(!confirm(`「${meta.name}」의 문항·루브릭·학생 명렬 설정을 받아 협동채점을 시작할까요?\n\n지금 이 기기에 있는 작업은 화면에서 바뀌고, 드라이브에는 새 파일로 저장됩니다. 필요하면 먼저 JSON 백업을 저장해 주세요.`)) return;
+            driveDoc?.detach();
+            importJsonBackup({...data, records:{}, settings:{...(data.settings || {}), collab:null, pdfDriveFile:undefined}});
+          }
+          base = {groupId:peerCollab?.groupId || `collab_${Date.now().toString(36)}`, selfEmail:me, members:[{email:me, name:GoogleDriveSync.account()?.name || ""}], assignments:{}, assignmentsAt:"", peers:{}, sharedWith:[]};
+        }
+        const next = mergeCollabInfo(base, peerCollab, owner);
+        next.peers[owner.email] = {fileId:meta.id, name:owner.name, fileName:meta.name, modifiedTime:meta.modifiedTime, pulledAt:new Date().toISOString()};
+        saveCollab(next);
+        applyCollabPeerData(owner.email, data);
+        refreshAfterCollabPull();
+        messages.push(`${owner.name || owner.email} 선생님 파일을 연결했습니다.`);
+      }catch(err){
+        messages.push(err.message);
+      }
+    }
+    const failed = await shareMyCollabFile();
+    if(failed.length) messages.push(`내 파일 공유 실패: ${failed.join(", ")}`);
+    alert(messages.join("\n"));
+  });
+}
+
+async function pullCollabPeers({quiet=false, force=false}={}){
+  const collab = collabState();
+  if(!collab || !Object.keys(collab.peers).length || !window.GoogleDriveSync || GoogleDriveSync.authState() !== "signed-in") return;
+  const errors = [];
+  let answers = 0;
+  for(const [email, peer] of Object.entries(collab.peers)){
+    try{
+      const {meta, data, owner} = await fetchCollabPeer(peer.fileId, {force});
+      const next = mergeCollabInfo(collabState(), normalizeCollab(data.settings?.collab), owner.email ? owner : {email});
+      // 동료 파일이 그대로면 시각을 바꾸지 않는다. 바꾸면 내 파일도 매번 다시 저장된다.
+      if(force || meta.modifiedTime !== peer.modifiedTime){
+        next.peers[email] = {...next.peers[email], name:owner.name || peer.name, fileName:meta.name, modifiedTime:meta.modifiedTime, pulledAt:new Date().toISOString()};
+      }
+      state.settings.collab = normalizeCollab(next);
+      answers += applyCollabPeerData(email, data);
+    }catch(err){
+      errors.push(`${collabMemberName(email)}: ${err.message}`);
+    }
+  }
+  refreshAfterCollabPull();
+  renderDriveModal();
+  if(errors.length && !quiet) alert(`일부 동료 채점을 불러오지 못했습니다.\n\n${errors.join("\n")}`);
+  else if(errors.length) console.warn(errors);
+  else if(!quiet) showToast(`동료 채점을 불러왔습니다 · ${answers}건`);
+}
+
+function autoPullCollab(){
+  if(collabBusy || Date.now() - collabLastAutoPull < 60000) return;
+  if(!collabState() || !window.GoogleDriveSync || GoogleDriveSync.authState() !== "signed-in") return;
+  collabLastAutoPull = Date.now();
+  collabBusy = true;
+  pullCollabPeers({quiet:true}).catch(err => console.warn(err)).finally(() => { collabBusy = false; renderCollabPanel(); });
+}
+
+function setQuestionAssignee(questionId, email){
+  const collab = collabState();
+  if(!collab) return;
+  const previous = collab.assignments[questionId] || "";
+  if(previous === email) return;
+  const me = collabMyEmail();
+  const question = questionById(questionId);
+  const hasMine = Object.values(state.records || {}).some(rec => mergeQrecHasData(rec.answers?.[questionId]));
+  if(email && email !== me && (!previous || previous === me) && hasMine
+    && !confirm(`${question?.label || "이 문항"}을 ${collabMemberName(email)}에게 맡기면, 이 문항은 앞으로 그 선생님 파일 기준으로 보입니다.\n지금 내가 채점한 내용은 그 선생님이 불러가야 이어집니다. 계속할까요?`)){
+    renderCollabPanel();
+    return;
+  }
+  const assignments = {...collab.assignments};
+  if(email) assignments[questionId] = email;
+  else delete assignments[questionId];
+  saveCollab({...collab, assignments, assignmentsAt:new Date().toISOString()});
+  runCollabTask(() => pullCollabPeers({quiet:true, force:true}));
+}
+
+function leaveCollab(){
+  if(!collabState()) return;
+  if(!confirm("협동채점을 끝낼까요?\n\n문항 담당과 동료 파일 연결이 지워지고 모든 문항을 다시 직접 채점할 수 있습니다. 이미 공유한 파일의 공유 설정은 구글 드라이브에서 직접 해제해 주세요.")) return;
+  collabPeerCache.clear();
+  saveCollab(null);
+  loadRecordIntoForm();
+}
+
+function renderCollabPanel(){
+  const body = $("collabBody");
+  if(!body || !window.GoogleDriveSync) return;
+  const signedIn = GoogleDriveSync.authState() === "signed-in";
+  const collab = collabState();
+  const me = collabMyEmail();
+  const myCode = driveDoc?.link?.fileId || "";
+  const disabled = !signedIn || collabBusy ? " disabled" : "";
+  $("collabStatusText").textContent = !signedIn
+    ? "구글 로그인 후 쓸 수 있습니다. 문항을 나눠 맡아 채점하고, 동료가 채점한 문항은 조회만 합니다."
+    : collabBusy ? "협동채점 작업 중…"
+    : collab ? `구성원 ${collab.members.length}명 · 내가 맡지 않은 문항은 동료 파일에서 불러와 조회만 합니다.`
+    : "동료 선생님 이메일로 내 파일을 공유하거나, 공유받은 동료 파일을 추가해 시작합니다.";
+  const memberRows = (collab?.members || []).map(member => {
+    const peer = collab.peers[member.email];
+    const status = member.email === me ? "나"
+      : peer ? `파일 연결됨 · 불러온 시각 ${peer.pulledAt ? GoogleDriveSync.timeLabel(peer.pulledAt) : "없음"}`
+      : "파일 미연결 · 「동료 채점 파일 추가」로 연결해 주세요";
+    return `<div class="driveFileRow">
+      <div>
+        <div class="driveFileName">${escapeHtml(member.name || member.email)}</div>
+        <div class="statusLine">${escapeHtml(member.name ? `${member.email} · ${status}` : status)}</div>
+      </div>
+    </div>`;
+  }).join("");
+  const memberOptions = email => `<option value="">미지정 (각자 채점)</option>` + (collab?.members || []).map(member =>
+    `<option value="${escapeHtml(member.email)}"${member.email === email ? " selected" : ""}>${escapeHtml(member.email === me ? `나 (${member.name || member.email})` : member.name || member.email)}</option>`
+  ).join("");
+  const assignRows = collab ? state.questions.filter(question => !question.offline).map(question => `
+    <div class="driveFileRow collabAssignRow">
+      <div><div class="driveFileName">${escapeHtml(question.label)}</div></div>
+      <select data-collab-assign="${escapeHtml(question.id)}"${disabled}>${memberOptions(collab.assignments[question.id] || "")}</select>
+    </div>`).join("") : "";
+  const pickerNote = GoogleDriveSync.pickerAvailable() ? ""
+    : `<div class="statusLine">구글 파일 선택창이 아직 설정되지 않아 협동 코드로 연결합니다. 코드로 열리지 않으면 선택창 설정이 필요합니다.</div>`;
+  body.innerHTML = `
+    ${collab ? `
+      <div class="field">
+        <span class="label">구성원</span>
+        <div class="driveFileList">${memberRows}</div>
+      </div>
+      <div class="field">
+        <span class="label">문항 담당</span>
+        <div class="statusLine">내가 맡은 문항과 미지정 문항만 채점할 수 있습니다. 담당을 바꾸면 다른 선생님 화면에도 반영됩니다.</div>
+        <div class="driveFileList">${assignRows}</div>
+      </div>` : ""}
+    <div class="field">
+      <span class="label">동료 초대</span>
+      <input id="collabInviteInput" type="text" placeholder="동료 선생님 구글 이메일 (여러 명은 쉼표로 구분)"${disabled}>
+      <div class="compactBtns">
+        <button class="btn mini primary" type="button" data-collab-action="invite"${disabled}>내 파일 공유하기</button>
+        <button class="btn mini" type="button" data-collab-action="add"${disabled}>동료 채점 파일 추가</button>
+        ${collab ? `<button class="btn mini" type="button" data-collab-action="pull"${disabled}>동료 채점 불러오기</button>` : ""}
+      </div>
+      ${pickerNote}
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <span class="label">내 협동 코드</span>
+      <div class="statusLine" style="overflow-wrap:anywhere">${myCode ? escapeHtml(myCode) : "드라이브에 내 채점 파일이 생기면 코드가 만들어집니다."}</div>
+      <div class="compactBtns">
+        ${myCode ? `<button class="btn mini" type="button" data-collab-action="copy">코드 복사</button>` : ""}
+        ${collab ? `<button class="btn mini danger" type="button" data-collab-action="leave"${collabBusy ? " disabled" : ""}>협동채점 끝내기</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function bindCollabPanel(){
+  const body = $("collabBody");
+  if(!body) return;
+  body.addEventListener("click", evt => {
+    const action = evt.target.closest("[data-collab-action]")?.dataset.collabAction;
+    if(action === "invite") inviteCollabMembers();
+    else if(action === "add") addCollabPeerFiles();
+    else if(action === "pull") runCollabTask(() => pullCollabPeers({force:true}));
+    else if(action === "leave") leaveCollab();
+    else if(action === "copy"){
+      const code = driveDoc?.link?.fileId || "";
+      navigator.clipboard?.writeText(code).then(() => showToast("협동 코드를 복사했습니다."), () => prompt("협동 코드를 복사해 주세요.", code));
+    }
+  });
+  body.addEventListener("change", evt => {
+    const select = evt.target.closest("[data-collab-assign]");
+    if(select) setQuestionAssignee(select.dataset.collabAssign, select.value);
+  });
+}
+
 function setupDrive(){
   if(!window.GoogleDriveSync) return;
   GoogleDriveSync.prepare();
@@ -12172,7 +12658,12 @@ function setupDrive(){
     if(!confirm("현재 작업을 드라이브에 새 파일로 올리고, 앞으로 이 파일에 자동 저장할까요?")) return;
     runDriveAction(() => driveDoc.createFile());
   });
+  bindCollabPanel();
+  document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState === "visible") setTimeout(autoPullCollab, 2500);
+  });
   GoogleDriveSync.onAuthChange(auth => {
+    if(auth === "signed-in") setTimeout(autoPullCollab, 2500);
     renderDriveModal();
     if(!$("driveModal").classList.contains("hidden")) refreshDriveFiles();
     if(auth === "signed-in" && currentPdfFile) offerPdfDriveUpload(currentPdfFile);
@@ -12182,7 +12673,7 @@ function setupDrive(){
     if(state.pdf && !confirm("지금 열린 PDF 대신 드라이브의 PDF를 받아서 열까요?")) return;
     openPdfFromDrive();
   });
-  driveDoc.open();
+  Promise.resolve(driveDoc.open()).finally(() => setTimeout(autoPullCollab, 500));
 }
 
 loadSidebarWidth();
