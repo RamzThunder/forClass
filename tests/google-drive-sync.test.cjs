@@ -10,6 +10,13 @@ globalThis.localStorage = {
   removeItem:k => store.delete(k)
 };
 let drive;
+// 파일 속성. 테스트에서 직접 넣은 파일은 app/key/folder로 흉내 낸다.
+function props(f){
+  return f.props || {...(f.app ? {forClassApp:f.app} : {}), ...(f.key ? {forClassKey:f.key} : {}), ...(f.folder ? {forClassRoot:'1'} : {})};
+}
+// 채점 파일(백업·폴더 제외) 수
+function gradingFiles(app='omr'){ return [...drive.files.values()].filter(f => !f.trashed && !f.folder && props(f).forClassApp === app).length; }
+function backupFiles(){ return [...drive.files.values()].filter(f => !f.trashed && props(f).forClassBackup); }
 function resetDrive(){
   drive = {files:new Map(), sessions:new Map(), next:1, calls:[], dropPuts:0};
 }
@@ -23,7 +30,7 @@ globalThis.fetch = async (url, options={}) => {
   if(drive.offline) throw new TypeError('network');
   const touch = f => { f.version += 1; f.modifiedTime = new Date(Date.now() + f.version).toISOString(); };
   const meta = f => ({
-    capabilities:{canShare:f.canShare !== false}, id:f.id, name:f.name, ownedByMe:f.ownedByMe !== false, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
+    capabilities:{canShare:f.canShare !== false}, id:f.id, createdTime:f.createdTime || f.modifiedTime, appProperties:props(f), name:f.name, ownedByMe:f.ownedByMe !== false, modifiedTime:f.modifiedTime, version:String(f.version), trashed:f.trashed || false,
     ...(f.folder || drive.noChecksum ? {} : {md5Checksum:crypto.createHash('md5').update(f.bytes || f.content || '').digest('hex')}),
     headRevisionId:drive.noChecksum ? `r${f.version}` : undefined
   });
@@ -51,16 +58,15 @@ globalThis.fetch = async (url, options={}) => {
   }
   if(u.pathname === '/drive/v3/files' && method === 'GET'){
     const q = u.searchParams.get('q');
-    const app = /value='([^']+)'/.exec(q)[1];
-    const fileKey = /key='forClassKey' and value='([^']+)'/.exec(q)?.[1];
-    const isFolder = q.includes('forClassRoot');
-    const files = [...drive.files.values()].filter(f => !f.trashed && (!q.includes("'me' in owners") || f.ownedByMe !== false) && (isFolder ? f.folder : f.app === app) && (!fileKey || f.key === fileKey))
+    const clauses = [...q.matchAll(/key='([^']+)' and value='([^']+)'/g)].map(m => [m[1], m[2]]);
+    const isFolder = q.includes("mimeType='application/vnd.google-apps.folder'");
+    const files = [...drive.files.values()].filter(f => !f.trashed && (!q.includes("'me' in owners") || f.ownedByMe !== false) && Boolean(f.folder) === isFolder && clauses.every(([k, v]) => props(f)[k] === v))
       .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime));
     return json({files:files.map(meta)});
   }
   if(u.pathname === '/drive/v3/files' && method === 'POST'){
     const body = JSON.parse(options.body);
-    const f = {id:`f${drive.next++}`, name:body.name, folder:true, version:1, modifiedTime:new Date().toISOString()};
+    const f = {id:`f${drive.next++}`, name:body.name, folder:true, props:body.appProperties || {}, version:1, modifiedTime:new Date().toISOString()};
     drive.files.set(f.id, f);
     return json({id:f.id});
   }
@@ -68,7 +74,7 @@ globalThis.fetch = async (url, options={}) => {
     const parts = options.body.split(/--forClass\w+/);
     const metaPart = JSON.parse(parts[1].split('\r\n\r\n')[1]);
     const content = parts[2].split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, '');
-    const f = {id:`f${drive.next++}`, name:metaPart.name, app:metaPart.appProperties.forClassApp, content, version:1, modifiedTime:new Date().toISOString()};
+    const f = {id:`f${drive.next++}`, name:metaPart.name, app:metaPart.appProperties.forClassApp, props:metaPart.appProperties, content, version:1, modifiedTime:new Date().toISOString()};
     drive.files.set(f.id, f);
     return json(meta(f));
   }
@@ -285,7 +291,7 @@ test('기기에도 드라이브에도 기록이 있으면 첫 연결 때 고르�
   assert.equal(other.choices.length, 1);
   assert.equal(last(other).state, 'choose');
   await other.doc.sync();
-  assert.equal(drive.files.size, 2, '고르기 전에는 새 파일을 만들지 않는다(폴더 1 + 파일 1)');
+  assert.equal(gradingFiles(), 1, '고르기 전에는 새 파일을 만들지 않는다');
   await other.doc.mergeFile(first.doc.link.fileId);
   assert.deepEqual(JSON.parse(drive.files.get(first.doc.link.fileId).content).records, {a:1, b:2});
 });
@@ -334,14 +340,14 @@ test('다른 계정으로 로그인하면 이전 계정의 파일 연결을 쓰�
   const g = grader('omr', {records:{a:1}});
   await g.doc.open();
   const oldId = g.doc.link.fileId;
-  const before = drive.files.size;
+  const before = gradingFiles();
   signIn('b@example.com');
   G._test.resetFolder();
   await g.doc.sync();
   assert.notEqual(g.doc.link.fileId, oldId);
   assert.equal(last(g).state, 'choose');
   assert.equal(g.choices.length, 1);
-  assert.equal(drive.files.size, before, '고르기 전에는 새 파일을 만들지 않는다');
+  assert.equal(gradingFiles(), before, '고르기 전에는 새 파일을 만들지 않는다');
   await g.doc.sync();
   assert.equal(g.choices.length, 1, '자동 저장마다 창을 다시 띄우지 않는다');
 });
@@ -357,14 +363,14 @@ test('계정을 오가도 각 계정은 자기 파일로 돌아가고 같은 이
   await g.doc.createFile();
   const fileB = g.doc.link.fileId;
   assert.notEqual(fileB, fileA);
-  const count = drive.files.size;
+  const count = gradingFiles();
   // A로 돌아오면: 기기 기록은 B와 맞춘 것이라 덮어쓰지 않고 고르게 한다.
   signIn('a@example.com');
   g.data.records.b = 2;
   await g.doc.sync();
   assert.equal(last(g).state, 'choose');
   assert.equal(g.doc.link.fileId, fileA, 'A 계정의 파일 연결을 기억한다');
-  assert.equal(drive.files.size, count, '새 파일을 만들지 않는다');
+  assert.equal(gradingFiles(), count, '새 파일을 만들지 않는다');
   assert.deepEqual(JSON.parse(drive.files.get(fileA).content).records, {a:1}, 'A 파일을 B의 기록으로 덮지 않는다');
   // A 파일을 불러오면 다시 그 파일에 이어서 저장한다.
   await g.doc.openFile(fileA);
@@ -372,7 +378,7 @@ test('계정을 오가도 각 계정은 자기 파일로 돌아가고 같은 이
   await g.doc.sync();
   assert.equal(g.doc.link.fileId, fileA);
   assert.deepEqual(JSON.parse(drive.files.get(fileA).content).records, {a:1, c:3});
-  assert.equal(drive.files.size, count);
+  assert.equal(gradingFiles(), count);
 });
 
 test('예전 형식으로 다른 계정 연결이 남아 있어도 새 파일을 만들지 않는다', async () => {
@@ -383,10 +389,10 @@ test('예전 형식으로 다른 계정 연결이 남아 있어도 새 파일을
   localStorage.setItem(G.DOC_PREFIX + 'omr', JSON.stringify({fileId:fileA, email:'a@example.com'}));
   signIn('b@example.com');
   const g = grader('omr', {records:{a:1}});
-  const before = drive.files.size;
+  const before = gradingFiles();
   await g.doc.sync();
   assert.equal(last(g).state, 'choose');
-  assert.equal(drive.files.size, before);
+  assert.equal(gradingFiles(), before);
 });
 
 test('연결이 없는데 드라이브에 파일이 있으면 자동 저장이 새 파일을 만들지 않고 고르게 한다', async () => {
@@ -395,11 +401,11 @@ test('연결이 없는데 드라이브에 파일이 있으면 자동 저장이 �
   await first.doc.open();
   store.delete(G.DOC_PREFIX + 'omr');
   const other = grader('omr', {records:{b:2}});
-  const before = drive.files.size;
+  const before = gradingFiles();
   await other.doc.sync();
   assert.equal(last(other).state, 'choose');
   assert.equal(other.choices.length, 1);
-  assert.equal(drive.files.size, before);
+  assert.equal(gradingFiles(), before);
 });
 
 test('큰 PDF는 조각으로 나눠 올리고, 같은 파일을 찾고, 그대로 받아 온다', async () => {
@@ -492,7 +498,7 @@ test('shared files and folders are excluded from personal storage discovery', as
   const g = grader('omr', {records:{a:1}});
   await g.doc.sync();
   assert.notEqual(g.doc.link.fileId, 'peer-json');
-  assert.equal([...drive.files.values()].filter(f => f.folder).length, 2);
+  assert.equal([...drive.files.values()].filter(f => f.folder && props(f).forClassRoot).length, 2);
 });
 
 test('old shared JSON connection saves local work to a new owned file', async () => {
@@ -570,4 +576,116 @@ test('trash rejects peer files and reports server errors without removing files'
   drive.offline = true;
   assert.equal(await g.doc.trashFile(oldId), false);
   assert.equal(drive.files.get(oldId).trashed, undefined);
+});
+
+// ---------- 자동 백업 ----------
+const backupState = (email='teacher@example.com') => G.DOC_PREFIX + 'omr.backup.' + email;
+const backupRecords = f => JSON.parse(f.content).records;
+
+test('백업: 첫 저장 때 하나 만들고, 1시간 안이나 바뀐 게 없으면 더 만들지 않는다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  assert.equal(backupFiles().length, 1);
+  assert.deepEqual(backupRecords(backupFiles()[0]), {a:1});
+  assert.match(backupFiles()[0].name, /^\[OMR\] 시험 백업 \d{4}-\d\d-\d\d \d\d-\d\d \(자동\)\.json$/);
+  g.data.records.b = 2;
+  await g.doc.sync();
+  assert.equal(backupFiles().length, 1, '1시간 안에는 만들지 않는다');
+  // 1시간이 지난 것처럼
+  const st = JSON.parse(localStorage.getItem(backupState()));
+  localStorage.setItem(backupState(), JSON.stringify({...st, at:Date.now() - 2 * 3600e3}));
+  g.data.records.c = 3;
+  await g.doc.sync();
+  assert.equal(backupFiles().length, 2);
+  assert.equal(gradingFiles(), 1, '백업은 채점 파일 목록에 나오지 않는다');
+  assert.equal((await g.doc.list()).length, 1);
+});
+
+test('백업: 불러오기 전에 이 기기 기록을 남긴다', async () => {
+  signIn();
+  const a = grader('omr', {records:{a:1}});
+  await a.doc.open();
+  const fileA = a.doc.link.fileId;
+  a.data = {records:{x:9}};
+  await a.doc.createFile();
+  const before = backupFiles().length;
+  await a.doc.openFile(fileA);
+  const added = backupFiles().slice(before);
+  assert.equal(added.length, 1);
+  assert.match(added[0].name, /불러오기 전/);
+  assert.deepEqual(backupRecords(added[0]), {x:9});
+  assert.deepEqual(a.data.records, {a:1});
+});
+
+test('백업: 합치기 전에 양쪽 기록을 남긴다', async () => {
+  signIn();
+  const a = grader('omr', {records:{a:1}});
+  await a.doc.open();
+  const fileA = a.doc.link.fileId;
+  a.data = {records:{a:5, b:2}};
+  const before = backupFiles().length;
+  await a.doc.mergeFile(fileA);
+  const added = backupFiles().slice(before).map(backupRecords);
+  assert.deepEqual(added.sort((x, y) => Object.keys(x).length - Object.keys(y).length), [{a:1}, {a:5, b:2}]);
+});
+
+test('백업: 충돌에서 덮어쓰기를 고르면 드라이브 쪽 기록을 먼저 남긴다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  drive.files.get(g.doc.link.fileId).content = JSON.stringify({records:{z:9}});
+  drive.files.get(g.doc.link.fileId).version += 1;
+  g.data.records.b = 2;
+  g.conflictChoice = 'local';
+  const before = backupFiles().length;
+  await g.doc.sync();
+  const added = backupFiles().slice(before);
+  assert.equal(added.length, 1);
+  assert.deepEqual(backupRecords(added[0]), {z:9});
+});
+
+test('백업: 백업으로 되돌리면 지금 기록을 먼저 남기고 되돌린 내용을 이어서 저장한다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  const [first] = await g.doc.backups();
+  g.data.records.b = 2;
+  await g.doc.sync();
+  await g.doc.restoreBackup(first.id);
+  assert.deepEqual(g.data.records, {a:1});
+  assert.ok(backupFiles().some(f => /복원 전/.test(f.name) && backupRecords(f).b === 2));
+  await g.doc.sync();
+  assert.deepEqual(JSON.parse(drive.files.get(g.doc.link.fileId).content).records, {a:1});
+});
+
+test('백업 정리: 시험마다 최근 3개, 최근 2일은 모두, 30일까지 하루 1개만 남긴다', () => {
+  const now = Date.parse('2026-10-30T12:00:00');
+  const at = (h, exam='e1') => ({id:`${exam}-${h}`, createdTime:new Date(now - h * 3600e3).toISOString(), appProperties:{forClassExam:exam}});
+  const files = [at(1), at(5), at(30), at(47),            // 2일 안: 모두 남김
+    at(50), at(52), at(75), at(80),                         // 3~4일 전: 날마다 마지막 1개
+    at(31 * 24), at(40 * 24),                               // 30일 넘음: 삭제
+    at(60 * 24, 'e2'), at(61 * 24, 'e2'), at(62 * 24, 'e2'), at(63 * 24, 'e2')]; // 다른 시험: 최근 3개는 남김
+  const trashed = G._test.backupsToTrash(files, now).map(f => f.id).sort();
+  const dayOf = h => new Date(now - h * 3600e3).toDateString();
+  const expectedDaily = [50, 52, 75, 80].filter((h, i, arr) => arr.findIndex(x => dayOf(x) === dayOf(h)) !== i || [1, 5, 30, 47].some(x => dayOf(x) === dayOf(h)));
+  const expected = [...expectedDaily.map(h => `e1-${h}`), `e1-${31 * 24}`, `e1-${40 * 24}`, `e2-${63 * 24}`].sort();
+  assert.deepEqual(trashed, expected);
+});
+
+test('백업 정리: 오래된 백업만 휴지통으로 옮기고 채점 파일은 건드리지 않는다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  const old = backupFiles()[0];
+  for(let i = 0; i < 4; i++){
+    const id = `old${i}`;
+    drive.files.set(id, {...old, id, createdTime:new Date(Date.now() - (40 + i) * 24 * 3600e3).toISOString(), trashed:false});
+  }
+  const count = await g.doc.pruneBackups();
+  assert.equal(count, 2, '최근 3개(지금 것 + 40·41일 전)는 남긴다');
+  assert.equal(drive.files.get('old1').trashed, false);
+  assert.equal(drive.files.get('old2').trashed, true);
+  assert.equal(drive.files.get('old3').trashed, true);
+  assert.equal(gradingFiles(), 1);
 });

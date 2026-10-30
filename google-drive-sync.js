@@ -361,6 +361,90 @@
     })).json();
   }
 
+  // ---------- 자동 백업 ----------
+  // 저장 파일은 몇 초마다 덮어써서 드라이브 버전 기록이 남지 않는다. 그래서 사본을 따로 만든다.
+  // 백업은 「평가 도구 모음/백업」 폴더에 두고, 채점 파일 목록(forClassApp)에는 나오지 않게 한다.
+  const HOUR = 3600e3, DAY = 24 * HOUR;
+  const BACKUP = {intervalMs:HOUR, keepAllMs:2 * DAY, keepDailyMs:30 * DAY, keepLatest:3, pruneEveryMs:12 * HOUR};
+  const BACKUP_REASONS = {
+    hourly:'자동', 'before-open':'불러오기 전', 'before-merge':'합치기 전', 'before-merge-remote':'합치기 전 드라이브 기록',
+    'before-remote':'드라이브 기록으로 바꾸기 전', 'before-overwrite':'덮어쓰기 전 드라이브 기록', 'before-restore':'복원 전',
+    'before-reset':'새 시험 시작 전', 'before-import':'JSON 불러오기 전'
+  };
+  let backupFolderCache = null;
+  async function backupFolderId(){
+    const email = account()?.email || '';
+    if(backupFolderCache?.email === email) return backupFolderCache.id;
+    const parent = await folderId();
+    const q = `mimeType='${FOLDER_MIME}' and appProperties has { key='forClassBackupRoot' and value='1' } and 'me' in owners and trashed=false`;
+    const list = await (await api(`${API}/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1`)).json();
+    let id = list.files?.[0]?.id;
+    if(!id){
+      id = (await (await api(`${API}/files?fields=id`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:'백업', mimeType:FOLDER_MIME, parents:[parent], appProperties:{forClassBackupRoot:'1'}})
+      })).json()).id;
+    }
+    backupFolderCache = {email, id};
+    return id;
+  }
+  async function createBackupFile(app, {name, text, exam, reason}){
+    const parent = await backupFolderId();
+    const boundary = `forClass${Math.random().toString(36).slice(2)}`;
+    const meta = {name, mimeType:'application/json', parents:[parent], appProperties:{forClassBackup:app, forClassExam:hash(String(exam || '')), forClassReason:reason}};
+    const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${text}\r\n--${boundary}--`;
+    return (await api(`${UPLOAD}/files?uploadType=multipart&fields=id,name,createdTime,appProperties`, {
+      method:'POST',
+      headers:{'Content-Type':`multipart/related; boundary=${boundary}`},
+      body
+    })).json();
+  }
+  async function listBackups(app){
+    const q = `appProperties has { key='forClassBackup' and value='${escapeQuery(app)}' } and 'me' in owners and trashed=false`;
+    const files = [];
+    let pageToken = '';
+    do{
+      const res = await api(`${API}/files?q=${encodeURIComponent(q)}&orderBy=createdTime desc&pageSize=1000&fields=nextPageToken,files(id,name,createdTime,size,appProperties)${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`);
+      const page = await res.json();
+      files.push(...(page.files || []));
+      pageToken = page.nextPageToken || '';
+    }while(pageToken);
+    return files.sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));
+  }
+  // 지울 백업 고르기. 시험마다 최근 3개는 항상 두고, 최근 2일은 모두, 30일까지는 하루 1개(그날 마지막)만 둔다.
+  function backupsToTrash(files, now=Date.now()){
+    const groups = new Map();
+    files.forEach(file => {
+      const exam = file.appProperties?.forClassExam || '';
+      if(!groups.has(exam)) groups.set(exam, []);
+      groups.get(exam).push(file);
+    });
+    const trash = [];
+    groups.forEach(list => {
+      list.sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));
+      const keptDays = new Set();
+      list.forEach((file, index) => {
+        const time = Date.parse(file.createdTime);
+        const day = new Date(time).toDateString();
+        const age = now - time;
+        if(index < BACKUP.keepLatest || !(age >= BACKUP.keepAllMs)){ keptDays.add(day); return; }
+        if(age < BACKUP.keepDailyMs && !keptDays.has(day)){ keptDays.add(day); return; }
+        trash.push(file);
+      });
+    });
+    return trash;
+  }
+  async function trashOwned(id){
+    await api(`${API}/files/${encodeURIComponent(id)}?fields=id,trashed`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})
+    });
+  }
+  function backupStamp(date=new Date()){
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}-${pad(date.getMinutes())}`;
+  }
+
   // ---------- 큰 파일(PDF 등) ----------
   // 같은 파일인지 찾는 열쇠. appProperties 값 길이 제한(약 120바이트) 때문에 해시로 줄인다.
   async function findByKey(app, key){
@@ -550,6 +634,38 @@
       setStatus('saving', '드라이브에 저장 중…');
       remember(await updateFile(link.fileId, text), fp);
       setStatus('saved', savedMessage());
+      await hourlyBackup(fp);
+    }
+
+    // 백업 사본 만들기. data를 주면 그 내용을(드라이브 쪽 기록 등), 아니면 이 기기의 기록을 남긴다.
+    // 기기 기록이 비어 있으면 남길 것이 없으니 건너뛴다.
+    const backupStateKey = () => `${key}.backup.${currentEmail()}`;
+    async function makeBackup(reason, data=null){
+      if(!data && options.isEmpty()) return null;
+      const payload = data || options.build();
+      const title = options.title();
+      const name = `${String(title).replace(/\.json$/i, '')} 백업 ${backupStamp()} (${BACKUP_REASONS[reason] || reason}).json`;
+      const meta = await createBackupFile(app, {name, text:JSON.stringify(payload), exam:title, reason});
+      if(!data) writeJson(backupStateKey(), {at:Date.now(), hash:localFingerprint(payload)});
+      await pruneBackups();
+      return meta;
+    }
+    // 1시간이 지났고 마지막 백업 뒤로 바뀐 내용이 있을 때만 만든다. 실패해도 저장은 성공으로 둔다.
+    async function hourlyBackup(fp){
+      const last = readJson(backupStateKey()) || {};
+      if(Date.now() - Number(last.at || 0) < BACKUP.intervalMs || last.hash === fp) return;
+      try{ await makeBackup('hourly'); }catch(err){ console.warn('자동 백업 실패', err); }
+    }
+    // 오래된 백업 정리는 12시간에 한 번만 한다. 지운 백업은 드라이브 휴지통에 30일 동안 남는다.
+    async function pruneBackups(force=false){
+      const stateKey = `${key}.prune.${currentEmail()}`;
+      if(!force && Date.now() - Number(readJson(stateKey)?.at || 0) < BACKUP.pruneEveryMs) return 0;
+      writeJson(stateKey, {at:Date.now()});
+      let count = 0;
+      try{
+        for(const file of backupsToTrash(await listBackups(app))){ await trashOwned(file.id); count++; }
+      }catch(err){ console.warn('백업 정리 실패', err); }
+      return count;
     }
     async function pull(meta, data=null, message='드라이브의 최신 기록을 불러왔습니다'){
       setStatus('loading', '드라이브에서 받는 중…');
@@ -573,6 +689,7 @@
       const meta = await createFile(app, options.title(), text);
       remember(meta, localFingerprint(payload));
       setStatus('saved', savedMessage());
+      await hourlyBackup(localFingerprint(payload));
     }
 
     // 처음 연결: 기기에 기록이 없으면 가장 최근 파일을 받고, 둘 다 있으면 사용자에게 고르게 한다.
@@ -631,9 +748,18 @@
           return;
         }
         const choice = await options.resolveConflict?.({name:meta.name, modifiedTime:meta.modifiedTime, timeLabel:timeLabel(meta.modifiedTime)});
-        if(choice === 'merge') await mergeAndUpload(meta, remoteData);
-        else if(choice === 'remote') await pull(meta, remoteData);
-        else if(choice === 'local'){ link = {...link, remote:remoteTag(meta)}; await upload(JSON.stringify(payload), fp); }
+        // 어느 쪽을 고르든 사라지는 쪽 기록을 먼저 백업한다. 백업이 안 되면 바꾸지 않는다.
+        if(choice === 'merge'){
+          await makeBackup('before-merge');
+          await makeBackup('before-merge-remote', remoteData);
+          await mergeAndUpload(meta, remoteData);
+        }
+        else if(choice === 'remote'){ await makeBackup('before-remote'); await pull(meta, remoteData); }
+        else if(choice === 'local'){
+          await makeBackup('before-overwrite', remoteData);
+          link = {...link, remote:remoteTag(meta)};
+          await upload(JSON.stringify(payload), fp);
+        }
         else setStatus('conflict', '다른 기기의 변경과 겹칩니다 · 드라이브 창에서 확인해 주세요');
       });
     }
@@ -666,6 +792,7 @@
         const meta = await getMeta(id);
         if(!meta) throw new DriveError('드라이브 파일을 찾을 수 없습니다.', 'http', 404);
         if(meta.ownedByMe === false) throw new DriveError('공유받은 파일은 협동채점의 동료 채점 파일 추가로 연결해 주세요.', 'permission');
+        await makeBackup('before-open');
         await pull(meta);
       }),
       // 지금 작업과 드라이브 파일을 합치고 그 파일에 이어서 저장
@@ -673,8 +800,29 @@
         const meta = await getMeta(id);
         if(!meta) throw new DriveError('드라이브 파일을 찾을 수 없습니다.', 'http', 404);
         if(meta.ownedByMe === false) throw new DriveError('공유받은 파일에는 내 채점을 저장할 수 없습니다.', 'permission');
-        await mergeAndUpload(meta);
+        const remoteData = await download(meta.id);
+        await makeBackup('before-merge');
+        await makeBackup('before-merge-remote', remoteData);
+        await mergeAndUpload(meta, remoteData);
       }),
+      // 드라이브 백업 목록(최근 것부터)
+      backups:() => listBackups(app),
+      // 백업으로 되돌리기. 지금 기록을 먼저 백업하고, 바뀐 내용은 연결된 파일에 이어서 저장한다.
+      restoreBackup:id => run(async () => {
+        await makeBackup('before-restore');
+        setStatus('loading', '백업에서 되돌리는 중…');
+        const data = await download(id);
+        applyData(() => options.apply(data));
+        setStatus('pending', '백업으로 되돌렸습니다 · 잠시 후 드라이브에 저장됩니다');
+        schedule(500);
+      }),
+      // 지금 기록을 바로 백업한다(새 시험 시작 전 등). 실패하면 false.
+      async backupNow(reason='manual'){
+        if(authState() !== 'signed-in') return false;
+        try{ return Boolean(await makeBackup(reason)); }
+        catch(err){ console.warn(err); return false; }
+      },
+      pruneBackups:() => pruneBackups(true),
       createFile:() => run(async () => { await createNew(options.build()); }),
       trashFile:async id => {
         if(busy) throw new DriveError('드라이브 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.', 'busy');
@@ -715,7 +863,7 @@
   const exported = {CLIENT_ID, SCOPE, AUTH_KEY, DOC_PREFIX, prepare, signIn, signOut, account, authState, onAuthChange, createDoc, timeLabel,
     normalizeEmail, parseEmails, pickerAvailable, pickFiles,
     files:{findByKey, uploadLarge, downloadBlob, getMeta, peerMeta, download, share:shareFile},
-    _test:{hash, fingerprint, needsAutoReconnect, blockAuto:until => { autoBlockedUntil = until; }, syncAction, sameRemote, listFiles, getMeta, download, createFile, updateFile, resetFolder:() => { folderCache = null; }}};
+    _test:{hash, fingerprint, needsAutoReconnect, blockAuto:until => { autoBlockedUntil = until; }, syncAction, sameRemote, listFiles, getMeta, download, createFile, updateFile, backupsToTrash, BACKUP, resetFolder:() => { folderCache = null; backupFolderCache = null; }}};
   root.GoogleDriveSync = exported;
   if(typeof module !== 'undefined') module.exports = exported;
 })(typeof window !== 'undefined' ? window : globalThis);
