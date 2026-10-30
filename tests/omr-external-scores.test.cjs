@@ -137,3 +137,24 @@ test('오프라인 서술형 문제 수는 0개도 가능하고, 0개면 오프�
   assert.equal(result.offlineWritten, 0);
   assert.equal(c.revisedExternalScores({selected:30, imported:true}, ['28']).selected, 28);
 });
+test('외부 점수만 있어도 드라이브에 저장할 작업으로 본다', () => {
+  const state = {records:{'1':{answers:{}, externalScores:{selected:30, offlineWrittenScores:[], imported:true}}}};
+  const c = vm.createContext({state, nonNegativeNumber:value => Math.max(0, Number(value) || 0), offlineWrittenCountValue:() => 0, externalOfflineWrittenCount:() => 0});
+  for(const name of ['externalScoreNumber','normalizeExternalScores','hasExternalScores','mergeQrecHasData','omrHasGradingData']) vm.runInContext(source(name), c);
+  assert.equal(c.omrHasGradingData(), true);
+  state.records['1'].externalScores = {};
+  assert.equal(c.omrHasGradingData(), false);
+});
+test('드라이브 기록과 합칠 때 외부 점수도 합친다', () => {
+  const c = vm.createContext({structuredClone, nonNegativeNumber:value => Math.max(0, Number(value) || 0), externalOfflineWrittenCount:() => 0, offlineWrittenCountValue:() => 0});
+  for(const name of ['externalScoreNumber','normalizeExternalScores','hasExternalScores','mergeRecordMetadata']) vm.runInContext(source(name), c);
+  const incoming = {externalScores:{selected:25, offlineWrittenScores:[], imported:true}};
+  const empty = {};
+  c.mergeRecordMetadata(empty, incoming, 'keep');
+  assert.equal(empty.externalScores.selected, 25);
+  const mine = {externalScores:{selected:10, offlineWrittenScores:[], imported:true}};
+  c.mergeRecordMetadata(mine, incoming, 'keep');
+  assert.equal(mine.externalScores.selected, 10);
+  c.mergeRecordMetadata(mine, incoming, 'replace');
+  assert.equal(mine.externalScores.selected, 25);
+});
