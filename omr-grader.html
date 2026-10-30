@@ -465,6 +465,8 @@ textarea{min-height:72px;resize:vertical}
 .spinnerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(246,247,249,.82);z-index:5;pointer-events:none}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.driveWarnBar{position:fixed;top:10px;left:50%;z-index:75;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;width:max-content;max-width:calc(100% - 32px);border:1px solid var(--danger);border-radius:8px;background:#fff6f5;color:var(--danger);padding:8px 10px 8px 14px;font-size:13px;font-weight:750;line-height:1.4;box-shadow:var(--shadow)}
+.driveWarnBar.hidden{display:none}
 .toast{position:fixed;left:50%;bottom:24px;z-index:80;transform:translate(-50%,16px);border:1px solid var(--line);border-radius:8px;background:#172033;color:#fff;padding:10px 14px;font-size:13px;font-weight:850;box-shadow:0 18px 46px rgba(10,16,26,.28);opacity:0;pointer-events:none;transition:.18s ease}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .progressWrap{margin-top:5px}
@@ -847,7 +849,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.27.0 베타</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.0.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1153,6 +1155,26 @@ textarea{min-height:72px;resize:vertical}
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="driveWarnBar hidden" id="driveWarnBar" role="alert">
+  <span id="driveWarnText"></span>
+  <button class="btn mini" id="driveWarnBtn" type="button"></button>
+</div>
+<div class="modalBackdrop hidden" id="tabLockModal" role="dialog" aria-modal="true" aria-labelledby="tabLockTitle">
+  <div class="modal" style="width:min(460px,100%)">
+    <div class="modalHead">
+      <h2 class="panelTitle" id="tabLockTitle">다른 탭에서 채점 중입니다</h2>
+    </div>
+    <div class="modalBody" style="display:block">
+      <section class="panel">
+        <div class="statusLine" style="margin-bottom:10px">같은 브라우저의 다른 탭에서 OMR 채점 도구가 열려 있습니다. 두 탭에서 함께 고치면 기록이 서로 덮어써져서 이 탭은 멈춰 두었습니다.</div>
+        <div class="compactBtns">
+          <button class="btn primary" id="tabTakeoverBtn" type="button">이 탭에서 계속하기</button>
+        </div>
+        <div class="statusLine" style="margin-top:8px">누르면 이 탭을 최신 기록으로 다시 열고, 다른 탭은 멈춥니다.</div>
+      </section>
+    </div>
+  </div>
+</div>
 <div class="pdfTransfer hidden" id="pdfTransfer" role="status" aria-live="polite">
   <div class="pdfTransferText" id="pdfTransferText"></div>
   <div class="pdfTransferBar"><div class="pdfTransferFill" id="pdfTransferFill"></div></div>
@@ -1691,7 +1713,7 @@ textarea{min-height:72px;resize:vertical}
 
 <script src="shared-roster.js"></script>
 <script src="keyword-review.js"></script>
-<script src="google-drive-sync.js?v=1.26.0"></script>
+<script src="google-drive-sync.js?v=2.0.0"></script>
 <script type="module">
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
@@ -1839,6 +1861,8 @@ let selectedKeywordModalKey = "";
 let sourceHighlightRanges = [];
 let tesseractLoadPromise = null;
 let highlightMode = false;
+// 다른 탭이 채점을 넘겨받아 이 탭이 멈췄는지
+let graderTabInactive = false;
 let highlightColor = "yellow";
 // 형광펜 색 목록(툴바 순서). 색별 감점 연결은 문항마다 question.highlightLinks에 저장한다.
 const HIGHLIGHT_COLORS = ["red","yellow","green","blue","purple"];
@@ -2140,6 +2164,8 @@ function promptInitialSetupIfNeeded(){
 }
 
 function persist(){
+  // 다른 탭이 채점을 넘겨받았으면 이 탭의 오래된 기록으로 덮어쓰지 않는다.
+  if(graderTabInactive) return;
   cleanupAllRecords();
   captureReviewChanges();
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -12176,18 +12202,69 @@ function askDriveConflict(info){
   });
 }
 // 구름 버튼 옆 짧은 상태 글자. 자세한 문구는 버튼 title과 드라이브 창에 둔다.
+function driveSavedAgo(iso){
+  const time = Date.parse(iso || "");
+  if(!time) return "";
+  const minutes = Math.floor((Date.now() - time) / 60000);
+  if(minutes < 1) return "방금 저장";
+  if(minutes < 60) return `${minutes}분 전 저장`;
+  return `저장됨 ${GoogleDriveSync.timeLabel(iso)}`;
+}
 function driveShortLabel(status){
-  const saved = driveDoc?.link?.modifiedTime ? GoogleDriveSync.timeLabel(driveDoc.link.modifiedTime) : "";
+  const saved = driveSavedAgo(driveDoc?.link?.modifiedTime);
   const labels = {
     "signed-out":"이 기기만", idle:"저장 전", pending:"저장 대기", saving:"저장 중…", checking:"확인 중…", loading:"받는 중…",
-    saved:saved ? `저장됨 ${saved}` : "저장됨", offline:"오프라인", expired:"로그인 만료", error:"저장 실패", conflict:"충돌 확인", choose:"파일 선택"
+    saved:saved || "저장됨", offline:"오프라인", expired:"로그인 만료", error:"저장 실패", conflict:"충돌 확인", choose:"파일 선택"
   };
   return labels[status.state] || "드라이브";
+}
+// 구름 버튼 글자와 저장 지연 경고만 다시 그린다(30초마다 불러 경과 시간을 맞춘다).
+function updateDriveBadge(status=driveDoc?.status){
+  if(!status) return;
+  $("driveLabel").textContent = driveShortLabel(status);
+  updateDriveWarning();
+}
+const DRIVE_WARN_AFTER = 5 * 60000;
+let driveWarnAction = null;
+// 드라이브에 못 올린 변경이 5분 넘게 밀리면 화면 위에 이유와 해결 버튼을 보여 준다.
+function updateDriveWarning(){
+  const bar = $("driveWarnBar");
+  if(!bar || !window.GoogleDriveSync) return;
+  const since = driveDoc?.unsyncedSince || 0;
+  const auth = GoogleDriveSync.authState();
+  const state = driveDoc?.status?.state || "";
+  if(graderTabInactive || !since || auth === "signed-out" || Date.now() - since < DRIVE_WARN_AFTER || ["saving", "checking", "loading"].includes(state)){
+    bar.classList.add("hidden");
+    driveWarnAction = null;
+    return;
+  }
+  const minutes = Math.floor((Date.now() - since) / 60000);
+  let text, label;
+  if(auth === "expired" || state === "expired"){
+    text = `구글 로그인이 만료되어 ${minutes}분째 드라이브에 저장되지 않았습니다.`;
+    label = "다시 연결";
+    driveWarnAction = () => GoogleDriveSync.signIn().catch(err => alert(err.message));
+  }else if(state === "offline"){
+    text = `인터넷 연결이 끊겨 ${minutes}분째 드라이브에 저장되지 않았습니다. 이 기기에는 저장되어 있습니다.`;
+    label = "다시 시도";
+    driveWarnAction = () => runDriveAction(() => driveDoc.sync());
+  }else if(state === "choose" || state === "conflict"){
+    text = `드라이브 파일을 확인해야 해서 ${minutes}분째 저장되지 않았습니다.`;
+    label = "드라이브 창 열기";
+    driveWarnAction = openDriveModal;
+  }else{
+    text = `${minutes}분째 드라이브에 저장되지 않았습니다.`;
+    label = "지금 저장";
+    driveWarnAction = () => runDriveAction(() => driveDoc.sync());
+  }
+  $("driveWarnText").textContent = text;
+  $("driveWarnBtn").textContent = label;
+  bar.classList.remove("hidden");
 }
 function renderDriveStatus(status){
   const btn = $("driveBtn");
   btn.dataset.state = status.state;
-  $("driveLabel").textContent = driveShortLabel(status);
+  updateDriveBadge(status);
   btn.title = `구글 드라이브 · ${status.message}`;
   $("driveStatusText").textContent = status.message;
   $("driveStatusText").style.color = ["error", "conflict", "expired", "choose"].includes(status.state) ? "var(--danger)" : "";
@@ -12469,7 +12546,9 @@ function normalizeCollab(value){
       name:String(peer.name || ""),
       fileName:String(peer.fileName || ""),
       modifiedTime:String(peer.modifiedTime || ""),
-      pulledAt:String(peer.pulledAt || "")
+      pulledAt:String(peer.pulledAt || ""),
+      // 동료가 새 파일로 옮겼는데 아직 열 권한이 없을 때 그 파일 ID
+      movedTo:String(peer.movedTo || "")
     };
   });
   return {
@@ -12480,6 +12559,8 @@ function normalizeCollab(value){
     assignmentsAt:String(value.assignmentsAt || ""),
     peers,
     pdfSharedWith:{...(value.pdfSharedWith || {})},
+    // sharedWith가 가리키는 내 파일. 내 파일이 바뀌면 다시 공유해야 한다.
+    sharedFileId:String(value.sharedFileId || ""),
     sharedWith:[...new Set((Array.isArray(value.sharedWith) ? value.sharedWith : []).map(collabEmail).filter(Boolean))]
   };
 }
@@ -12604,7 +12685,7 @@ function refreshAfterCollabPull(){
   if(state.pdf) renderCurrentPage();
 }
 
-async function fetchCollabPeer(fileId, {force=false}={}){
+async function fetchCollabPeer(fileId, {force=false, follow=true}={}){
   let meta;
   try{
     meta = await GoogleDriveSync.files.peerMeta(fileId);
@@ -12615,6 +12696,21 @@ async function fetchCollabPeer(fileId, {force=false}={}){
         : "이 파일을 열 권한이 없습니다. 구글 파일 선택창 설정이 필요합니다.");
     }
     throw err;
+  }
+  // 동료가 같은 시험의 새 파일로 옮겼으면 그 파일을 따라간다. 열 권한이 없으면 옛 파일을 쓰고 알린다.
+  const movedTo = meta.appProperties?.forClassMovedTo || "";
+  if(follow && movedTo && movedTo !== fileId){
+    try{
+      const moved = await fetchCollabPeer(movedTo, {force, follow:false});
+      const oldOwner = collabEmail(meta.owners?.[0]?.emailAddress);
+      if(!oldOwner || moved.owner.email === oldOwner) return {...moved, movedFrom:fileId};
+    }catch(err){
+      if(meta.trashed) throw new Error(`「${meta.name}」 파일이 휴지통에 있고, 동료의 새 파일은 아직 열 수 없습니다. 「동료 채점 파일 추가」로 새 파일을 연결해 주세요.`);
+    }
+    if(!meta.trashed){
+      const result = await fetchCollabPeer(fileId, {force, follow:false});
+      return {...result, movedTo};
+    }
   }
   if(meta.trashed) throw new Error(`「${meta.name}」 파일이 휴지통에 있습니다.`);
   const owner = meta.owners?.[0] || {};
@@ -12654,7 +12750,10 @@ async function shareMyCollabFile(){
   if(!collab) return [];
   const me = collabMyEmail();
   const fileId = await ensureMyDriveFile();
-  const targets = collabState().members.map(member => member.email).filter(email => email !== me && !collabState().sharedWith.includes(email));
+  // 예전 기록(sharedFileId 없음)은 지금 파일을 공유한 것으로 본다.
+  const sharedFileId = collabState().sharedFileId;
+  const alreadyShared = !sharedFileId || sharedFileId === fileId ? collabState().sharedWith : [];
+  const targets = collabState().members.map(member => member.email).filter(email => email !== me && !alreadyShared.includes(email));
   const pdf = drivePdfLink();
   // 예전 연결에 저장된 ownerEmail은 잘못됐을 수 있으므로 Drive의 실제 소유권을 확인한다.
   const pdfMeta = pdf ? await GoogleDriveSync.files.getMeta(pdf.id) : null;
@@ -12680,7 +12779,7 @@ async function shareMyCollabFile(){
     }catch(err){ failed.push(`${email} PDF: ${err.message}`); }
   }
   saveCollab({...collabState(), pdfSharedWith});
-  if(shared.length) saveCollab({...collabState(), sharedWith:[...collabState().sharedWith, ...shared]});
+  saveCollab({...collabState(), sharedFileId:fileId, sharedWith:[...new Set([...alreadyShared, ...shared])]});
   return failed;
 }
 
@@ -12787,8 +12886,12 @@ async function pullCollabPeers({quiet=false, force=false}={}){
   let answers = 0;
   for(const [email, peer] of Object.entries(collab.peers)){
     try{
-      const {meta, data, owner} = await fetchCollabPeer(peer.fileId, {force});
+      const {meta, data, owner, movedFrom, movedTo} = await fetchCollabPeer(peer.fileId, {force});
       const next = mergeCollabInfo(collabState(), normalizeCollab(data.settings?.collab), owner.email ? owner : {email});
+      if(next.peers[email]){
+        if(movedFrom) next.peers[email] = {...next.peers[email], fileId:meta.id, fileName:meta.name, movedTo:""};
+        else next.peers[email] = {...next.peers[email], movedTo:movedTo || ""};
+      }
       // 동료 파일이 그대로면 시각을 바꾸지 않는다. 바꾸면 내 파일도 매번 다시 저장된다.
       if(force || meta.modifiedTime !== peer.modifiedTime){
         next.peers[email] = {...next.peers[email], name:owner.name || peer.name, fileName:meta.name, modifiedTime:meta.modifiedTime, pulledAt:new Date().toISOString()};
@@ -12816,11 +12919,28 @@ function adoptCollabPdf(data, ownerEmail){
 }
 
 function autoPullCollab(){
+  if(graderTabInactive) return;
   if(collabBusy || Date.now() - collabLastAutoPull < 60000) return;
   if(!collabState() || !window.GoogleDriveSync || GoogleDriveSync.authState() !== "signed-in") return;
   collabLastAutoPull = Date.now();
   collabBusy = true;
-  pullCollabPeers({quiet:true}).catch(err => console.warn(err)).finally(() => { collabBusy = false; renderCollabPanel(); });
+  pullCollabPeers({quiet:true})
+    .then(() => myCollabFileChanged() ? shareMyCollabFile().then(failed => {
+      if(!failed.length) showToast("내 채점 파일이 바뀌어 동료 선생님께 새 파일을 다시 공유했습니다.");
+      else console.warn(failed);
+    }) : null)
+    .catch(err => console.warn(err))
+    .finally(() => { collabBusy = false; renderCollabPanel(); });
+}
+
+// 동료에게 공유한 뒤 내 저장 파일이 바뀌었는지(동료는 새 파일을 아직 못 본다)
+function myCollabFileChanged(){
+  const collab = collabState();
+  const fileId = driveDoc?.link?.fileId;
+  if(!collab || !fileId || !collab.sharedWith.length) return false;
+  // 예전 기록은 어느 파일을 공유했는지 몰라서, 지금 파일을 공유한 것으로 적어 둔다.
+  if(!collab.sharedFileId){ saveCollab({...collab, sharedFileId:fileId}); return false; }
+  return collab.sharedFileId !== fileId;
 }
 
 function setQuestionAssignee(questionId, email){
@@ -12867,6 +12987,7 @@ function renderCollabPanel(){
   const memberRows = (collab?.members || []).map(member => {
     const peer = collab.peers[member.email];
     const status = member.email === me ? "나"
+      : peer?.movedTo ? "동료가 새 파일로 옮겼습니다 · 공유 메일로 받은 새 파일을 「동료 채점 파일 추가」로 다시 연결해 주세요"
       : peer ? `파일 연결됨 · 불러온 시각 ${peer.pulledAt ? GoogleDriveSync.timeLabel(peer.pulledAt) : "없음"}`
       : "파일 미연결 · 「동료 채점 파일 추가」로 연결해 주세요";
     return `<div class="driveFileRow">
@@ -12939,6 +13060,54 @@ function bindCollabPanel(){
     if(select) setQuestionAssignee(select.dataset.collabAssign, select.value);
   });
 }
+
+// ---------- 채점은 탭 하나에서만 ----------
+// 같은 브라우저의 두 탭이 같은 기록과 드라이브 파일에 번갈아 저장하면 서로 덮어쓴다.
+// 먼저 연 탭만 채점하고, 다른 탭은 멈춘 뒤 「이 탭에서 계속하기」로 넘겨받게 한다.
+const GRADER_TAB_LOCK = "forClass.omr.graderTab";
+const TAB_TAKEOVER_KEY = "forClass.omr.tabTakeover";
+function claimGraderTab(){
+  if(!navigator.locks?.request) return Promise.resolve(true);
+  let steal = false;
+  try{
+    steal = sessionStorage.getItem(TAB_TAKEOVER_KEY) === "1";
+    sessionStorage.removeItem(TAB_TAKEOVER_KEY);
+  }catch{}
+  return new Promise(resolve => {
+    navigator.locks.request(GRADER_TAB_LOCK, steal ? {steal:true} : {ifAvailable:true}, lock => {
+      resolve(Boolean(lock));
+      // 탭이 열려 있는 동안 계속 쥐고 있는다.
+      return lock ? new Promise(() => {}) : undefined;
+    }).catch(() => {
+      // 다른 탭이 넘겨받았다.
+      resolve(false);
+      suspendGraderTab();
+    });
+  });
+}
+function suspendGraderTab(){
+  if(graderTabInactive) return;
+  graderTabInactive = true;
+  driveDoc?.pause();
+  updateDriveWarning();
+  document.querySelectorAll(".modalBackdrop:not(.hidden)").forEach(modal => modal.classList.add("hidden"));
+  $("tabLockModal").classList.remove("hidden");
+}
+function takeOverGraderTab(){
+  try{ sessionStorage.setItem(TAB_TAKEOVER_KEY, "1"); }catch{}
+  location.reload();
+}
+$("tabTakeoverBtn").addEventListener("click", takeOverGraderTab);
+// 멈춘 탭에서는 단축키로도 기록이 바뀌지 않게 한다.
+window.addEventListener("keydown", evt => {
+  if(!graderTabInactive) return;
+  evt.stopImmediatePropagation();
+  evt.preventDefault();
+}, true);
+const graderTabClaim = claimGraderTab().then(ok => {
+  if(!ok) suspendGraderTab();
+  return ok;
+});
 
 function setupDrive(){
   if(!window.GoogleDriveSync) return;
@@ -13014,7 +13183,16 @@ function setupDrive(){
     if(state.pdf && !confirm("지금 열린 PDF 대신 드라이브의 PDF를 받아서 열까요?")) return;
     openPdfFromDrive();
   });
-  Promise.resolve(driveDoc.open()).finally(() => setTimeout(autoPullCollab, 500));
+  $("driveWarnBtn").addEventListener("click", () => driveWarnAction?.());
+  setInterval(() => updateDriveBadge(), 30000);
+  // 드라이브에 아직 못 올린 변경이 있으면 닫기 전에 묻는다.
+  window.addEventListener("beforeunload", evt => {
+    if(graderTabInactive || GoogleDriveSync.authState() === "signed-out" || !driveDoc.hasPendingChanges) return;
+    driveDoc.flush();
+    evt.preventDefault();
+    evt.returnValue = "";
+  });
+  graderTabClaim.then(ok => ok ? driveDoc.open() : null).finally(() => setTimeout(autoPullCollab, 500));
 }
 
 loadSidebarWidth();

@@ -88,7 +88,14 @@ globalThis.fetch = async (url, options={}) => {
     const f = drive.files.get(m[2]);
     if(!f) return json({error:{message:'not found'}}, 404);
     if(method === 'PATCH'){
-      if(options.headers?.['Content-Type'] === 'application/json' && JSON.parse(options.body).trashed === true) f.trashed = true;
+      if(options.headers?.['Content-Type'] === 'application/json'){
+        const body = JSON.parse(options.body);
+        if(body.trashed === true) f.trashed = true;
+        if(body.appProperties){
+          f.props = {...props(f)};
+          Object.entries(body.appProperties).forEach(([k, v]) => { if(v === null) delete f.props[k]; else f.props[k] = v; });
+        }
+      }
       else f.content = options.body;
       touch(f); return json(meta(f));
     }
@@ -688,4 +695,69 @@ test('백업 정리: 오래된 백업만 휴지통으로 옮기고 채점 파일
   assert.equal(drive.files.get('old2').trashed, true);
   assert.equal(drive.files.get('old3').trashed, true);
   assert.equal(gradingFiles(), 1);
+});
+
+// ---------- 저장 지연 표시·탭 멈춤·파일 이동 표시 ----------
+test('드라이브에 못 올린 변경 시각을 기억하고, 저장되면 지운다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  assert.equal(g.doc.unsyncedSince, 0);
+  g.data.records.b = 2;
+  g.doc.changed();
+  assert.ok(g.doc.unsyncedSince > 0);
+  assert.equal(g.doc.hasPendingChanges, true);
+  await g.doc.sync();
+  assert.equal(g.doc.unsyncedSince, 0);
+});
+
+test('저장에 실패하면 못 올린 변경으로 남는다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  g.data.records.b = 2;
+  g.doc.changed();
+  drive.offline = true;
+  await g.doc.sync();
+  assert.ok(g.doc.unsyncedSince > 0);
+  drive.offline = false;
+  await g.doc.sync();
+  assert.equal(g.doc.unsyncedSince, 0);
+});
+
+test('멈춘 탭은 드라이브에 저장하지 않는다', async () => {
+  signIn();
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  const file = drive.files.get(g.doc.link.fileId);
+  g.doc.pause();
+  g.data.records.b = 2;
+  g.doc.changed();
+  await g.doc.sync();
+  assert.deepEqual(JSON.parse(file.content).records, {a:1});
+});
+
+test('같은 시험의 다른 파일로 옮기면 이전 파일에 새 파일 위치를 적고, 다른 시험이면 적지 않는다', async () => {
+  signIn();
+  const g = grader('omr', {title:'기말', records:{a:1}});
+  await g.doc.open();
+  const first = g.doc.link.fileId;
+  await g.doc.createFile();
+  const second = g.doc.link.fileId;
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(props(drive.files.get(first)).forClassMovedTo, second);
+  assert.equal(props(drive.files.get(second)).forClassMovedTo, undefined);
+  // 옛 파일로 돌아가면 표시가 반대로 바뀐다.
+  await g.doc.openFile(first);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(props(drive.files.get(first)).forClassMovedTo, undefined);
+  assert.equal(props(drive.files.get(second)).forClassMovedTo, first);
+  // 다른 시험 파일로 바꿀 때는 표시하지 않는다.
+  g.data = {title:'중간', records:{z:1}};
+  g.doc.detach();
+  await g.doc.sync();
+  const other = g.doc.link.fileId;
+  await g.doc.openFile(first);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(props(drive.files.get(other)).forClassMovedTo, undefined);
 });

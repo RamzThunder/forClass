@@ -197,6 +197,8 @@
   }
   if(root.document?.addEventListener){
     root.document.addEventListener('click', autoReconnect, true);
+    // 단축키로만 채점해도 다시 연결되게 한다(키 입력도 팝업을 열 수 있는 사용자 동작이다).
+    root.document.addEventListener('keydown', autoReconnect, true);
     if(account()) prepare();
   }
   async function signOut(){
@@ -266,7 +268,7 @@
   }
   // 동료 파일 확인용. 주인 계정도 함께 받는다.
   async function peerMeta(id){
-    return (await api(`${API}/files/${encodeURIComponent(id)}?fields=id,name,modifiedTime,trashed,owners(emailAddress,displayName)`)).json();
+    return (await api(`${API}/files/${encodeURIComponent(id)}?fields=id,name,modifiedTime,trashed,appProperties,owners(emailAddress,displayName)`)).json();
   }
   // 앱이 만든 내 파일을 다른 계정에 보기 전용으로 공유한다.
   async function shareFile(id, email, message=''){
@@ -359,6 +361,13 @@
       headers:{'Content-Type':'application/json; charset=UTF-8'},
       body:text
     })).json();
+  }
+
+  // 저장 파일을 바꾸면 이전 파일에 새 파일 위치를 적어 둔다. 협동채점 동료가 이전 파일을 보고 있으면 따라올 수 있게 한다.
+  async function setMovedTo(id, movedTo){
+    await api(`${API}/files/${encodeURIComponent(id)}?fields=id`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({appProperties:{forClassMovedTo:movedTo || null}})
+    });
   }
 
   // ---------- 자동 백업 ----------
@@ -540,7 +549,9 @@
     const {app, volatileKeys=[]} = options;
     const key = DOC_PREFIX + app;
     let status = {state:'', message:''};
-    let busy = false, again = false, timer = null, applying = false;
+    let busy = false, again = false, timer = null, applying = false, paused = false;
+    // 드라이브에 아직 못 올린 변경이 처음 생긴 시각(0이면 없음)
+    let changeSeq = 0, dirtySince = 0;
 
     // 저장 중인 파일은 구글 계정마다 따로 기억한다. 한 브라우저에서 계정을 오가도
     // 각 계정이 자기 파일로 돌아가게 하고, 다른 계정의 연결을 지우지 않는다.
@@ -599,8 +610,15 @@
     }
     function localFingerprint(payload){ return fingerprint(payload, volatileKeys); }
     function remember(meta, fp){
+      // 같은 시험(같은 이름)의 다른 파일로 옮길 때만 표시한다. 다른 시험 파일을 따라가면 안 된다.
+      const previous = link.fileId;
+      if(previous && previous !== meta.id && link.name && link.name === meta.name) markMoved(previous, meta.id);
       saveLink({fileId:meta.id, name:meta.name, remote:remoteTag(meta), modifiedTime:meta.modifiedTime, syncedHash:fp, email:account()?.email || ''});
       markActive();
+    }
+    // 실패해도 저장에는 영향이 없다. 내 파일이 아니면(예전 공유 연결) 건너뛴다.
+    function markMoved(previous, next){
+      Promise.all([setMovedTo(previous, next), setMovedTo(next, null)]).catch(err => console.warn('파일 이동 표시 실패', err));
     }
     function savedMessage(){ return `드라이브 저장됨 · ${timeLabel(link.modifiedTime)}`; }
     function applyData(fn){
@@ -615,12 +633,16 @@
     }
 
     async function run(task){
+      if(paused) return;
       if(busy){ again = true; return; }
       if(authState() !== 'signed-in'){ authStatus(); return; }
       busy = true;
+      const seq = changeSeq;
       try{
         loadLink();
         await task();
+        // 작업하는 동안 새 변경이 없었고 저장까지 끝났으면, 드라이브에 못 올린 변경이 없다.
+        if(status.state === 'saved' && changeSeq === seq) dirtySince = 0;
       }catch(err){
         if(err.kind === 'auth') authStatus();
         else if(err.kind === 'offline') setStatus('offline', '오프라인 · 이 기기에 저장되어 있습니다');
@@ -771,7 +793,9 @@
     // 바뀐 즉시 '저장 대기'로 표시해, 아직 올라가지 않은 변경이 있다는 걸 보여 준다.
     // 충돌·파일 선택처럼 사용자가 봐야 하는 상태는 덮지 않는다.
     function changed(){
-      if(applying || authState() === 'signed-out') return;
+      if(applying || paused || authState() === 'signed-out') return;
+      changeSeq++;
+      if(!dirtySince) dirtySince = Date.now();
       if(authState() === 'signed-in' && !busy && !['conflict', 'choose'].includes(status.state)){
         setStatus('pending', '저장 대기 중 · 잠시 후 드라이브에 저장됩니다');
       }
@@ -783,6 +807,11 @@
       get status(){ return status; },
       get link(){ loadLink(); return {...link}; },
       get applying(){ return applying; },
+      // 드라이브에 아직 못 올린 변경이 생긴 시각. 0이면 모두 올라갔다.
+      get unsyncedSince(){ return dirtySince; },
+      get hasPendingChanges(){ return Boolean(dirtySince || timer || busy); },
+      // 다른 탭이 채점을 넘겨받으면 이 탭은 드라이브 저장을 멈춘다.
+      pause(){ paused = true; clearTimeout(timer); timer = null; },
       changed, flush,
       sync:() => syncNow('auto'),
       open:() => syncNow('open'),
@@ -857,6 +886,8 @@
         else if(authState() === 'signed-in' && !busy) syncNow('focus');
       });
     }
+    // 인터넷이 다시 연결되면 밀린 변경을 바로 올린다.
+    if(typeof root.addEventListener === 'function') root.addEventListener('online', () => { if(dirtySince) schedule(500); });
     return doc;
   }
 

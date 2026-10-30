@@ -168,3 +168,50 @@ test('collaboration repairs a shared JSON link before sharing', async () => {
   assert.equal(detached, true);
   assert.equal(ctx.state.settings.collab.sharedWith.length, 0);
 });
+
+function peerCtx(files){
+  const ctx = setup({collab:baseCollab});
+  ctx.collabPeerCache = new Map();
+  ctx.jsonBackupData = data => data;
+  ctx.GoogleDriveSync.pickerAvailable = () => true;
+  ctx.GoogleDriveSync.files = {
+    peerMeta:async id => {
+      if(!files[id]) throw Object.assign(new Error('not found'), {status:404});
+      return files[id].meta;
+    },
+    download:async id => files[id].data
+  };
+  loadAsync(ctx, 'fetchCollabPeer');
+  return ctx;
+}
+const peerFile = (id, extra={}) => ({meta:{id, name:'[OMR] 기말.json', modifiedTime:'t', owners:[{emailAddress:'b@school.kr'}], ...extra}, data:{records:{}, from:id}});
+
+test('a colleague who moved to a new file of the same exam is followed', async () => {
+  const ctx = peerCtx({old:peerFile('old', {appProperties:{forClassMovedTo:'new'}}), new:peerFile('new')});
+  const result = await ctx.fetchCollabPeer('old');
+  assert.equal(result.meta.id, 'new');
+  assert.equal(result.movedFrom, 'old');
+  assert.equal(result.data.from, 'new');
+});
+
+test('when the new file cannot be opened yet, the old file is used and the move is reported', async () => {
+  const ctx = peerCtx({old:peerFile('old', {appProperties:{forClassMovedTo:'new'}})});
+  const result = await ctx.fetchCollabPeer('old');
+  assert.equal(result.meta.id, 'old');
+  assert.equal(result.movedTo, 'new');
+});
+
+test('a moved pointer to someone else\'s file is not followed', async () => {
+  const other = peerFile('new');
+  other.meta.owners = [{emailAddress:'x@school.kr'}];
+  const ctx = peerCtx({old:peerFile('old', {appProperties:{forClassMovedTo:'new'}}), new:other});
+  const result = await ctx.fetchCollabPeer('old');
+  assert.equal(result.meta.id, 'old');
+});
+
+test('collab keeps which of my files was shared and a moved peer marker', () => {
+  const ctx = setup();
+  const collab = ctx.normalizeCollab({...baseCollab, sharedFileId:'mine1', sharedWith:['b@school.kr'], peers:{'b@school.kr':{fileId:'old', movedTo:'new'}}});
+  assert.equal(collab.sharedFileId, 'mine1');
+  assert.equal(collab.peers['b@school.kr'].movedTo, 'new');
+});
