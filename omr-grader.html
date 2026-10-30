@@ -847,7 +847,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.26.0 베타</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.27.0 베타</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -3946,6 +3946,28 @@ function setDeductKeywordFromHighlight(link, on){
   toggleKeywordHit(link.itemId, "reject", link.keyword);
 }
 
+function linkedHighlightColor(itemId, keyword){
+  return HIGHLIGHT_COLORS.find(color => {
+    const link = highlightLinkInfo(color);
+    return link && link.item.id === itemId && link.keyword === keyword;
+  }) || "";
+}
+
+// 형광펜이 연결된 감점 문구를 눌러 켜면 그 색 형광펜을 바로 쓸 수 있게 켠다.
+// 다시 눌러 끄면, 그 색 형광펜을 쓰던 중일 때 형광펜도 끈다.
+function syncHighlightToDeductKeyword(itemId, type, keyword){
+  if(type !== "reject") return;
+  const color = linkedHighlightColor(itemId, keyword);
+  if(!color) return;
+  if(isDeductKeywordOn({itemId, keyword})){
+    if(!state.pdf || state.mode === "calibrate") return;
+    setHighlightColor(color);
+    showToast(`${highlightColorLabel(color)}이 켜졌습니다. 답안에서 「${keyword}」 부분을 드래그해 표시하세요.`);
+  }else if(highlightMode && highlightColor === color){
+    setHighlightMode(false);
+  }
+}
+
 // 연결된 형광펜을 지웠을 때, 같은 감점을 가리키는 형광펜이 더 없으면 감점도 해제한다.
 function releaseHighlightDeduct(removed, remaining){
   const link = normalizeHighlightLink(removed?.deductLink);
@@ -4989,6 +5011,7 @@ function currentStudentText(){
 
 window.__omrRubricPopupToggle = (itemId, type, keyword) => {
   toggleKeywordHit(itemId, type, keyword);
+  syncHighlightToDeductKeyword(itemId, type, keyword);
   syncRubricPopup();
 };
 
@@ -11930,6 +11953,7 @@ els.rubricList.addEventListener("click", evt => {
   const keywordBtn = evt.target.closest(".keywordChip");
   if(keywordBtn){
     toggleKeywordHit(keywordBtn.dataset.id, keywordBtn.dataset.type, keywordBtn.dataset.keyword);
+    syncHighlightToDeductKeyword(keywordBtn.dataset.id, keywordBtn.dataset.type, keywordBtn.dataset.keyword);
     return;
   }
 });

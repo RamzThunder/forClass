@@ -59,3 +59,46 @@ test('removing the last linked highlight releases the deduction', () => {
   ctx.releaseHighlightDeduct({deductLink:link}, []);
   assert.deepEqual(ctx.toggled, [['d1', 'reject', '오탈자']]);
 });
+
+function penSetup(hits, {pdf=true, mode='grade', pen={on:false, color:'yellow'}}={}){
+  const ctx = setup(hits);
+  Object.assign(ctx, {
+    state:{pdf, mode}, pen, toasts:[],
+    highlightColorLabel:color => `${color} 형광펜`,
+    showToast:msg => ctx.toasts.push(msg),
+    setHighlightColor:color => { pen.color = color; pen.on = true; },
+    setHighlightMode:on => { pen.on = on; }
+  });
+  vm.runInContext('Object.defineProperty(globalThis, "highlightMode", {get:() => pen.on}); Object.defineProperty(globalThis, "highlightColor", {get:() => pen.color});', ctx);
+  ['linkedHighlightColor', 'syncHighlightToDeductKeyword'].forEach(name => vm.runInContext(source(name), ctx));
+  return ctx;
+}
+
+test('turning on a linked deduct keyword activates its highlighter', () => {
+  const ctx = penSetup({d1:{reject:['오탈자']}});
+  ctx.syncHighlightToDeductKeyword('d1', 'reject', '오탈자');
+  assert.deepEqual(ctx.pen, {on:true, color:'blue'});
+  assert.equal(ctx.toasts.length, 1);
+});
+
+test('unlinked keywords and accept keywords leave the highlighter alone', () => {
+  const ctx = penSetup({d1:{reject:['띄어쓰기', '오탈자']}});
+  ctx.syncHighlightToDeductKeyword('d1', 'reject', '띄어쓰기');
+  ctx.syncHighlightToDeductKeyword('d1', 'accept', '오탈자');
+  assert.deepEqual(ctx.pen, {on:false, color:'yellow'});
+});
+
+test('turning a linked keyword off turns its highlighter off only if it is in use', () => {
+  const using = penSetup({}, {pen:{on:true, color:'blue'}});
+  using.syncHighlightToDeductKeyword('d1', 'reject', '오탈자');
+  assert.equal(using.pen.on, false);
+  const other = penSetup({}, {pen:{on:true, color:'red'}});
+  other.syncHighlightToDeductKeyword('d1', 'reject', '오탈자');
+  assert.deepEqual(other.pen, {on:true, color:'red'});
+});
+
+test('no highlighter without a PDF or during calibration', () => {
+  const ctx = penSetup({d1:{reject:['오탈자']}}, {mode:'calibrate'});
+  ctx.syncHighlightToDeductKeyword('d1', 'reject', '오탈자');
+  assert.equal(ctx.pen.on, false);
+});
