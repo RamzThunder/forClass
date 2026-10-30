@@ -847,7 +847,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.25.1 베타</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v1.25.2 베타</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1684,7 +1684,7 @@ textarea{min-height:72px;resize:vertical}
 
 <script src="shared-roster.js"></script>
 <script src="keyword-review.js"></script>
-<script src="google-drive-sync.js?v=1.25.0"></script>
+<script src="google-drive-sync.js?v=1.25.2"></script>
 <script type="module">
 import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
@@ -12569,6 +12569,8 @@ async function ensureMyDriveFile(){
   for(let attempt = 0; attempt < 4 && !driveDoc.link.fileId; attempt++){
     if(attempt) await new Promise(resolve => setTimeout(resolve, 800));
     await driveDoc.sync();
+    // 파일을 골라야 하는 상태에서 새 파일을 만들면 같은 이름의 파일이 겹쳐 생긴다.
+    if(driveDoc.status?.state === "choose") throw new Error("먼저 구글 드라이브 창에서 이어서 저장할 채점 파일을 골라 주세요.");
     if(!driveDoc.link.fileId) await driveDoc.createFile();
   }
   if(!driveDoc.link.fileId) throw new Error("내 채점 파일을 드라이브에 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
@@ -12880,9 +12882,11 @@ function setupDrive(){
     isEmpty:() => !omrHasGradingData(),
     volatileKeys:["exportedAt", "sidebarWidth", "activeQuestion", "activeClass"],
     resolveConflict:askDriveConflict,
-    onNeedChoice:() => {
+    onNeedChoice:(files, info) => {
       openDriveModal();
-      showToast("드라이브와 이 기기에 모두 채점 기록이 있습니다. 사용할 방법을 골라 주세요.");
+      showToast(info?.reason === "account"
+        ? "다른 구글 계정으로 바뀌었습니다. 이 기기의 기록은 이전 계정 것이라 자동 저장을 멈췄습니다. 이 계정의 파일을 불러오거나 새 파일로 저장해 주세요."
+        : "드라이브와 이 기기에 모두 채점 기록이 있습니다. 사용할 방법을 골라 주세요.");
     },
     onStatus:renderDriveStatus,
     onPulled:() => {

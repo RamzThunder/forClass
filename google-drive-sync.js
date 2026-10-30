@@ -455,11 +455,60 @@
   function createDoc(options){
     const {app, volatileKeys=[]} = options;
     const key = DOC_PREFIX + app;
-    let link = readJson(key) || {};
     let status = {state:'', message:''};
     let busy = false, again = false, timer = null, applying = false;
 
-    function saveLink(next){ link = next || {}; writeJson(key, next ? link : null); }
+    // 저장 중인 파일은 구글 계정마다 따로 기억한다. 한 브라우저에서 계정을 오가도
+    // 각 계정이 자기 파일로 돌아가게 하고, 다른 계정의 연결을 지우지 않는다.
+    // active는 이 기기의 채점 기록을 마지막으로 드라이브와 맞춘 계정이다.
+    function currentEmail(){ return normalizeEmail(account()?.email); }
+    function readStore(){
+      const raw = readJson(key) || {};
+      if(raw.byAccount) return {byAccount:{...raw.byAccount}, active:raw.active || ''};
+      // 예전 형식: 연결 하나만 저장돼 있었다.
+      if(!Object.keys(raw).length) return {byAccount:{}, active:''};
+      const owner = normalizeEmail(raw.email) || currentEmail();
+      return {byAccount:{[owner]:raw}, active:normalizeEmail(raw.email)};
+    }
+    function writeStore(next){
+      writeJson(key, Object.keys(next.byAccount).length || next.active ? next : null);
+    }
+    let link = {}, linkEmail = null;
+    function loadLink(){
+      const email = currentEmail();
+      if(email === linkEmail) return;
+      linkEmail = email;
+      link = readStore().byAccount[email] || {};
+    }
+    function saveLink(next){
+      loadLink();
+      link = next || {};
+      const all = readStore();
+      if(next) all.byAccount[linkEmail] = link;
+      else delete all.byAccount[linkEmail];
+      writeStore(all);
+    }
+    function markActive(){
+      const all = readStore();
+      all.active = currentEmail();
+      writeStore(all);
+    }
+    // 이 기기의 기록이 다른 계정에서 온 것인지. 그대로 올리면 두 계정의 기록이 섞인다.
+    function accountSwitched(){
+      const active = readStore().active;
+      return Boolean(active) && active !== currentEmail() && !options.isEmpty();
+    }
+    async function askChoice(reason, showDialog){
+      const files = await listFiles(app);
+      const wasChoosing = status.state === 'choose';
+      if(reason === 'account') setStatus('choose', '다른 구글 계정입니다 · 사용할 드라이브 파일을 골라 주세요');
+      else{
+        saveLink({...link, pendingChoice:true, email:account()?.email || ''});
+        setStatus('choose', '드라이브 파일을 골라 주세요');
+      }
+      if(showDialog || !wasChoosing) options.onNeedChoice?.(files, {reason});
+    }
+    loadLink();
     function setStatus(state, message){
       status = {state, message};
       try{ options.onStatus?.(status); }catch(err){ console.warn(err); }
@@ -467,6 +516,7 @@
     function localFingerprint(payload){ return fingerprint(payload, volatileKeys); }
     function remember(meta, fp){
       saveLink({fileId:meta.id, name:meta.name, remote:remoteTag(meta), modifiedTime:meta.modifiedTime, syncedHash:fp, email:account()?.email || ''});
+      markActive();
     }
     function savedMessage(){ return `드라이브 저장됨 · ${timeLabel(link.modifiedTime)}`; }
     function applyData(fn){
@@ -485,7 +535,7 @@
       if(authState() !== 'signed-in'){ authStatus(); return; }
       busy = true;
       try{
-        if(link.email && link.email !== account()?.email) saveLink(null);
+        loadLink();
         await task();
       }catch(err){
         if(err.kind === 'auth') authStatus();
@@ -534,15 +584,12 @@
         else await createNew(payload);
         return;
       }
-      if(link.pendingChoice || initial){
-        if(empty && initial && !link.pendingChoice){ await pull(files[0]); return; }
-        saveLink({pendingChoice:true, email:account()?.email || ''});
-        setStatus('choose', '드라이브 파일을 골라 주세요');
-        if(initial) options.onNeedChoice?.(files);
-        return;
-      }
-      if(empty) setStatus('idle', '드라이브 연결됨 · 채점을 시작하면 자동 저장됩니다');
-      else await createNew(payload);
+      if(empty && initial && !link.pendingChoice){ await pull(files[0]); return; }
+      if(empty && !link.pendingChoice){ setStatus('idle', '드라이브 연결됨 · 채점을 시작하면 자동 저장됩니다'); return; }
+      // 새 시험으로 연결을 끊었을 때만 묻지 않고 새 파일을 만든다.
+      // 그 밖에는 같은 이름의 파일이 겹쳐 생기지 않도록 사용자가 고르게 한다.
+      if(link.detached && !empty){ await createNew(payload); return; }
+      await askChoice('choose', initial);
     }
 
     async function syncNow(reason='auto'){
@@ -550,6 +597,7 @@
       await run(async () => {
         const payload = options.build();
         const fp = localFingerprint(payload);
+        if(accountSwitched()){ await askChoice('account', reason === 'open'); return; }
         if(!link.fileId){ await attach(payload, reason === 'open'); return; }
         if(reason === 'auto' && fp === link.syncedHash && ['saved', 'pending'].includes(status.state)){
           if(status.state === 'pending') setStatus('saved', savedMessage());
@@ -607,7 +655,7 @@
 
     const doc = {
       get status(){ return status; },
-      get link(){ return {...link}; },
+      get link(){ loadLink(); return {...link}; },
       get applying(){ return applying; },
       changed, flush,
       sync:() => syncNow('auto'),
@@ -645,7 +693,7 @@
       },
       // 새 시험을 시작할 때 이전 파일과의 연결을 끊는다. 다음 저장 때 새 파일이 만들어진다.
       detach(){
-        clearTimeout(timer); timer = null; saveLink(null);
+        clearTimeout(timer); timer = null; saveLink({detached:true, email:account()?.email || ''});
         if(authState() === 'signed-in') setStatus('idle', '드라이브 연결됨 · 채점을 시작하면 새 파일에 저장됩니다');
         else authStatus();
       }

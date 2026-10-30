@@ -180,7 +180,8 @@ test('이전 형식(version만 기억)의 연결도 충돌 없이 이어진다',
   const g = grader('omr', {records:{a:1}});
   await g.doc.open();
   const key = G.DOC_PREFIX + 'omr';
-  const old = JSON.parse(localStorage.getItem(key));
+  // 예전에는 계정별 구분 없이 연결 하나만 저장했다.
+  const old = JSON.parse(localStorage.getItem(key)).byAccount['teacher@example.com'];
   delete old.remote;
   old.version = '1';
   localStorage.setItem(key, JSON.stringify(old));
@@ -328,15 +329,77 @@ test('로그인이 만료되면(401) 만료 상태로 바뀐다', async () => {
   assert.equal(last(g).state, 'expired');
 });
 
-test('다른 계정으로 로그인하면 이전 계정의 파일 연결을 쓰지 않는다', async () => {
+test('다른 계정으로 로그인하면 이전 계정의 파일 연결을 쓰지 않고, 새 파일도 만들지 않고 고르게 한다', async () => {
   signIn('a@example.com');
   const g = grader('omr', {records:{a:1}});
   await g.doc.open();
   const oldId = g.doc.link.fileId;
+  const before = drive.files.size;
   signIn('b@example.com');
   G._test.resetFolder();
   await g.doc.sync();
   assert.notEqual(g.doc.link.fileId, oldId);
+  assert.equal(last(g).state, 'choose');
+  assert.equal(g.choices.length, 1);
+  assert.equal(drive.files.size, before, '고르기 전에는 새 파일을 만들지 않는다');
+  await g.doc.sync();
+  assert.equal(g.choices.length, 1, '자동 저장마다 창을 다시 띄우지 않는다');
+});
+
+test('계정을 오가도 각 계정은 자기 파일로 돌아가고 같은 이름의 파일이 늘지 않는다', async () => {
+  signIn('a@example.com');
+  const g = grader('omr', {records:{a:1}});
+  await g.doc.open();
+  const fileA = g.doc.link.fileId;
+  // B 계정으로 바꾸고 B의 새 파일을 만든다.
+  signIn('b@example.com');
+  await g.doc.sync();
+  await g.doc.createFile();
+  const fileB = g.doc.link.fileId;
+  assert.notEqual(fileB, fileA);
+  const count = drive.files.size;
+  // A로 돌아오면: 기기 기록은 B와 맞춘 것이라 덮어쓰지 않고 고르게 한다.
+  signIn('a@example.com');
+  g.data.records.b = 2;
+  await g.doc.sync();
+  assert.equal(last(g).state, 'choose');
+  assert.equal(g.doc.link.fileId, fileA, 'A 계정의 파일 연결을 기억한다');
+  assert.equal(drive.files.size, count, '새 파일을 만들지 않는다');
+  assert.deepEqual(JSON.parse(drive.files.get(fileA).content).records, {a:1}, 'A 파일을 B의 기록으로 덮지 않는다');
+  // A 파일을 불러오면 다시 그 파일에 이어서 저장한다.
+  await g.doc.openFile(fileA);
+  g.data.records.c = 3;
+  await g.doc.sync();
+  assert.equal(g.doc.link.fileId, fileA);
+  assert.deepEqual(JSON.parse(drive.files.get(fileA).content).records, {a:1, c:3});
+  assert.equal(drive.files.size, count);
+});
+
+test('예전 형식으로 다른 계정 연결이 남아 있어도 새 파일을 만들지 않는다', async () => {
+  signIn('a@example.com');
+  const g0 = grader('omr', {records:{a:1}});
+  await g0.doc.open();
+  const fileA = g0.doc.link.fileId;
+  localStorage.setItem(G.DOC_PREFIX + 'omr', JSON.stringify({fileId:fileA, email:'a@example.com'}));
+  signIn('b@example.com');
+  const g = grader('omr', {records:{a:1}});
+  const before = drive.files.size;
+  await g.doc.sync();
+  assert.equal(last(g).state, 'choose');
+  assert.equal(drive.files.size, before);
+});
+
+test('연결이 없는데 드라이브에 파일이 있으면 자동 저장이 새 파일을 만들지 않고 고르게 한다', async () => {
+  signIn();
+  const first = grader('omr', {records:{a:1}});
+  await first.doc.open();
+  store.delete(G.DOC_PREFIX + 'omr');
+  const other = grader('omr', {records:{b:2}});
+  const before = drive.files.size;
+  await other.doc.sync();
+  assert.equal(last(other).state, 'choose');
+  assert.equal(other.choices.length, 1);
+  assert.equal(drive.files.size, before);
 });
 
 test('큰 PDF는 조각으로 나눠 올리고, 같은 파일을 찾고, 그대로 받아 온다', async () => {
