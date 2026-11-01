@@ -274,8 +274,11 @@ textarea{min-height:72px;resize:vertical}
 .criterion.reviewWarn{border:3px solid #d6453d;background:#fff5f4;box-shadow:0 0 0 3px rgba(214,69,61,.16),0 8px 22px rgba(159,45,39,.16)}
 .criterion.reviewNotice{border:3px solid #d88916;background:#fff9ed;box-shadow:0 0 0 3px rgba(216,137,22,.14),0 8px 22px rgba(151,93,10,.13)}
 .criterionReviewFlag{display:flex;align-items:flex-start;gap:7px;padding:8px 10px;font-size:12px;font-weight:900;line-height:1.45}
-.rubricCandidateFlag{padding:8px 10px;background:var(--soft);color:var(--accent);font-size:12px;font-weight:800;line-height:1.45}
-.rubricOcrField{grid-column:1 / -1;min-width:0}
+.keywordChip.ocrCandidate{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.ocrCandidateBadge{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:4px;background:var(--soft);color:var(--accent);font-size:11px;font-weight:800;line-height:1.45}
+.keywordOcrField{grid-column:1 / -1;min-width:0;cursor:default}
+.keywordOcrInput{min-height:44px;padding:5px 7px;font-size:12px;line-height:1.5}
+.rubricOcrLinks{grid-column:1 / -1;display:grid;gap:8px;min-width:0}
 .criterionReviewFlag.warn{background:#d6453d;color:#fff}
 .criterionReviewFlag.notice{background:#d88916;color:#fff}
 .criterionReviewFlagLabel{flex:none;border:1px solid rgba(255,255,255,.62);border-radius:999px;padding:1px 6px;font-size:10px;line-height:1.4;white-space:nowrap}
@@ -865,7 +868,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.1.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.1.1</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1060,7 +1063,7 @@ textarea{min-height:72px;resize:vertical}
           <button class="btn mini" id="autoDetectBtn" type="button">키워드 자동 탐지</button>
         </div>
       </div>
-      <div class="statusLine" style="margin-bottom:6px">OCR 채점 후보 키워드는 답안 텍스트에서 발견되면 후보만 표시합니다. ‘키워드 자동 탐지’는 기존 인정·미인정 문구를 점수에 반영하므로 결과를 직접 확인·수정하세요.</div>
+      <div class="statusLine" style="margin-bottom:6px">각 점수 인정 문구의 OCR 연결 키워드를 발견하면 그 문구에 채점 후보를 표시합니다. ‘키워드 자동 탐지’는 기존 인정·미인정 문구를 점수에 반영하므로 결과를 직접 확인·수정하세요.</div>
       <label class="checkField" style="margin:0 0 6px"><input id="batchOcrDetectInput" type="checkbox"> 전체 OCR 후 키워드 자동 탐지도 함께</label>
       <textarea id="answerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
       <div class="autoDetectStatus" id="autoDetectStatus"></div>
@@ -2529,6 +2532,14 @@ function withDefaultRejects(item){
   return item;
 }
 
+function normalizeAcceptOcrKeywords(item){
+  const phrases = splitKeywords(item.accept || item.acceptText || item.include || "");
+  const saved = item.acceptOcrKeywords;
+  // Only a single phrase has an unambiguous link from the former item-level field.
+  const legacy = !saved && phrases.length === 1 ? {[phrases[0]]:item.ocrKeywords} : {};
+  return Object.fromEntries(phrases.map(phrase => [phrase, String((saved || legacy)?.[phrase] || "").trim()]).filter(([,value]) => value));
+}
+
 function normalizeRubric(rubric){
   return (rubric || []).map((item, index) => {
     const pt = Number(item.pt ?? item.max ?? 0) || 0;
@@ -2542,6 +2553,7 @@ function normalizeRubric(rubric){
       pt,
       accept:item.accept || item.acceptText || item.include || "",
       ocrKeywords:String(item.ocrKeywords || ""),
+      acceptOcrKeywords:normalizeAcceptOcrKeywords(item),
       acceptScores:item.acceptScores || {},
       comboFullCredit:Boolean(item.comboFullCredit),
       maxPt:item.type === "deduct" || item.deductOnly ? 0 : Math.max(0, Number(item.maxPt) || 0),
@@ -4636,29 +4648,36 @@ function loadRecordIntoForm(){
   renderOfflineQuestionPanel();
 }
 
-function rubricCandidateIds(text, rubric, qrec={}){
-  if(qrec?.completed) return new Set();
-  return new Set(rubric.filter(item => {
+function rubricCandidateMatches(text, rubric, qrec={}){
+  const result = new Map();
+  if(qrec?.completed) return result;
+  rubric.forEach(item => {
     const sub = normalizeSubValue(item.sub || "공통");
-    const hits = qrec?.keywordHits?.[item.id];
-    if(qrec?.completedSubs?.[sub] || qrec?.unwrittenSubs?.[sub] || hits?.accept?.length || hits?.reject?.length) return false;
-    return splitKeywords(item.ocrKeywords).some(keyword => sourceMatchRanges(text, keyword).length > 0);
-  }).map(item => item.id));
+    if(item.type === "deduct" || qrec?.completedSubs?.[sub] || qrec?.unwrittenSubs?.[sub]) return;
+    const selected = qrec?.keywordHits?.[item.id]?.accept || [];
+    const matches = Object.entries(normalizeAcceptOcrKeywords(item))
+      .filter(([phrase, keywords]) => !selected.includes(phrase) && splitKeywords(keywords).some(keyword => sourceMatchRanges(text, keyword).length > 0))
+      .map(([phrase]) => phrase);
+    if(matches.length) result.set(item.id, new Set(matches));
+  });
+  return result;
 }
 
 function refreshRubricCandidates(){
-  const candidates = rubricCandidateIds(savedOcrText(), activeRubric(), currentQuestionRecord());
+  const candidates = rubricCandidateMatches(savedOcrText(), activeRubric(), currentQuestionRecord());
   const lists = [els.rubricList];
   if(rubricPopupWindow && !rubricPopupWindow.closed) lists.push(rubricPopupWindow.document.getElementById("popupRubricList"));
-  lists.forEach(list => list?.querySelectorAll(".criterion[data-id]").forEach(wrap => {
-    wrap.querySelector(".rubricCandidateFlag")?.remove();
-    if(!candidates.has(wrap.dataset.id)) return;
-    const flag = wrap.ownerDocument.createElement("div");
-    flag.className = "rubricCandidateFlag";
-    flag.textContent = "루브릭 채점 후보 · 답안을 확인해 주세요";
-    wrap.prepend(flag);
+  lists.forEach(list => list?.querySelectorAll(".keywordChip").forEach(button => {
+    button.querySelector(".ocrCandidateBadge")?.remove();
+    const found = button.dataset.type === "accept" && Boolean(candidates.get(button.dataset.id)?.has(button.dataset.keyword));
+    button.classList.toggle("ocrCandidate", found);
+    if(!found) return;
+    const badge = button.ownerDocument.createElement("span");
+    badge.className = "ocrCandidateBadge";
+    badge.textContent = "채점 후보";
+    button.appendChild(badge);
   }));
-  return candidates.size;
+  return [...candidates.values()].reduce((sum, phrases) => sum + phrases.size, 0);
 }
 
 function renderRubric(){
@@ -5556,8 +5575,19 @@ function keywordButtonsHtml(item, type, keywords, keywordHits){
   }).join("")}</div>`;
 }
 
-function rubricOcrFieldHtml(keywords=""){
-  return `<label class="field rubricOcrField"><span class="label">OCR 채점 후보 키워드</span><textarea class="rubricOcrKeywordsInput" placeholder="예: 비판 (여러 키워드는 줄바꿈으로 구분)">${escapeHtml(keywords)}</textarea><span class="statusLine">하나라도 발견되면 이 루브릭을 채점 후보로 표시합니다. 점수는 직접 확인 후 선택하세요. 키워드 목록은 편집할 때만 보입니다.</span></label>`;
+function keywordOcrFieldHtml(value="", phrase=""){
+  return `<label class="field keywordOcrField" data-ocr-phrase="${escapeHtml(phrase)}"><span class="label">${phrase ? escapeHtml(phrase) + " · " : ""}OCR 연결 키워드</span><textarea class="keywordOcrInput" placeholder="예: 비판 (여러 개는 줄바꿈)">${escapeHtml(value)}</textarea></label>`;
+}
+
+function rubricOcrLinksHtml(item){
+  const links = normalizeAcceptOcrKeywords(item);
+  return `<div class="rubricOcrLinks"><div class="statusLine">각 점수 인정 문구에 OCR 키워드를 연결하세요. 하나라도 발견되면 연결된 문구에 채점 후보를 표시합니다.</div>${splitKeywords(item.accept).map(phrase => keywordOcrFieldHtml(links[phrase], phrase)).join("")}</div>`;
+}
+
+function acceptOcrKeywordsFromEditor(editor){
+  const zone = editor.querySelector('.keywordDropZone[data-type="accept"]');
+  const rows = zone ? [...zone.querySelectorAll('.keywordEditChip')] : [...editor.querySelectorAll('.keywordOcrField')];
+  return Object.fromEntries(rows.map(row => [zone ? keywordValueFromChip(row) : row.dataset.ocrPhrase, row.querySelector('.keywordOcrInput')?.value.trim() || ""]).filter(([phrase,value]) => phrase && value));
 }
 
 function inlineRubricEditor(item){
@@ -5579,12 +5609,12 @@ function inlineRubricEditor(item){
       <label class="checkField${item.type === "deduct" || !state.settings?.comboFullCreditEnabled ? " hidden" : ""}" style="grid-column:1 / -1;margin:0">
         <input class="rubricComboFullCreditInput" type="checkbox"${item.comboFullCredit ? " checked" : ""}> 조합형 만점
       </label>
-      ${rubricOcrFieldHtml(item.ocrKeywords)}
       <div class="rubricKeywordRow">
         <label class="field"><span class="label">점수 인정 문구</span><textarea class="rubricAcceptInput" placeholder="답안에 이 표현이나 의미가 있으면 점수 인정">${escapeHtml(item.accept || "")}</textarea></label>
         <label class="field"><span class="label">${item.type === "deduct" ? "감점 문구" : "미인정 문구"}</span><textarea class="rubricRejectInput" placeholder="미인정 또는 감점할 표현">${escapeHtml(item.reject || "")}</textarea></label>
       </div>
     </div>
+    <div class="statusLine">점수 인정 문구마다 OCR 연결 키워드를 입력하세요. 하나라도 발견되면 그 문구에 후보 표시만 하며, 점수는 직접 선택합니다.</div>
     <div class="keywordEditBoard${item.type === "deduct" ? " single" : ""}">
       ${item.type === "deduct" ? "" : keywordEditZoneHtml(item, "accept", "점수 인정", splitKeywords(item.accept))}
       ${keywordEditZoneHtml(item, "reject", item.type === "deduct" ? "감점" : "미인정", splitKeywords(item.reject))}
@@ -5655,6 +5685,7 @@ function keywordEditChipHtml(item, type, keyword){
       <input class="keywordScoreInput" type="number" step="1" min="0" value="${escapeHtml(keywordScore(item, type, keyword))}" title="점수">
       ${comboCategory ? `<input class="keywordCategoryInput" type="text" value="${escapeHtml(category)}" placeholder="카테고리" title="조합 카테고리">` : ""}
       <button class="keywordRemoveBtn" type="button" title="삭제">×</button>
+      ${type === "accept" ? keywordOcrFieldHtml(normalizeAcceptOcrKeywords(item)[keyword]) : ""}
       ${state.settings?.keywordLinkEnabled && (type === "reject" || item.type !== "deduct") ? keywordLinkSelectHtml(item, keyword, type) : ""}
     </div>
   `;
@@ -9747,7 +9778,7 @@ function applyInlineRubricItem(editor){
     return;
   }
   const itemToSave = shouldApplyDeductTemplate(previousItem, nextItem)
-    ? {...deductTemplateItem(nextItem.id, nextItem.sub), ocrKeywords:nextItem.ocrKeywords}
+    ? {...deductTemplateItem(nextItem.id, nextItem.sub), acceptOcrKeywords:nextItem.acceptOcrKeywords}
     : nextItem;
   const nextRubric = question.rubric.map((item, i) => i === index ? itemToSave : item);
   if(!confirmRubricChange(nextRubric, host, "이 항목을 이렇게 바꾸면")) return;
@@ -9921,7 +9952,7 @@ function readInlineRubricEditor(editor){
     sub:row.querySelector(".rubricSubInput").value.trim(),
     name:row.querySelector(".rubricNameInput").value.trim(),
     pt:0,
-    ocrKeywords:row.querySelector(".rubricOcrKeywordsInput")?.value.trim() || "",
+    acceptOcrKeywords:acceptOcrKeywordsFromEditor(editor),
     accept:keywordsFromZone(editor, "accept").join("\n"),
     acceptScores:keywordScoresFromZone(editor, "accept"),
     comboFullCredit:row.querySelector(".rubricTypeInput").value !== "deduct" && Boolean(row.querySelector(".rubricComboFullCreditInput")?.checked),
@@ -9936,6 +9967,7 @@ function readInlineRubricEditor(editor){
     rejectDeduct:0
   };
   const previousItem = activeRubric().find(entry => entry.id === item.id) || {};
+  item.ocrKeywords = previousItem.ocrKeywords || "";
   item.acceptLinks = keywordLinksFromEditor(editor, previousItem, "accept");
   item.rejectLinks = keywordLinksFromEditor(editor, previousItem, "reject");
   item.pt = splitKeywords(item.accept).reduce((sum, keyword) => sum + keywordScore(item, "accept", keyword), 0);
@@ -10044,6 +10076,10 @@ function moveKeywordChip(chip, targetZone){
   const targetList = targetZone.querySelector(".keywordEditList");
   const duplicate = [...targetList.querySelectorAll(".keywordEditChip")].find(entry => keywordValueFromChip(entry) === keyword);
   if(duplicate && duplicate !== chip) duplicate.remove();
+  if(targetZone.dataset.type === "accept" && !chip.querySelector(".keywordOcrInput")){
+    chip.insertAdjacentHTML("beforeend", keywordOcrFieldHtml());
+  }
+  chip.querySelector(".keywordOcrField")?.classList.toggle("hidden", targetZone.dataset.type !== "accept");
   targetList.appendChild(chip);
 }
 
@@ -10473,10 +10509,10 @@ function normalizeExampleAnswer(answer){
 
 function drawRubricEditor(items=activeRubric()){
   els.rubricEditorRows.innerHTML = "";
-  items.forEach(item => addRubricEditorRow(item.name, rubricPoint(item), item.id || createRubricId(), item.sub || "", item.accept || "", item.partial || "", partialPoint(item), item.reject || "", rejectDeduct(item), item.type || "score", item.ocrKeywords || ""));
+  items.forEach(item => addRubricEditorRow(item.name, rubricPoint(item), item.id || createRubricId(), item.sub || "", item.accept || "", item.partial || "", partialPoint(item), item.reject || "", rejectDeduct(item), item.type || "score", normalizeAcceptOcrKeywords(item)));
 }
 
-function addRubricEditorRow(name="", pt=1, id=createRubricId(), sub="", accept="", partial="", partialPointValue=0, reject="", rejectDeductValue=0, type="score", ocrKeywords=""){
+function addRubricEditorRow(name="", pt=1, id=createRubricId(), sub="", accept="", partial="", partialPointValue=0, reject="", rejectDeductValue=0, type="score", acceptOcrKeywords={}){
   const row = document.createElement("div");
   row.className = "rubricEditRow";
   row.dataset.id = id;
@@ -10489,7 +10525,7 @@ function addRubricEditorRow(name="", pt=1, id=createRubricId(), sub="", accept="
     <textarea class="rubricNameInput" placeholder="가점 요소 설명">${escapeHtml(name)}</textarea>
     <input class="rubricPointInput" type="number" min="0" step="1" value="${escapeHtml(pt)}" title="점수">
     <button class="btn mini rubricDeleteBtn" type="button" title="삭제">×</button>
-    ${rubricOcrFieldHtml(ocrKeywords)}
+    ${rubricOcrLinksHtml({accept, acceptOcrKeywords})}
     <div class="rubricKeywordRow">
       <label class="field"><span class="label">점수 인정 문구</span><textarea class="rubricAcceptInput" placeholder="답안에 이 표현이나 의미가 있으면 기본점수 인정">${escapeHtml(accept)}</textarea></label>
       <label class="field"><span class="label">미인정/감점 문구</span><textarea class="rubricRejectInput" placeholder="미인정 또는 감점할 표현">${escapeHtml(reject)}</textarea><input class="rubricRejectDeductInput" type="number" min="0" step="1" value="${escapeHtml(rejectDeductValue)}" title="기본 감점"></label>
@@ -10511,7 +10547,7 @@ function readRubricEditorRow(row){
     sub:row.querySelector(".rubricSubInput").value.trim(),
     name:row.querySelector(".rubricNameInput").value.trim(),
     pt:Number(row.querySelector(".rubricPointInput")?.value ?? 0),
-    ocrKeywords:row.querySelector(".rubricOcrKeywordsInput")?.value.trim() || "",
+    acceptOcrKeywords:acceptOcrKeywordsFromEditor(row),
     accept:row.querySelector(".rubricAcceptInput").value.trim(),
     acceptScores:Object.fromEntries(splitKeywords(row.querySelector(".rubricAcceptInput").value).map(keyword => [keyword, Number(row.querySelector(".rubricPointInput")?.value ?? 1) || 1])),
     partial:"",
@@ -10520,6 +10556,7 @@ function readRubricEditorRow(row){
     rejectScores:Object.fromEntries(splitKeywords(row.querySelector(".rubricRejectInput").value).map(keyword => [keyword, Number(row.querySelector(".rubricRejectDeductInput").value) || 0])),
     rejectDeduct:Number(row.querySelector(".rubricRejectDeductInput").value)
   };
+  item.acceptOcrKeywords = normalizeAcceptOcrKeywords(item);
   if(!Number.isFinite(item.partialPt) || item.partialPt < 0) item.partialPt = 0;
   if(!Number.isFinite(item.rejectDeduct) || item.rejectDeduct < 0) item.rejectDeduct = 0;
   if(item.type === "deduct") item.pt = 0;
@@ -12176,6 +12213,12 @@ els.hwpxRubricInput.addEventListener("change", async evt => {
   }finally{
     evt.target.value = "";
   }
+});
+els.rubricEditorRows.addEventListener("input", evt => {
+  if(!evt.target.matches(".rubricAcceptInput")) return;
+  const row = evt.target.closest(".rubricEditRow");
+  const links = acceptOcrKeywordsFromEditor(row);
+  row.querySelector(".rubricOcrLinks").outerHTML = rubricOcrLinksHtml({accept:evt.target.value, acceptOcrKeywords:links});
 });
 els.rubricEditorRows.addEventListener("click", evt => {
   const btn = evt.target.closest(".rubricDeleteBtn");
