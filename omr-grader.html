@@ -884,7 +884,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.3.3</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.3.4</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -8826,7 +8826,9 @@ async function openStudentScoreScreen(){
   popup.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>학생용 점수 확인</title></head><body style="font-family:system-ui,sans-serif;padding:24px">학생용 화면을 준비하는 중입니다...</body></html>`);
   popup.document.close();
   try{
-    const html = await buildStudentScoreScreenHtml(payload.records, payload.options);
+    const html = await buildStudentScoreScreenHtml(payload.records, payload.options, (done, total) => {
+      if(popup.document.body) popup.document.body.textContent = `학생용 화면을 준비하는 중입니다... ${done}/${total}명`;
+    });
     popup.document.open();
     popup.document.write(html);
     popup.document.close();
@@ -8844,7 +8846,9 @@ async function saveStudentScoreScreenHtml(){
   btn.disabled = true;
   btn.textContent = "HTML 만드는 중...";
   try{
-    const html = await buildStudentScoreScreenHtml(payload.records, payload.options);
+    const html = await buildStudentScoreScreenHtml(payload.records, payload.options, (done, total) => {
+      btn.textContent = `HTML 만드는 중... ${done}/${total}`;
+    });
     const suffix = payload.options.titleSuffix ? `_${payload.options.titleSuffix}` : "";
     download(`${safeFileName(`${state.appTitle}${suffix}_학생용_점수`)}.html`, "text/html;charset=utf-8", html);
   }catch(err){
@@ -8856,7 +8860,23 @@ async function saveStudentScoreScreenHtml(){
   }
 }
 
-async function buildStudentScoreScreenHtml(records, options){
+// 학생 여러 명을 몇 명씩 동시에 만들되 순서는 유지한다.
+async function mapWithConcurrency(items, limit, worker, onProgress=null){
+  const results = new Array(items.length);
+  let next = 0;
+  let done = 0;
+  const run = async () => {
+    while(next < items.length){
+      const index = next++;
+      results[index] = await worker(items[index], index);
+      onProgress?.(++done, items.length);
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(limit, items.length)}, run));
+  return results;
+}
+
+async function buildStudentScoreScreenHtml(records, options, onProgress=null){
   const exportedAt = new Date().toLocaleString("ko-KR");
   const reportTitle = `${state.appTitle}${options.titleSuffix ? ` · ${options.titleSuffix}` : ""} 학생용 점수 확인`;
   const studentNavHtml = records.map((rec, index) => studentScoreNavButtonHtml(rec, index)).join("");
@@ -8864,8 +8884,7 @@ async function buildStudentScoreScreenHtml(records, options){
   const classTabsHtml = studentClassNames.length > 1
     ? studentClassNames.map(name => `<button class="classTab" type="button" data-class="${escapeHtml(name)}">${escapeHtml(name || "반 미지정")}</button>`).join("")
     : "";
-  const studentCards = [];
-  for(const [index, rec] of records.entries()) studentCards.push(await studentScoreCardHtml(rec, options, index));
+  const studentCards = await mapWithConcurrency(records, 3, (rec, index) => studentScoreCardHtml(rec, options, index), onProgress);
   const studentHtml = studentCards.join("");
   const oneHandKeys = state.settings?.oneHandKeys || defaultOneHandKeys;
   const studentNavKeys = {
@@ -9130,7 +9149,8 @@ function createAnswerPageRenderer(){
     if(!cache.has(pageNumber)){
       cache.set(pageNumber, (async () => {
         const page = await state.pdf.getPage(pageNumber);
-        const viewport = page.getViewport({scale:Math.max(1.5, state.scale || 1)});
+        // 캡처는 최대 900px 폭으로 줄여 쓰므로 화면 확대 배율과 상관없이 2배까지만 그린다.
+        const viewport = page.getViewport({scale:Math.min(2, Math.max(1.5, state.scale || 1))});
         const canvas = document.createElement("canvas");
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -9176,10 +9196,10 @@ async function studentScoreCardHtml(rec, options, index=0){
   const writtenMax = externalWrittenMaxScore();
   const totalMax = nonNegativeNumber(state.settings?.externalTotalMaxScore) || (selectedMax > 0 && writtenMax > 0 ? selectedMax + writtenMax : 0);
   const maxHtml = max => max > 0 ? `<span class="scoreMax">/ ${escapeHtml(formatScore(max))}점 만점</span>` : "";
-  const renderPage = options.includeAnswerCapture && state.pdf ? createAnswerPageRenderer() : null;
+  const renderPage = (options.includeAnswerCapture || options.includeHighlight) && state.pdf ? createAnswerPageRenderer() : null;
   const questionRows = [];
   for(const question of state.questions) questionRows.push(await studentScoreGradedQuestionHtml(rec, question, options, renderPage));
-  for(const [scoreIndex, score] of external.offlineWrittenScores.entries()) questionRows.push(await studentScoreOfflineQuestionHtml(rec, score, scoreIndex, renderPage));
+  for(const [scoreIndex, score] of external.offlineWrittenScores.entries()) questionRows.push(await studentScoreOfflineQuestionHtml(rec, score, scoreIndex, renderPage, options));
   const questionRowsHtml = questionRows.join("");
   return `<section class="student" data-student-index="${index}">
     <div class="studentHead">
@@ -9215,8 +9235,8 @@ async function studentScoreGradedQuestionHtml(rec, question, options, renderPage
   const qmax = questionMaxScore(question);
   const groups = shareReportSubGroupsHtml(question, qrec);
   const memo = options.includeMemo && String(qrec.memo || "").trim() ? `<div class="memo"><strong>문항 메모</strong>\n${escapeHtml(qrec.memo)}</div>` : "";
-  const highlights = options.includeHighlight ? await shareReportHighlightsHtml(rec, question, qrec) : "";
-  const answerCapture = renderPage ? await studentAnswerCapturesHtml(studentAnswerCropEntries(rec, question), renderPage) : "";
+  const highlights = options.includeHighlight ? await shareReportHighlightsHtml(rec, question, qrec, renderPage) : "";
+  const answerCapture = options.includeAnswerCapture && renderPage ? await studentAnswerCapturesHtml(studentAnswerCropEntries(rec, question), renderPage) : "";
   const badges = [
     qrec.completed ? `<span class="badge">채점 완료</span>` : "",
     options.includeDiscussion && qrec.needsDiscussion ? `<span class="badge warn">논의 필요</span>` : ""
@@ -9240,11 +9260,11 @@ function studentScoreDeductBadgeHtml(score, max){
   return deducted > 0 ? `<span class="deductBadge">${escapeHtml(formatScore(deducted))}점 감점</span>` : "";
 }
 
-async function studentScoreOfflineQuestionHtml(rec, score, index, renderPage=null){
+async function studentScoreOfflineQuestionHtml(rec, score, index, renderPage=null, options={includeAnswerCapture:true}){
   const max = externalOfflineWrittenMaxScores()[index] || 0;
   const title = escapeHtml(externalOfflineWrittenTitles()[index] || `오프라인 서술형 ${index + 1}`);
   const scoreHtml = `<span class="scoreSide"><span class="summaryScore">${escapeHtml(scoreWithMaxText(score || 0, max))}</span>${studentScoreDeductBadgeHtml(score, max)}</span>`;
-  const answerCapture = renderPage ? await studentAnswerCapturesHtml(offlineAnswerCropEntries(rec, index), renderPage) : "";
+  const answerCapture = options.includeAnswerCapture && renderPage ? await studentAnswerCapturesHtml(offlineAnswerCropEntries(rec, index), renderPage) : "";
   if(!answerCapture){
     return `<div class="offlineLine">
     <span>${title}</span>
@@ -9306,10 +9326,11 @@ async function shareReportQuestionHtml(rec, question, options){
   </article>`;
 }
 
-async function shareReportHighlightsHtml(rec, question, qrec){
+async function shareReportHighlightsHtml(rec, question, qrec, renderPage=null){
   const highlights = normalizeAnswerHighlights(qrec.highlights || []);
   if(!highlights.length) return "";
-  const captures = await Promise.all(highlights.map(item => highlightCaptureDataUrl(rec, question, item)));
+  const render = renderPage || createAnswerPageRenderer();
+  const captures = await Promise.all(highlights.map(item => highlightCaptureDataUrl(rec, question, item, render)));
   return `<div class="highlightReport">
     <div class="highlightReportTitle">형광펜 캡처 및 메모</div>
     <div class="highlightReportList">
@@ -9336,19 +9357,12 @@ function shareReportHighlightItemHtml(item, index, captureDataUrl=""){
   </div>`;
 }
 
-async function highlightCaptureDataUrl(rec, question, item){
+async function highlightCaptureDataUrl(rec, question, item, renderPage=createAnswerPageRenderer()){
   if(!state.pdf) return "";
   try{
     const pageNumber = pageForHighlight(rec, item);
-    const page = await state.pdf.getPage(pageNumber);
-    const viewport = page.getViewport({scale:state.scale});
-    const fullCanvas = document.createElement("canvas");
-    fullCanvas.width = viewport.width;
-    fullCanvas.height = viewport.height;
-    const fullCtx = fullCanvas.getContext("2d", {alpha:false});
-    fullCtx.fillStyle = "#fff";
-    fullCtx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
-    await page.render({canvasContext:fullCtx, viewport}).promise;
+    // 같은 쪽은 한 번만 그려서 여러 형광펜·답안 캡처가 함께 쓴다.
+    const fullCanvas = await renderPage(pageNumber);
     const highlightRect = highlightAbsoluteRect(item, question, pageNumber, rec);
     const captureRect = highlightCaptureRect(highlightRect);
     const sx = Math.round(captureRect.x * fullCanvas.width);
