@@ -277,12 +277,22 @@ textarea{min-height:72px;resize:vertical}
 .keywordChip.ocrCandidate{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .ocrCandidateBadge{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:4px;background:var(--soft);color:var(--accent);font-size:11px;font-weight:800;line-height:1.45}
 .ocrLinkEditor{grid-column:1 / -1;border:1px solid var(--line);border-radius:8px;background:#f4f8fc;padding:8px;display:grid;gap:8px;margin-bottom:8px;min-width:0}
-.ocrLinkRows{display:grid;gap:8px;min-width:0}
-.ocrLinkRow{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:6px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--panel);min-width:0}
-.ocrLinkRow .field{min-width:0}
-.ocrLinkRow .ocrTargetField{grid-column:1 / -1}
-.ocrLinkRow input,.ocrLinkRow select{min-width:0;min-height:36px;font-size:12px;line-height:1.5;padding:5px 7px}
-.ocrLinkRow .ocrRemoveBtn{min-height:30px;padding:2px;font-size:12px}
+.ocrLinkEditor .keywordTitle{margin-bottom:0}
+.ocrLinkRows{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;min-width:0}
+.ocrLinkRows:empty{display:none}
+.ocrLinkRow{display:contents}
+.ocrLinkChip{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:6px 9px;text-align:left;font-size:12px;font-weight:750;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere}
+.ocrLinkChip.accept{background:#f4fbf7;border-color:#c9e7d2}
+.ocrLinkChip.reject{background:#fff7f6;border-color:#edcfcb}
+.ocrLinkChip.unlinked{border-style:dashed;color:var(--muted)}
+.ocrLinkChip .ocrLinkTarget{font-weight:600;color:var(--muted)}
+.ocrLinkRow.open .ocrLinkChip{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.ocrLinkDetail{display:none}
+.ocrLinkRow.open .ocrLinkDetail{flex:1 0 100%;display:grid;grid-template-columns:minmax(80px,140px) minmax(0,1fr) auto;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--panel);min-width:0}
+.ocrLinkDetail input,.ocrLinkDetail select,.ocrAddRow input{min-width:0;min-height:32px;font-size:12px;line-height:1.5;padding:4px 7px}
+.ocrLinkDetail .btn,.ocrAddRow .btn{min-height:32px;padding:4px 9px;font-size:12px}
+.ocrAddRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;max-width:360px}
+@media (max-width:640px){.ocrLinkRow.open .ocrLinkDetail{grid-template-columns:minmax(0,1fr) auto}.ocrLinkDetail .ocrTargetInput{grid-column:1 / -1;grid-row:2}}
 .criterionReviewFlag.warn{background:#d6453d;color:#fff}
 .criterionReviewFlag.notice{background:#d88916;color:#fff}
 .criterionReviewFlagLabel{flex:none;border:1px solid rgba(255,255,255,.62);border-radius:999px;padding:1px 6px;font-size:10px;line-height:1.4;white-space:nowrap}
@@ -872,7 +882,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.2.0</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.2.1</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -5605,16 +5615,48 @@ function ocrTargetsFromEditor(editor){
 }
 
 function ocrTargetOptionsHtml(targets, selected=""){
-  return `<option value="">연결할 문구 선택</option>` + targets.map(target => `<option value="${escapeHtml(target.id)}"${target.id === selected ? " selected" : ""}>${target.type === "accept" ? "인정" : "미인정/감점"} · ${escapeHtml(target.phrase)}</option>`).join("");
+  return `<option value="">연결할 문구 선택</option>` + targets.map(target => `<option value="${escapeHtml(target.id)}" data-label="${escapeHtml(JSON.stringify([target.type,target.phrase]))}"${target.id === selected ? " selected" : ""}>${target.type === "accept" ? "인정" : "미인정/감점"} · ${escapeHtml(target.phrase)}</option>`).join("");
 }
 
-function ocrLinkRowHtml(link, targets){
-  return `<div class="ocrLinkRow"><label class="field"><span class="label">OCR 키워드</span><input class="ocrKeywordInput" value="${escapeHtml(link.keyword || "")}" placeholder="예: 비판"></label><button class="btn mini ocrRemoveBtn" type="button" title="OCR 키워드 삭제">×</button><label class="field ocrTargetField"><span class="label">연결할 인정 / 미인정 문구</span><select class="ocrTargetInput">${ocrTargetOptionsHtml(targets, JSON.stringify([link.type,link.phrase]))}</select></label></div>`;
+function ocrLinkChipHtml(keyword, type, phrase){
+  const target = type ? `${type === "accept" ? "인정" : "미인정"} · ${escapeHtml(phrase)}` : "연결 안 됨";
+  return `<button class="ocrLinkChip${type ? " " + type : " unlinked"}" type="button" title="눌러서 연결 문구 바꾸기">${escapeHtml(keyword || "(빈 키워드)")} <span class="ocrLinkTarget">→ ${target}</span></button>`;
+}
+
+function ocrLinkRowHtml(link, targets, open=false){
+  const selected = JSON.stringify([link.type,link.phrase]);
+  const linked = targets.some(target => target.id === selected) ? link : {};
+  return `<div class="ocrLinkRow${open ? " open" : ""}">${ocrLinkChipHtml(link.keyword, linked.type, linked.phrase)}<div class="ocrLinkDetail"><input class="ocrKeywordInput" value="${escapeHtml(link.keyword || "")}" placeholder="키워드" title="OCR 키워드"><select class="ocrTargetInput" title="연결할 인정 / 미인정 문구">${ocrTargetOptionsHtml(targets, JSON.stringify([link.type,link.phrase]))}</select><button class="btn mini ocrRemoveBtn" type="button" title="OCR 키워드 삭제">삭제</button></div></div>`;
 }
 
 function rubricOcrLinksHtml(item){
   const targets = ocrTargetsForItem(item);
-  return `<div class="ocrLinkEditor${state.settings?.autoAssistEnabled ? "" : " hidden"}"><div class="keywordTitle">OCR 키워드</div><div class="statusLine">키워드를 하나씩 추가하고 인정·미인정 문구에 연결하세요. 발견되면 연결된 문구에 후보만 표시합니다.</div><div class="ocrLinkRows">${normalizeOcrLinks(item).map(link => ocrLinkRowHtml(link, targets)).join("")}</div><button class="btn mini ocrAddBtn" type="button">+ OCR 키워드 추가</button></div>`;
+  return `<div class="ocrLinkEditor${state.settings?.autoAssistEnabled ? "" : " hidden"}"><div class="keywordTitle">OCR 키워드</div><div class="statusLine">키워드를 추가한 뒤 버튼을 눌러 인정·미인정 문구에 연결하세요. 발견되면 연결된 문구에 후보만 표시합니다.</div><div class="ocrLinkRows">${normalizeOcrLinks(item).map(link => ocrLinkRowHtml(link, targets)).join("")}</div><div class="ocrAddRow"><input class="ocrNewKeywordInput" placeholder="키워드 입력 후 Enter (예: 비판)"><button class="btn mini ocrAddBtn" type="button">+ 추가</button></div></div>`;
+}
+
+function updateOcrLinkChip(row){
+  const select = row.querySelector(".ocrTargetInput");
+  let type = "", phrase = "";
+  try{[type, phrase] = select.value ? JSON.parse(select.selectedOptions[0]?.dataset.label || "[]") : [];}catch(err){}
+  row.querySelector(".ocrLinkChip").outerHTML = ocrLinkChipHtml(row.querySelector(".ocrKeywordInput").value.trim(), type, phrase);
+}
+
+function updateOcrLinkChips(editor){
+  editor.querySelectorAll(".ocrLinkRow").forEach(updateOcrLinkChip);
+}
+
+function addOcrLinkRow(editor, focus=true){
+  const input = editor.querySelector(".ocrNewKeywordInput");
+  const keywords = splitKeywords(input.value.replace(/,/g, "\n"));
+  if(!keywords.length){if(focus) input.focus();return;}
+  refreshOcrTargetOptions(editor);
+  const rows = editor.querySelector(".ocrLinkRows");
+  const targets = ocrTargetsFromEditor(editor);
+  rows.querySelectorAll(".ocrLinkRow.open").forEach(row => row.classList.remove("open"));
+  keywords.forEach((keyword, index) => rows.insertAdjacentHTML("beforeend", ocrLinkRowHtml({keyword}, targets, index === keywords.length - 1)));
+  updateOcrLinkChips(editor);
+  input.value = "";
+  if(focus) rows.lastElementChild.querySelector(".ocrTargetInput").focus();
 }
 
 function refreshOcrTargetOptions(editor){
@@ -5623,9 +5665,12 @@ function refreshOcrTargetOptions(editor){
     const target = targets.find(target => target.id === select.value || JSON.stringify([target.type,target.phrase]) === select.value);
     select.innerHTML = ocrTargetOptionsHtml(targets, target?.id || "");
   });
+  updateOcrLinkChips(editor);
 }
 
 function ocrLinksFromEditor(editor){
+  // Keep a keyword that was typed but not yet added with Enter.
+  if(editor.querySelector(".ocrNewKeywordInput")?.value.trim()) addOcrLinkRow(editor, false);
   refreshOcrTargetOptions(editor);
   const targets = ocrTargetsFromEditor(editor);
   return [...editor.querySelectorAll(".ocrLinkRow")].map(row => {
@@ -5635,17 +5680,41 @@ function ocrLinksFromEditor(editor){
 }
 
 function bindOcrEditorEvents(root){
+  const editorOf = el => el.closest(".inlineRubricEditor") || el.closest(".rubricEditRow");
   root.addEventListener("click", evt => {
-    const button = evt.target.closest(".ocrAddBtn,.ocrRemoveBtn");
+    const button = evt.target.closest(".ocrAddBtn,.ocrRemoveBtn,.ocrLinkChip");
     if(!button) return;
-    const editor = button.closest(".inlineRubricEditor") || button.closest(".rubricEditRow");
+    const editor = editorOf(button);
     if(button.classList.contains("ocrRemoveBtn")){button.closest(".ocrLinkRow").remove();return;}
-    refreshOcrTargetOptions(editor);
-    const rows = editor.querySelector(".ocrLinkRows");
-    rows.insertAdjacentHTML("beforeend", ocrLinkRowHtml({}, ocrTargetsFromEditor(editor)));
-    rows.lastElementChild.querySelector(".ocrKeywordInput").focus();
+    if(button.classList.contains("ocrLinkChip")){
+      const row = button.closest(".ocrLinkRow");
+      const willOpen = !row.classList.contains("open");
+      editor.querySelectorAll(".ocrLinkRow.open").forEach(other => other.classList.remove("open"));
+      if(willOpen){
+        refreshOcrTargetOptions(editor);
+        row.classList.add("open");
+        row.querySelector(".ocrTargetInput").focus();
+      }
+      return;
+    }
+    addOcrLinkRow(editor);
+  });
+  root.addEventListener("keydown", evt => {
+    if(evt.key !== "Enter" || evt.isComposing || evt.ctrlKey || evt.metaKey) return;
+    if(evt.target.matches(".ocrNewKeywordInput")){
+      evt.preventDefault();
+      evt.stopPropagation();
+      addOcrLinkRow(editorOf(evt.target));
+    }else if(evt.target.matches(".ocrKeywordInput")){
+      evt.preventDefault();
+      evt.target.closest(".ocrLinkRow").classList.remove("open");
+    }
+  });
+  root.addEventListener("change", evt => {
+    if(evt.target.matches(".ocrTargetInput")) updateOcrLinkChip(evt.target.closest(".ocrLinkRow"));
   });
   root.addEventListener("input", evt => {
+    if(evt.target.matches(".ocrKeywordInput")){updateOcrLinkChip(evt.target.closest(".ocrLinkRow"));return;}
     if(!evt.target.matches(".keywordEditInput,.rubricAcceptInput,.rubricRejectInput")) return;
     const editor = evt.target.closest(".inlineRubricEditor") || evt.target.closest(".rubricEditRow");
     if(editor) refreshOcrTargetOptions(editor);
