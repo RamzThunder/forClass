@@ -882,7 +882,7 @@ textarea{min-height:72px;resize:vertical}
       <div class="titleCluster">
         <a class="backBtn" href="index.html" aria-label="도구 목록으로 돌아가기" title="도구 목록으로 돌아가기">‹</a>
         <div class="titleMain">
-          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.2.1</span></div>
+          <div class="titleLine"><h1 id="appTitleText">OMR 서술형 채점 도구 템플릿</h1><span class="appVersion" id="appVersionText">v2.3.0</span></div>
           <div class="meta" id="fileMeta">PDF를 불러오면 문항별 답란 영역만 크게 표시됩니다.</div>
         </div>
       </div>
@@ -1077,8 +1077,8 @@ textarea{min-height:72px;resize:vertical}
           <button class="btn mini" id="autoDetectBtn" type="button">키워드 자동 탐지</button>
         </div>
       </div>
-      <div class="statusLine" style="margin-bottom:6px">OCR 키워드를 발견하면 연결된 인정·미인정 문구에 채점 후보를 표시합니다. ‘키워드 자동 탐지’는 기존 인정·미인정 문구를 점수에 반영하므로 결과를 직접 확인·수정하세요.</div>
-      <label class="checkField" style="margin:0 0 6px"><input id="batchOcrDetectInput" type="checkbox"> 전체 OCR 후 키워드 자동 탐지도 함께</label>
+      <div class="statusLine" style="margin-bottom:6px">OCR 키워드를 발견하면 연결된 인정·미인정 문구에 채점 후보를 표시합니다. 인정·미인정 문구가 답안에 그대로 있으면 점수에 바로 반영되므로 결과를 직접 확인·수정하세요.</div>
+      <label class="checkField" style="margin:0 0 6px"><input id="batchOcrDetectInput" type="checkbox"> OCR로 읽은 뒤 인정·미인정 문구가 그대로 있으면 바로 체크</label>
       <textarea id="answerText" placeholder="답안 텍스트를 여기에 붙여넣으세요" style="min-height:90px"></textarea>
       <div class="autoDetectStatus" id="autoDetectStatus"></div>
     </section>
@@ -2239,6 +2239,7 @@ function applySettings(){
   if(els.unwrittenOcrPanel) els.unwrittenOcrPanel.classList.toggle("hidden", !unwrittenOcrEnabled);
   if(els.reviewAssistPanel) els.reviewAssistPanel.classList.toggle("hidden", !reviewAssistEnabled);
   if(els.autoAssistEnabledInput) els.autoAssistEnabledInput.checked = enabled;
+  if(els.batchOcrDetectInput) els.batchOcrDetectInput.checked = state.settings?.ocrAutoApply !== false;
   if(els.comboFullCreditEnabledInput) els.comboFullCreditEnabledInput.checked = comboFullCreditEnabled;
   if(els.keywordLinkEnabledInput) els.keywordLinkEnabledInput.checked = Boolean(state.settings?.keywordLinkEnabled);
   if(els.unwrittenOcrEnabledInput) els.unwrittenOcrEnabledInput.checked = unwrittenOcrEnabled;
@@ -2418,6 +2419,8 @@ function normalizeSettings(){
   state.settings = {
     ...settings,
     autoAssistEnabled:Boolean(settings.autoAssistEnabled),
+    // OCR 뒤 문구 그대로 일치하면 바로 체크: 기본 켜짐.
+    ocrAutoApply:settings.ocrAutoApply !== false,
     comboFullCreditEnabled:Boolean(settings.comboFullCreditEnabled),
     keywordLinkEnabled:Boolean(settings.keywordLinkEnabled),
     incompleteOnly:Boolean(settings.incompleteOnly),
@@ -6319,10 +6322,10 @@ async function runBatchOcr(){
     setAutoAssistStatus(pages.length ? "현재 범위의 채점 안 끝난 답안은 이미 모두 OCR로 읽었습니다." : "현재 범위에 채점 안 끝난 답안이 없습니다.", false, statusEl);
     return;
   }
-  const detect = Boolean(els.batchOcrDetectInput?.checked);
+  const detect = state.settings?.ocrAutoApply !== false;
   const engine = state.settings?.ocrEngine === "paddle" ? "PaddleOCR" : "Tesseract";
   const skipped = pages.length - todo.length;
-  if(!confirm(`${question.label} · 채점 안 끝난 학생 ${todo.length}명의 답안을 OCR로 읽을까요?${skipped ? `\n(이미 읽은 ${skipped}명은 건너뜁니다)` : ""}\n\n엔진: ${engine} · 한 명에 몇 초씩 걸립니다. 도중에 중지할 수 있습니다.${detect ? "\n읽은 뒤 키워드 자동 탐지도 함께 실행합니다. 탐지 결과는 꼭 확인해 주세요." : ""}`)) return;
+  if(!confirm(`${question.label} · 채점 안 끝난 학생 ${todo.length}명의 답안을 OCR로 읽을까요?${skipped ? `\n(이미 읽은 ${skipped}명은 건너뜁니다)` : ""}\n\n엔진: ${engine} · 한 명에 몇 초씩 걸립니다. 도중에 중지할 수 있습니다.${detect ? "\n읽은 뒤 인정·미인정 문구가 그대로 있으면 바로 체크합니다. 결과는 꼭 확인해 주세요." : ""}`)) return;
   batchOcr = {running:true, stop:false};
   updateBatchOcrButton();
   let read = 0;
@@ -6392,12 +6395,15 @@ async function readCurrentAnswerWithOcr(answerEl=els.answerText, statusEl=els.au
     if(answerEl) answerEl.value = text;
     els.answerText.value = text;
     saveOcrText(state.page, state.activeQuestion, text);
+    const matches = text ? applyOcrAutoCheck(text) : 0;
     const candidates = refreshRubricCandidates();
     if(rubricPopupWindow && !rubricPopupWindow.closed){
+      if(matches) syncRubricPopup();
       const popupAnswer = rubricPopupWindow.document.getElementById("popupAnswerText");
       if(popupAnswer && popupAnswer !== answerEl) popupAnswer.value = text;
     }
-    setAutoAssistStatus(text ? `OCR로 답안 텍스트를 읽었습니다. 루브릭 채점 후보 ${candidates}개 · 내용을 확인한 뒤 채점하세요.` : "OCR에서 텍스트를 찾지 못했습니다.", !text, statusEl);
+    const checked = matches ? `문구 ${matches}개 바로 체크 · ` : "";
+    setAutoAssistStatus(text ? `OCR로 답안 텍스트를 읽었습니다. ${checked}루브릭 채점 후보 ${candidates}개 · 내용을 확인한 뒤 채점하세요.` : "OCR에서 텍스트를 찾지 못했습니다.", !text, statusEl);
   }catch(err){
     console.error(err);
     setAutoAssistStatus(`답안 OCR을 완료하지 못했습니다: ${err.message}`, true, statusEl);
@@ -6504,6 +6510,19 @@ function autoDetectKeywords(textValue=els.answerText.value, statusEl=els.autoDet
   if(!matches){setAutoAssistStatus(candidates ? `루브릭 채점 후보 ${candidates}개를 표시했습니다. 답안을 확인한 뒤 점수를 직접 선택하세요.` : "매칭되는 키워드가 없습니다. 답안 텍스트를 확인하세요.", false, statusEl);return;}
   persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();
   setAutoAssistStatus(`${matches}개 키워드 탐지됨. 결과를 확인하고 필요하면 직접 수정하세요.`, false, statusEl);
+}
+
+// OCR로 읽은 직후: 인정·미인정 문구가 답안에 그대로 있으면 바로 체크한다(설정에서 끌 수 있음).
+function applyOcrAutoCheck(text){
+  if(state.settings?.ocrAutoApply === false || isRubricLocked()) return 0;
+  const previousUndo = undoSnapshot;
+  snapshotCurrentQuestion("OCR 문구 자동 체크");
+  ensureQuestionRecord();
+  const matches = applyKeywordDetection(state.records[recordKey()].answers[state.activeQuestion], text);
+  // 체크된 게 없으면 되돌리기 기록을 원래대로 둔다.
+  if(!matches) undoSnapshot = previousUndo;
+  if(matches){persist();renderRubric();updateResults();updateKeywordSummary();updateProgress();updateClassControls();}
+  return matches;
 }
 
 // 답안 글자에서 찾은 키워드를 한 학생의 문항 기록에 체크한다. 이미 체크된 것은 그대로 둔다.
@@ -11899,6 +11918,10 @@ els.defaultRejectKeywordsInput.addEventListener("change", () => {
 els.autoAssistEnabledInput.addEventListener("change", () => {
   state.settings.autoAssistEnabled = Boolean(els.autoAssistEnabledInput.checked);
   applySettings();
+  persist();
+});
+els.batchOcrDetectInput?.addEventListener("change", () => {
+  state.settings.ocrAutoApply = Boolean(els.batchOcrDetectInput.checked);
   persist();
 });
 els.ocrEngineSelect.addEventListener("change", () => {
